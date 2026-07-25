@@ -44,6 +44,21 @@ so your fleet is never out of sight — full detail in `UI-SPEC.md`.
 A P&L statement rendered as a car app is the whole aesthetic thesis. If a feature
 can't live on that screen, it doesn't ship.
 
+### 2.5 Real cars, invented commerce
+
+The vehicles are real hardware you could actually buy — Cybercab, Model 3, Model Y — and
+every company around them is fictional: Hitchr and Zipp supply the demand, Meridian and
+Halo are the rivals. The line is deliberate. Real cars let the game make checkable claims
+about batteries and range; invented operators let it make uncheckable ones about
+commission and conduct without libelling anybody.
+
+**Every vehicle drives itself.** Autonomy is the setting, not a feature to shop for, and
+never a difference between two cards. The Cybercab simply has no steering wheel to remove.
+
+Technical figures on the cards are published ones. Prices are **not** MSRP — they are
+balanced against a fare model where a ride nets about $8, and real sticker prices would
+need the whole economy rescaling.
+
 ### 2.2 The trilemma
 
 Three failure modes, all active, deliberately interlocked. Mitigating one worsens another.

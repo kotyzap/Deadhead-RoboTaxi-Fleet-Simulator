@@ -1,6 +1,6 @@
 # Deadhead — robotaxi fleet simulator
 
-**Version 0.10.1**
+**Version 0.11.0**
 
 A future-job simulator played entirely through a car's centre console screen. You never
 drive. You own and operate a small robotaxi fleet, and your job is the one that *replaces*
@@ -32,6 +32,7 @@ a bug report from a stranger diagnosable.
 
 | Version | What landed |
 |---|---|
+| 0.11.0 | **The garage and progressive disclosure.** Three real Teslas — Cybercab (48 kWh, 163 kW, 300 mi, two seats, per its EPA filing), Model 3, Model Y — each a card with a hand-drawn SVG side profile, technical specs, running costs, and three ways to acquire it: buy, finance, rent. You now start with **$3,000 and no car**, which buys none of them outright, so the opening decision is how you hold the asset. Pack size and efficiency are wired into charging, range and energy cost, so the choice is mechanical rather than cosmetic. Console panels stay greyed until earned, each showing what unlocks it; locks never revoke. A new fleet always restarts the tutorial from beat 1, now 14 beats with the opening rewritten for the garage. Save shape v5. |
 | 0.10.1 | Fixes "Latency NaNs" in the incidents panel, found on the live deployment. `avgFatigue()` divided by `S.ops.length`, which is zero in Act 1 because the player is the only operator. With no staff the panel now says so instead of quoting a computed response time it has no basis for. |
 | 0.10.0 | **Ray, the Act 1 tutorial** (`GameMechanics.md` §9). Thirteen beats, every one triggered by game state rather than a timer, so the script follows the player. Spotlight primitive — a ring on the referenced control, console dimmed 25%. Messages card bottom-left; never modal, never pauses the clock except beat 1. All beats stay readable in a Messages panel afterwards. Skippable from the first card and never re-offered. Adds the demand-driven surge model (0.8–2.0×) that beat 7 needs to fire at all. Save shape v4. |
 | 0.9.0 | **Act 1 rebuild** (`GameMechanics.md`). Real-time clock — 1× is the wall clock, speeds pause/1/4/20. Clock on/off shift model: cars earn only while you are supervising, and the car still owes $42 at midnight. Manual accept/decline of offers on a 45-second countdown. Two platforms, Hitchr (25%) and Zipp (15%), with acceptance rate driving offer volume. Start position $1,000 and one owned car. Fixed cost decomposed to $42 base. Insurance tiers at 3 cars. Two prototype bugs fixed: the offer cap never fired, and neutral pricing shed 44% of demand. Save shape v3 with a v2 migration. |

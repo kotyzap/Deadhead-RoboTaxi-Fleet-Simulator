@@ -606,6 +606,58 @@ body.dimmed .spotlight{filter:brightness(1.33)}
 .msg b{display:block;font-size:10px;letter-spacing:.09em;text-transform:uppercase;
   color:var(--text-4);font-weight:500;margin-bottom:3px}
 
+ /* ---------------- garage: vehicle cards ---------------- */
+#garage .rep{width:900px;max-width:94vw}
+.gar-head{display:flex;align-items:baseline;gap:10px;margin-bottom:4px}
+.gar-cash{margin-left:auto;font-size:13px;color:var(--text-2)}
+.gar-cash b{font-weight:500;color:var(--text)}
+.gar-sub{font-size:12px;color:var(--text-3);line-height:1.5;margin-bottom:14px}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media (max-width:820px){.cards{grid-template-columns:1fr}}
+.card{border:1px solid var(--brd);border-radius:10px;background:var(--c-card);
+  display:flex;flex-direction:column;overflow:hidden}
+.card.owned{border-color:var(--s-charge)}
+.card-art{height:96px;display:grid;place-items:center;background:var(--inset);
+  border-bottom:1px solid var(--brd)}
+.carart{width:180px;height:70px;fill:none;stroke:var(--text-2);stroke-width:2.1;
+  stroke-linecap:round;stroke-linejoin:round}
+.card.owned .carart{stroke:var(--s-charge)}
+.card-top{padding:11px 13px 0}
+.card-top h4{font-size:15px;font-weight:500;margin:0;letter-spacing:.01em;
+  text-transform:none}
+.card-top .tag{font-size:11px;color:var(--text-3);display:block;margin-top:2px}
+.card-own{display:inline-block;margin-top:7px;font-size:10px;letter-spacing:.08em;
+  text-transform:uppercase;padding:2px 7px;border-radius:3px;
+  background:rgba(31,138,76,.14);color:var(--s-charge)}
+.spec{padding:10px 13px 0}
+.spec-row{display:flex;justify-content:space-between;font-size:12px;padding:3px 0;
+  color:var(--text-3)}
+.spec-row b{font-weight:500;color:var(--text)}
+.card-note{padding:9px 13px 0;font-size:11px;line-height:1.5;color:var(--text-3)}
+.card-acts{margin-top:auto;padding:12px 13px 13px;display:flex;flex-direction:column;gap:6px}
+.card-acts button{height:33px;border:1px solid var(--brd-2);border-radius:var(--r-ctl);
+  background:transparent;color:var(--text);font:inherit;font-size:12px;cursor:pointer;
+  display:flex;align-items:center;justify-content:space-between;padding:0 11px}
+.card-acts button small{color:var(--text-3);font-size:11px}
+.card-acts button:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.card-acts button:hover:not(:disabled) small{color:var(--accent)}
+.card-acts button.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+.card-acts button.pri small{color:rgba(255,255,255,.8)}
+.card-acts button:disabled{opacity:.38;cursor:default}
+.card-acts .why{font-size:10.5px;color:var(--text-4);text-align:center}
+
+/* ---------------- locked panels ---------------- */
+.panel.locked{position:relative}
+.panel.locked .p-body{filter:grayscale(1) opacity(.32);pointer-events:none;
+  user-select:none}
+.panel.locked .p-head h2{color:var(--text-4)}
+.lockbar{display:flex;align-items:center;gap:7px;padding:8px 12px;
+  border-top:1px solid var(--brd);background:var(--inset);
+  font-size:11px;color:var(--text-3)}
+.lockbar b{font-weight:500;color:var(--text-2)}
+.t-app.locked{opacity:.3;pointer-events:none}
+.tb-item.locked b{color:var(--text-4)}
+
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -634,6 +686,7 @@ body.dimmed .spotlight{filter:brightness(1.33)}
       <button data-speed="4" aria-pressed="false">4&times;</button>
       <button data-speed="20" aria-pressed="false">20&times;</button>
     </div>
+    <button class="ghost" id="garage-btn"><svg class="ms"><use href="#i-car"/></svg>Garage</button>
     <button class="ghost" id="saves"><svg class="ms"><use href="#i-list"/></svg>Saves</button>
     <button class="ghost" id="theme"><svg class="ms"><use href="#i-moon"/></svg>Night</button>
   </header>
@@ -833,6 +886,23 @@ body.dimmed .spotlight{filter:brightness(1.33)}
   </div>
 </div>
 
+<!-- The garage. Opens at boot on a new fleet: the first decision is which
+     vehicle and, more importantly, how you hold it. -->
+<div class="modal" id="garage" hidden>
+  <div class="rep">
+    <div class="gar-head">
+      <h3>Choose a vehicle</h3>
+      <span class="gar-cash">Cash <b id="gar-cash">$0</b></span>
+    </div>
+    <div class="gar-sub" id="gar-sub"></div>
+    <div class="cards" id="gar-cards"></div>
+    <div class="sv-foot">
+      <span class="note" id="gar-note"></span>
+      <button id="gar-close">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- Ray. Bottom-left, above the dock, never modal, never over the car rail. -->
 <div id="ray" hidden>
   <div class="who"><b>Ray Salcido</b><span>Messages</span></div>
@@ -915,6 +985,10 @@ const CFG={
      $28, financing adds $13.60. */
   fixedPerCarDay:42,
   leaseAdd:28, financeDaily:13.60,
+  /* Minimum cash a lender insists you keep back. Was referenced by the
+     garage before it existed here, which made every affordability test
+     compare against NaN and silently disabled all three Finance buttons. */
+  financeReserve:200,
   /* Gig-rideshare insurance is dearer than a fleet policy. Crossing three
      cars is what earns the fleet rate. */
   cpm:{dep:0.11,maint:0.04,ins:0.11,soft:0.03},
@@ -979,13 +1053,93 @@ const CHARGERS=[
   {n:'Rainey St',      lat:30.2592,lng:-97.7388,stalls:6},
   {n:'Mueller',        lat:30.2978,lng:-97.7062,stalls:4}
 ];
+/* ============================================================
+   THE CATALOGUE
+
+   Real vehicles, invented commerce. The cars are hardware you can
+   actually buy; every company around them (Hitchr, Zipp, Meridian, Halo)
+   is fictional. That line is deliberate — see DESIGN.md.
+
+   PREMISE: every vehicle here drives itself. Autonomy is not a spec you
+   shop for and not a difference between the cards — it is the setting. The
+   Cybercab simply has no steering wheel to remove, which is a packaging
+   difference, not a capability one. You never drive any of them.
+
+   TECHNICAL figures are the published ones. The Cybercab numbers come
+   from its EPA filing: 48 kWh, 163 kW, 300 mi EPA rating, two seats, no
+   steering wheel or pedals, and it is really deployed in Austin, which is
+   where this game is set.
+
+   COMMERCIAL figures are NOT MSRP. They are balanced against a fare model
+   where a ride nets about $8, and real sticker prices would need the whole
+   economy rescaling. Treat price/rent/finance as game economy.
+
+   Every spec below feeds a system that already exists, so the choice is
+   mechanically real rather than flavour text:
+     kwh          -> charge duration and range (stepCar, socNeeded)
+     kwhPerKm     -> energy cost per mile (drive)
+     price/down/  -> capital vs daily burn, the Act 1 trilemma
+       daily/rent
+     fixed        -> what you owe at midnight whether you work or not
+   ============================================================ */
+const CATALOG=[
+  {
+    id:'cybercab', name:'Cybercab', badge:'CC',
+    tag:'Purpose-built robotaxi',
+    kwh:48, kw:163, rangeMi:300, seats:2, kwhPerKm:0.155,
+    price:19500, down:1500, daily:13.60, rent:31, fixed:42,
+    cpm:{dep:0.09,maint:0.03,ins:0.11,soft:0.03},
+    note:'No steering wheel, no pedals, no mirrors. Cheapest to run and '+
+         'to own — but the 48 kWh pack means you charge more often, and '+
+         'two seats means you never take a group.'
+  },
+  {
+    id:'model3', name:'Model 3', badge:'M3',
+    tag:'Long-range saloon',
+    kwh:75, kw:208, rangeMi:350, seats:5, kwhPerKm:0.19,
+    price:26000, down:2200, daily:18.10, rent:39, fixed:48,
+    cpm:{dep:0.11,maint:0.04,ins:0.11,soft:0.03},
+    note:'The pack is half again bigger, so it sits on a charger far less '+
+         'often. Costs more to buy and more per mile.'
+  },
+  {
+    id:'modely', name:'Model Y', badge:'MY',
+    tag:'Crossover, luggage space',
+    kwh:75, kw:208, rangeMi:320, seats:5, kwhPerKm:0.21,
+    price:29000, down:2400, daily:20.20, rent:44, fixed:52,
+    cpm:{dep:0.12,maint:0.045,ins:0.11,soft:0.03},
+    note:'Same pack as the Model 3 carrying more weight, so it drinks '+
+         'more. Highest daily burn of the three.'
+  }
+];
+function catalog(id){ return CATALOG.filter(function(v){return v.id===id})[0] }
+/* A car falls back to the old flat CFG values if it predates the catalogue,
+   so a v4 save still runs. */
+function spec(c){ return catalog(c.model)||{
+  kwh:CFG.battery,kwhPerKm:CFG.kwhPerKm,fixed:CFG.fixedPerCarDay,
+  cpm:CFG.cpm,name:'Nova '+c.model,badge:'MY',seats:4,rangeMi:216,kw:150 } }
+
+/* Side profiles, drawn rather than photographed: real press images are
+   copyrighted and this file ships with no external requests. */
+const SILHOUETTE={
+  cybercab:'<svg viewBox="0 0 220 84" class="carart"><path d="M14 62h192M28 62c0-7 5-12 12-12s12 5 12 12M168 62c0-7 5-12 12-12s12 5 12 12"/>'+
+    '<path d="M20 62c-4-10-3-19 4-24 14-9 30-16 48-19 16-3 34-3 50 1 14 3 26 9 36 17 8 6 11 15 8 25"/>'+
+    '<path d="M56 25c14-6 32-8 48-6 12 2 22 6 30 12H60z"/></svg>',
+  model3:'<svg viewBox="0 0 220 84" class="carart"><path d="M12 62h196M26 62c0-7 5-12 12-12s12 5 12 12M170 62c0-7 5-12 12-12s12 5 12 12"/>'+
+    '<path d="M16 60c-3-9-1-17 6-21 10-6 20-10 30-13 12-9 28-13 44-13 18 0 34 5 46 15 12 3 22 7 30 12 7 4 9 12 6 20"/>'+
+    '<path d="M64 29c10-7 24-11 38-11 15 0 29 4 39 12H66z"/></svg>',
+  modely:'<svg viewBox="0 0 220 84" class="carart"><path d="M12 62h196M26 62c0-7 5-12 12-12s12 5 12 12M170 62c0-7 5-12 12-12s12 5 12 12"/>'+
+    '<path d="M16 60c-3-11-1-20 6-24 9-5 18-9 28-11 12-12 28-17 46-17 20 0 37 6 49 18 11 2 20 6 27 11 7 4 9 13 6 23"/>'+
+    '<path d="M62 24c11-8 26-13 42-13 17 0 32 5 43 14H64z"/></svg>'
+};
+
 /* time-of-use electricity, $/kWh */
 function tariff(h){ return (h>=16&&h<21)?0.34:(h>=23||h<7)?0.11:0.19 }
 const NAMES=['D. Kowalski','R. Trujillo','S. Okafor','M. Vance'];
 
 /* ---------------- state ---------------- */
 const S={
-  t:CFG.dayStart, day:1, cash:1000, speed:0, running:false, over:false,
+  t:CFG.dayStart, day:1, cash:3000, speed:0, running:false, over:false,
   fareMult:1.0, carsPerOp:3, sel:null, seq:0,
   cars:[], rides:[], ops:[], log:[],
   safety:80, permit:'Supervised',
@@ -999,6 +1153,8 @@ const S={
   /* Tutorial progress. Beats are recorded by number so a save resumes the
      script where it left off rather than replaying it. */
   ray:{seen:[],cur:null,skipped:false,idleFor:0},
+  /* Which console areas the player has earned. Order matters; never shrinks. */
+  unlocked:['garage'],
   offers:[],          /* undecided offers awaiting accept/decline */
   d:null
 };
@@ -1008,20 +1164,29 @@ function newDay(){
 }
 newDay();
 
-function addCar(model){
+function addCar(model,hold){
   S.seq++;
   const z=ZONES[0];
-  S.cars.push({id:(model==='P1'?'CC-':'MY-')+String(S.seq).padStart(2,'0'),model:model||'S2',
+  const v=catalog(model);
+  S.cars.push({id:(v?v.badge:'MY')+'-'+String(S.seq).padStart(2,'0'),
+    model:model||'cybercab', hold:hold||'own',
     lat:z.lat+(Math.random()-.5)*.01,lng:z.lng+(Math.random()-.5)*.014,
     state:'idle',soc:70+Math.random()*25,odo:0,earn:0,route:[],ride:null,
     blocked:0,needs:0,idleFor:0,ch:null});
 }
-/* One Nova S2, owned outright, 34,000 mi. You bought it before the game
-   started, which is why you have $1,000 and not $19,000 — the car is the
-   inheritance and the cash is what is left. */
-addCar('S2'); S.cars[0].odo=34000; S.cars[0].owned=true;
+/* NO CAR AT START. Superseded GameMechanics §3.2, which handed you one so
+   the game would not open on a purchase decision. It now does open on that
+   decision, deliberately: the first real choice is HOW you hold the asset,
+   and $3,000 makes exactly one of the three affordable outright — none of
+   them. You rent, or you put money down. That is the lesson.
+
+   Financing a Cybercab costs $1,500 down and leaves you $1,500, which is
+   close to the old start state — but chosen rather than given. */
 S.ops=[];
-S.sel=S.cars[0].id;
+/* No car until the player picks one, so there is nothing to select yet.
+   This used to read S.cars[0].id and threw on load the moment the starting
+   car was removed. */
+S.sel=S.cars.length?S.cars[0].id:null;
 
 /* ---------------- geometry ---------------- */
 function dist(aLat,aLng,bLat,bLng){
@@ -1047,8 +1212,14 @@ function jit(z){ return [z.lat+(Math.random()-.5)*.008, z.lng+(Math.random()-.5)
 /* Act 1 has no payroll: you are the operator. Act 2 reinstates this. */
 function staffed(){ return S.onClock?0:0 }
 function insPerMile(){ return S.cars.length>=CFG.insFleetAt?CFG.insFleet:CFG.cpm.ins }
+/* Owned  -> just the base. Financed -> base + the loan's daily slice.
+   Rented -> base + the rental day rate, and you never build equity. */
 function fixedPerCar(c){
-  return CFG.fixedPerCarDay + (c.leased?CFG.leaseAdd:0) + (c.financed?CFG.financeDaily:0);
+  const sp=spec(c);
+  const base=sp.fixed||CFG.fixedPerCarDay;
+  if(c.hold==='rent')    return base+(sp.rent||CFG.leaseAdd);
+  if(c.hold==='finance') return base+(sp.daily||CFG.financeDaily);
+  return base;
 }
 function syncOps(){
   const want=staffed();
@@ -1183,13 +1354,18 @@ function remainKm(c){
   c.route.forEach(function(p){ k+=dist(lat,lng,p[0],p[1]); lat=p[0]; lng=p[1] });
   return k;
 }
-function socNeeded(km){ return (km*CFG.kwhPerKm*CFG.heatPenalty)/CFG.battery*100 }
+/* Per-vehicle now: a Cybercab's 48 kWh pack genuinely runs down faster
+   than a Model 3's 75 kWh, which is the whole point of choosing. */
+function socNeeded(km,c){
+  const sp=c?spec(c):{kwhPerKm:CFG.kwhPerKm,kwh:CFG.battery};
+  return (km*sp.kwhPerKm*CFG.heatPenalty)/sp.kwh*100;
+}
 function assign(ride){
   let best=null,bd=1e9;
   S.cars.forEach(function(c){
     if(c.state!=='idle') return;
     const toP=dist(c.lat,c.lng,ride.p[0],ride.p[1]);
-    if(c.soc-socNeeded(toP+ride.km)<CFG.reserveSoc) return;
+    if(c.soc-socNeeded(toP+ride.km,c)<CFG.reserveSoc) return;
     if(toP<bd){bd=toP;best=c}
   });
   if(!best) return false;
@@ -1220,12 +1396,13 @@ function nearestCharger(c){
 /* ---------------- costs ---------------- */
 function drive(c,km){
   c.odo+=km;
-  const kwh=km*CFG.kwhPerKm*CFG.heatPenalty;
-  c.soc=clamp(c.soc-kwh/CFG.battery*100,0,100);
+  const sp=spec(c);
+  const kwh=km*sp.kwhPerKm*CFG.heatPenalty;
+  c.soc=clamp(c.soc-kwh/sp.kwh*100,0,100);
   const mi=km/1.609;
   S.d.miles+=mi;
-  S.d.dep+=mi*CFG.cpm.dep; S.d.maint+=mi*CFG.cpm.maint;
-  S.d.ins+=mi*CFG.cpm.ins; S.d.soft+=mi*CFG.cpm.soft;
+  S.d.dep+=mi*sp.cpm.dep; S.d.maint+=mi*sp.cpm.maint;
+  S.d.ins+=mi*insPerMile(); S.d.soft+=mi*sp.cpm.soft;
   const c4=mi*(CFG.cpm.dep+CFG.cpm.maint+CFG.cpm.ins+CFG.cpm.soft);
   S.d.cost+=c4; S.cash-=c4;
 }
@@ -1237,10 +1414,11 @@ function log(who,what,kind){
 /* ---------------- simulation ---------------- */
 function stepCar(c,dt){
   if(c.state==='charging'){
-    const kwh=CFG.chargeKW*dt/3600;
+    const spC=spec(c);
+    const kwh=Math.min(CFG.chargeKW,spC.kw)*dt/3600;
     const before=c.soc;
-    c.soc=clamp(c.soc+kwh/CFG.battery*100,0,100);
-    const used=(c.soc-before)/100*CFG.battery*tariff(hour());
+    c.soc=clamp(c.soc+kwh/spC.kwh*100,0,100);
+    const used=(c.soc-before)/100*spC.kwh*tariff(hour());
     S.d.energy+=used; S.d.cost+=used; S.cash-=used;
     if(c.soc>=CFG.chargeTo){ c.state='idle'; c.ch=null; log(c.id,'charged to '+pct(c.soc),0) }
     return;
@@ -1330,6 +1508,7 @@ function stepOnce(dt){
   const l=loadRatio();
   S.ops.forEach(function(o){ o.fatigue=clamp(o.fatigue+dt/3600*0.07*(0.5+l),0,1) });
   if(S.cash<0) bankrupt();
+  checkUnlocks();
   rayCheck();
 }
 
@@ -1348,6 +1527,54 @@ function bankrupt(){
 }
 
 /* ============================================================
+   PROGRESSIVE DISCLOSURE
+
+   The console shows seven apps and eleven panels. Handing all of that to
+   someone on their first shift teaches nothing — so a panel stays locked
+   until the player has done the thing that makes its numbers mean
+   anything. Books before a single fare is an empty table pretending to be
+   information.
+
+   Locks are earned in order and never revoked: once you have run a ride,
+   Books stays open for good, including in a save reloaded later.
+   ============================================================ */
+const STAGES=[
+  {id:'garage',  need:function(){ return true },
+   what:'Choose a vehicle'},
+  {id:'fleet',   need:function(){ return S.cars.length>0 },
+   what:'Put a car in service'},
+  {id:'platforms',need:function(){ return S.cars.length>0 },
+   what:'Connect a platform'},
+  {id:'offers',  need:function(){ return livePlatforms().length>0&&S.onClock },
+   what:'Clock on with a feed connected'},
+  {id:'energy',  need:function(){ return S.unlocked.indexOf('offers')>=0 },
+   what:'Take your first offer'},
+  {id:'books',   need:function(){ return (S.d&&S.d.done>0)||S.shiftNo>0 },
+   what:'Complete a ride'},
+  {id:'incidents',need:function(){ return S.unlocked.indexOf('books')>=0 },
+   what:'Finish a ride'},
+  {id:'ops',     need:function(){ return S.shiftNo>0&&!S.onClock },
+   what:'Clock off once'}
+];
+function unlocked(id){ return S.unlocked.indexOf(id)>=0 }
+function stageWhat(id){
+  const s=STAGES.filter(function(x){return x.id===id})[0];
+  return s?s.what:'';
+}
+/* Called every tick. Cheap, and it must be cheap. */
+function checkUnlocks(){
+  let gained=null;
+  STAGES.forEach(function(s){
+    if(!unlocked(s.id)&&s.need()){ S.unlocked.push(s.id); gained=s.id }
+  });
+  if(gained){
+    log('Console',gained+' unlocked',0);
+    render();
+  }
+  return gained;
+}
+
+/* ============================================================
    RAY  (GameMechanics.md §9)
 
    Ray Salcido sold you the car. He is not your employer, your assistant,
@@ -1360,51 +1587,57 @@ function bankrupt(){
    tutorial that stops the world teaches nothing about time pressure.
    ============================================================ */
 const RAY=[
-  {n:1, spot:'tb-cash',
-   t:"Ray Salcido. I sold you that car. Forty-one years in a cab before I got out, "+
-     "while getting out was still my idea.<br><br>One car. A thousand dollars. "+
-     "Forty-two a day whether you turn a wheel or not. That's twenty-three days of "+
-     "nothing. Go."},
-  {n:2, spot:'plat-rows',
+  /* Beat 1 no longer says "I sold you that car" — you have no car yet. The
+     opening decision is which one, and how you hold it. */
+  {n:1, spot:'gar-cards',
+   t:"Ray Salcido. Forty-one years in a cab before I got out, while getting out "+
+     "was still my idea.<br><br>Three thousand dollars and no car. You can't buy "+
+     "one outright on that, so you'll rent or you'll put money down. Rent costs "+
+     "nothing today and the most every day after."},
+  {n:2, spot:'tb-cash',
+   t:"Whatever you pick, forty-two a day is the floor — before rent, before "+
+     "finance, before a wheel turns.<br><br>Do the arithmetic before you sign, "+
+     "not after."},
+  {n:3, spot:'plat-rows',
    t:"The car can't earn until somebody's sending it rides. Two apps will. "+
      "Neither one is your friend."},
-  {n:3, spot:'offer-list',
+  {n:4, spot:'offer-list',
    t:"Three numbers on every offer. What's on the meter, what you actually get paid, "+
      "and how far you drive empty to reach them.<br><br>Watch the third one."},
-  {n:4, spot:'offer-list',
+  {n:5, spot:'offer-list',
    t:"Forty-five seconds to decide. That's not them being generous. That's them "+
      "stopping you doing the arithmetic.<br><br>Do it anyway."},
-  {n:5, spot:'pb-books',
+  {n:6, spot:'pb-books',
    t:"Ten eighty on the meter, eight ten in your pocket. That's the deal. "+
      "It doesn't improve."},
-  {n:6, spot:'map',
+  {n:7, spot:'map',
    t:"Watch that. Six minutes, nobody paying, and you'll do it a dozen times today."+
      "<br><br>We called it deadheading. Killed more cabbies than bad drivers did."},
-  {n:7, spot:'fare-val',
+  {n:8, spot:'fare-val',
    t:"Surge means everyone's stranded at once. Take it.<br><br>Raise your own "+
      "multiplier too — but not past about 1.15, or they'll route around you."},
-  {n:8, spot:'seg',
+  {n:9, spot:'seg',
    t:"Most of this job is sitting. I did thirty-one years of sitting.<br><br>"+
      "You can speed the clock up. Just don't get clever and speed through a peak."},
-  {n:9, spot:'pb-rapid',
+  {n:10, spot:'pb-rapid',
    t:"Twenty-three minutes on a charger. Yours, not the car's.<br><br>Do it at four "+
      "in the morning when power's cheap and nobody's going anywhere. Not at six "+
      "in the evening."},
-  {n:10, spot:'inc-list',
+  {n:11, spot:'inc-list',
    t:"Somebody's got it wedged. In a big outfit there's a room full of people "+
      "watching for that.<br><br>Right now the room is you, and you're free. "+
      "Remember that."},
-  {n:11, spot:'rp-body',
+  {n:12, spot:'rp-body',
    t:"Read the whole thing, not just the bottom line. Cost per mile tells you how "+
      "hard the car worked. It isn't what you're paid.<br><br>Don't chase it."},
-  {n:12, spot:'plat-rows',
+  {n:13, spot:'plat-rows',
    t:"They're scoring you. Two bad weeks and they switch you off — and the "+
      "forty-two a day doesn't switch off with you.<br><br>Run both apps."},
   /* §9.3: the thesis of the game, and it points at the HOURS line, not at
      the financing offer. The reveal is "you are the bottleneck", not "buy
      another car" — reaching for a second car should feel slightly like a
      mistake. */
-  {n:13, spot:'rp-body',
+  {n:14, spot:'rp-body',
    t:"You worked six hours. The car was billed for twenty-four.<br><br>Your margin "+
      "was you, sitting there for free. And there's only one of you.<br><br>"+
      "A second car doesn't fix that. A second pair of eyes does."}
@@ -1418,23 +1651,28 @@ function rayReady(n){
   const d=S.d||{};
   switch(n){
     case 2:  return raySeen(1);
-    case 3:  return livePlatforms().length>0;
-    case 4:  return S.offers.length>0;
-    case 5:  return d.done>0;
+    case 3:  return S.cars.length>0;                  /* car acquired */
+    case 4:  return livePlatforms().length>0;
+    case 5:  return S.offers.length>0;
+    case 6:  return d.done>0;
     /* while the car is actually driving the empty leg */
-    case 6:  return S.cars.some(function(c){
+    case 7:  return S.cars.some(function(c){
                return c.state==='dispatched'&&c.ride&&
                       dist(c.lat,c.lng,c.ride.p[0],c.ride.p[1])>3;
              });
-    case 7:  return S.surge>=1.4;
-    case 8:  return S.ray.idleFor>240;
-    case 9:  return S.cars.some(function(c){return c.soc<=CFG.chargeAt});
-    case 10: return S.cars.some(function(c){return c.state==='blocked'});
-    case 11: return S.shiftNo>0&&!S.onClock&&d.done>0;
+    case 8:  return S.surge>=1.4;
+    case 9:  return S.ray.idleFor>240;
+    case 10: return S.cars.some(function(c){return c.soc<=CFG.chargeAt});
+    case 11: return S.cars.some(function(c){return c.state==='blocked'});
+    case 12: return S.shiftNo>0&&!S.onClock&&d.done>0;
     /* Ratings do not exist yet, so this rides on the cancellation half of
        the trigger the doc offers. */
-    case 12: return (d.cancels||0)>0;
-    case 13: return S.shiftNo>=10||S.cash>=1700;
+    case 13: return (d.cancels||0)>0;
+    /* The doc's trigger was "10 shifts or cash >= $1,700", written when the
+       game started you on $1,000. Starting cash is now $3,000, so the money
+       half fired on turn one and delivered the thesis before the player had
+       worked a single hour. It has to be earned: three shifts logged. */
+    case 14: return S.shiftNo>=3;
     default: return false;
   }
 }
@@ -1498,10 +1736,8 @@ function clockOn(){
   S.shiftStart=S.t; S.workedSec=0; S.billedSec=0;
   newDay();
   log('Shift','clocked on at '+hhmm(S.t),0);
-  /* Beat 1 arrives at the first clock-on while the clock is still stopped —
-     the only beat that gets the player's undivided attention, because it is
-     the only one that does not have to compete with a running world. */
-  if(!raySeen(1)&&!S.ray.skipped){ render(); rayShow(1); return }
+  /* Beat 1 has already fired by now — it arrives with the garage, before
+     there is a car to clock on with. */
   setSpeed(1); render();
 }
 function clockOff(quiet){
@@ -1669,8 +1905,8 @@ function render(){
       '<td class="cid">'+c.id+'</td><td>'+stateCell(c)+'</td>'+
       '<td class="r">'+pct(c.soc)+'</td><td class="r">'+money2(c.earn)+'</td></tr>';
   }).join('');
-  $('buy').textContent='Buy Nova S2 — '+money(CFG.carPrice);
-  $('buy').disabled=S.cash<CFG.carPrice;
+  $('buy').textContent=S.cars.length?'Add a vehicle':'Choose a vehicle';
+  $('buy').disabled=false;
 
   /* The operators panel is Act 2 material — in Act 1 you ARE the operator,
      so that panel is now Platforms and is rendered further down. Latency is
@@ -1738,6 +1974,10 @@ function render(){
   $('inc-list').innerHTML=inc;
 
   /* ride queue */
+  /* Locks. A panel keeps its head visible so the player can see what
+     exists and what earns it — hiding it entirely would teach nothing. */
+  paintLocks();
+
   /* platforms */
   $('plat-rows').innerHTML=PLATFORMS.map(function(p){
     const ar=p.offered<5?'—':Math.round(acceptRate(p)*100)+'%';
@@ -1778,7 +2018,7 @@ function render(){
   /* console rail */
   const sel=S.cars.filter(function(c){return c.id===S.sel})[0]||S.cars[0];
   if(sel){
-    $('sel-name').textContent='Nova '+sel.model+' · '+sel.id;
+    $('sel-name').textContent=spec(sel).name+' · '+sel.id;
     $('sel-state').textContent=LABEL[sel.state];
     $('sel-state').className='pill p-'+CLS[sel.state];
     $('sel-soc').textContent=pct(sel.soc);
@@ -1833,12 +2073,9 @@ $('fare-up').addEventListener('click',function(){S.fareMult=clamp(S.fareMult+0.1
 $('fare-dn').addEventListener('click',function(){S.fareMult=clamp(S.fareMult-0.1,0.7,1.6);render()});
 $('cpo-up').addEventListener('click',function(){S.carsPerOp=clamp(S.carsPerOp+1,1,20);syncOps();render()});
 $('cpo-dn').addEventListener('click',function(){S.carsPerOp=clamp(S.carsPerOp-1,1,20);syncOps();render()});
-$('buy').addEventListener('click',function(){
-  if(S.cash<CFG.carPrice) return;
-  S.cash-=CFG.carPrice; addCar('S2'); syncOps();
-  log('Fleet','bought '+S.cars[S.cars.length-1].id+' — '+money(CFG.carPrice),0);
-  render();
-});
+/* The fleet panel's button now opens the garage rather than silently buying
+   a fixed model — there are three to choose between. */
+$('buy').addEventListener('click',openGarage);
 /* no hire button: staffing follows the cars-per-operator ratio */
 $('fleet-rows').addEventListener('click',function(e){
   const tr=e.target.closest('tr[data-car]'); if(tr){ S.sel=tr.dataset.car; render() }
@@ -1905,14 +2142,14 @@ tbtn.addEventListener('click',function(){
    ZONES[i].on and spawnAcc are player/sim state living outside S,
    so they ride along explicitly.
    ============================================================ */
-const SAVE_V=4;
+const SAVE_V=5;
 const SLOTS=['slot1','slot2','slot3'];
 
 /* Build version, shown in the top bar and stamped into every save.
    SAVE_V above is the STATE SHAPE version and moves only when the
    snapshot format changes — the two are deliberately independent, so
    shipping 0.9.0 does not invalidate 0.8.0 saves. */
-const VERSION='0.10.1';
+const VERSION='0.11.0';
 
 function snapshot(){
   return {
@@ -1922,7 +2159,7 @@ function snapshot(){
       t:S.t, day:S.day, cash:S.cash, fareMult:S.fareMult, carsPerOp:S.carsPerOp,
       sel:S.sel, seq:S.seq, safety:S.safety, permit:S.permit,
       over:S.over, d:S.d,
-      surge:S.surge, ray:S.ray,
+      surge:S.surge, ray:S.ray, unlocked:S.unlocked,
       onClock:S.onClock, shiftStart:S.shiftStart, workedSec:S.workedSec,
       billedSec:S.billedSec, shiftNo:S.shiftNo,
       offers:S.offers,
@@ -1954,6 +2191,17 @@ function migrate(save){
     if(typeof s.spawnAcc!=='number') s.spawnAcc=0;
     save.v=2;
   }
+  if(save.v<5&&save.v>=4){
+    /* v4 predates the catalogue and the locks. Its cars have no model the
+       catalogue knows and no holding, so name them owned Cybercabs and open
+       the whole console — the player already learned it. */
+    (s.cars||[]).forEach(function(c){
+      if(!catalog(c.model)) c.model='cybercab';
+      if(!c.hold) c.hold='own';
+    });
+    s.unlocked=STAGES.map(function(x){return x.id});
+    save.v=5;
+  }
   if(save.v<4&&save.v>=3){
     /* v3 predates Ray and the surge model. An existing Act 1 run should not
        suddenly be lectured from beat 1, so treat the script as already
@@ -1974,6 +2222,8 @@ function migrate(save){
     /* A pre-Act-1 save has no tutorial state and no surge either. */
     s.surge=1.0;
     s.ray={seen:[],cur:null,skipped:false,idleFor:0};
+    (s.cars||[]).forEach(function(c){ c.model='cybercab'; c.hold='own' });
+    s.unlocked=STAGES.map(function(x){return x.id});
   }
   save.v=SAVE_V;
   return save;
@@ -1989,6 +2239,10 @@ function restore(save){
   S.ops=s.ops||[]; S.log=s.log||[];
   S.surge=typeof s.surge==='number'?s.surge:1.0;
   S.ray=s.ray||{seen:[],cur:null,skipped:false,idleFor:0};
+  /* A save from before progressive disclosure has seen the whole console,
+     so do not take it away — grant everything rather than re-locking. */
+  S.unlocked=Array.isArray(s.unlocked)?s.unlocked.slice()
+    :STAGES.map(function(x){return x.id});
   if(!Array.isArray(S.ray.seen)) S.ray.seen=[];
   S.ray.cur=null;                 /* never restore mid-card */
   $('ray').hidden=true; raySpotClear();
@@ -2036,6 +2290,43 @@ function restore(save){
 
   setSpeed(0);                  /* always resume paused */
   syncOps(); render(); drawMap();
+}
+
+/* Grey out what has not been earned, and say what earns it. */
+const LOCKMAP=[
+  {panel:'pb-fleet',stage:'fleet'},
+  {panel:'pb-ops',stage:'platforms'},
+  {panel:'pb-rq',stage:'offers'},
+  {panel:'pb-rapid',stage:'energy'},
+  {panel:'pb-books',stage:'books'},
+  {panel:'pb-inc',stage:'incidents'},
+  {panel:'pb-msg',stage:'fleet'}
+];
+function paintLocks(){
+  LOCKMAP.forEach(function(m){
+    const body=$(m.panel);
+    if(!body) return;
+    const sec=body.parentNode;
+    if(!sec||!sec.classList) return;
+    const open=unlocked(m.stage);
+    sec.classList.toggle('locked',!open);
+    let bar=sec.querySelector('.lockbar');
+    if(!open){
+      if(!bar){
+        bar=document.createElement('div');
+        bar.className='lockbar';
+        sec.appendChild(bar);
+      }
+      bar.innerHTML='<svg class="ms" style="font-size:13px"><use href="#i-fence"/></svg>'+
+        '<span>Locked · <b>'+stageWhat(m.stage)+'</b></span>';
+    } else if(bar){ bar.parentNode.removeChild(bar) }
+  });
+  /* Dock apps follow the same gates. */
+  const apps=document.querySelectorAll('.t-apps .t-app');
+  const gate=['fleet','offers','energy','books','ops','fleet','fleet'];
+  for(let i=0;i<apps.length;i++){
+    if(apps[i].classList) apps[i].classList.toggle('locked',!unlocked(gate[i]||'fleet'));
+  }
 }
 
 /* keep S.speed, the segmented control and the slider in agreement */
@@ -2099,6 +2390,105 @@ const Store={
   list:function(){ return backend().list() }
 };
 
+/* ---------------- garage ----------------
+   One card per vehicle. Each shows what it is, what it does, what it costs
+   to get, and what it costs to keep — and which of those you can actually
+   afford right now. */
+function owns(id){ return S.cars.some(function(c){return c.model===id}) }
+
+function canAfford(v,how){
+  if(how==='buy')     return S.cash>=v.price;
+  if(how==='finance') return S.cash>=v.down+CFG.financeReserve;
+  if(how==='rent')    return S.cash>=v.rent*2;   /* two days of runway */
+  return false;
+}
+function affordWhy(v,how){
+  if(canAfford(v,how)) return '';
+  if(how==='buy')     return 'Needs '+money(v.price);
+  if(how==='finance') return 'Needs '+money(v.down+CFG.financeReserve)+
+                             ' (deposit plus reserve)';
+  return 'Needs '+money(v.rent*2);
+}
+
+function cardHtml(v){
+  const mine=owns(id0(v));
+  const held=S.cars.filter(function(c){return c.model===v.id});
+  const kmRange=Math.round(v.rangeMi*1.609);
+  /* 28->85% at the lower of charger and on-board rate, same maths the sim runs */
+  const chargeMin=Math.round((0.57*v.kwh)/(Math.min(CFG.chargeKW,v.kw)*0.73)*60);
+  const acts=mine
+    ? '<div class="why">'+held.length+' in service · '+
+      held.map(function(c){return c.id+' ('+c.hold+')'}).join(', ')+'</div>'+
+      buyRow(v,'finance')+buyRow(v,'rent')
+    : buyRow(v,'buy')+buyRow(v,'finance')+buyRow(v,'rent');
+  return '<div class="card'+(mine?' owned':'')+'">'+
+    '<div class="card-art">'+(SILHOUETTE[v.id]||'')+'</div>'+
+    '<div class="card-top"><h4>'+v.name+'</h4><span class="tag">'+v.tag+'</span>'+
+      (mine?'<span class="card-own">In your fleet</span>':'')+'</div>'+
+    '<div class="spec">'+
+      specRow('Battery',v.kwh+' kWh')+
+      specRow('Range',v.rangeMi+' mi / '+kmRange+' km')+
+      specRow('Charge 28→85%',chargeMin+' min')+
+      specRow('Seats',String(v.seats))+
+      specRow('Energy',money2(v.kwhPerKm*0.19*1.609)+'/mi')+
+      specRow('Fixed cost',money2(v.fixed)+'/day')+
+    '</div>'+
+    '<div class="card-note">'+v.note+'</div>'+
+    '<div class="card-acts">'+acts+'</div></div>';
+}
+function id0(v){ return v.id }
+function specRow(k,val){
+  return '<div class="spec-row"><span>'+k+'</span><b>'+val+'</b></div>';
+}
+function buyRow(v,how){
+  const ok=canAfford(v,how), why=affordWhy(v,how);
+  const label={buy:'Buy outright',finance:'Finance',rent:'Rent'}[how];
+  const cost={
+    buy:money(v.price)+' now',
+    finance:money(v.down)+' down · '+money2(v.daily)+'/day',
+    rent:money2(v.rent)+'/day'
+  }[how];
+  return '<button class="'+(how==='rent'?'':'pri')+'" data-get="'+v.id+
+    '" data-how="'+how+'"'+(ok?'':' disabled')+'>'+
+    '<span>'+label+'</span><small>'+cost+'</small></button>'+
+    (ok?'':'<div class="why">'+why+'</div>');
+}
+
+function renderGarage(){
+  $('gar-cash').textContent=money(S.cash);
+  $('gar-cards').innerHTML=CATALOG.map(cardHtml).join('');
+  $('gar-sub').innerHTML=S.cars.length
+    ? 'Every vehicle drives itself. What differs is the pack, the seats, and '+
+      'what it costs you per day.'
+    : '<b>You have no car.</b> Nothing earns until one is in service. Buying '+
+      'outright costs the least per day and the most up front; renting costs '+
+      'nothing up front and the most per day. Neither is wrong.';
+  $('gar-note').textContent=S.cars.length
+    ? 'A rented car can be handed back; a financed one cannot.'
+    : 'Fixed costs are charged at midnight whether you clock on or not.';
+}
+function openGarage(){
+  $('garage').hidden=false; renderGarage();
+  /* The very first thing a new player sees is this screen, so Ray introduces
+     himself here rather than waiting for a clock-on that cannot happen yet. */
+  if(!raySeen(1)&&!S.ray.skipped&&!S.cars.length) rayShow(1);
+}
+
+function acquire(id,how){
+  const v=catalog(id);
+  if(!v||!canAfford(v,how)) return;
+  if(how==='buy')     S.cash-=v.price;
+  if(how==='finance') S.cash-=v.down;
+  addCar(id,how==='buy'?'own':how);
+  const c=S.cars[S.cars.length-1];
+  log('Fleet',(how==='buy'?'bought ':how==='rent'?'rented ':'financed ')+
+    v.name+' — '+c.id,0);
+  checkUnlocks();
+  renderGarage(); render();
+  /* First car is the whole point of the opening, so get out of the way. */
+  if(S.cars.length===1) $('garage').hidden=true;
+}
+
 /* ---------------- save UI ---------------- */
 function toast(msg,bad){
   const el=$('sv-toast'); el.textContent=msg||''; el.className=bad?'err':'';
@@ -2146,6 +2536,15 @@ function renderSaves(){
 function openSaves(){ $('savemgr').hidden=false; toast(''); renderSaves() }
 
 $('saves').addEventListener('click',openSaves);
+$('garage-btn').addEventListener('click',openGarage);
+$('gar-close').addEventListener('click',function(){ $('garage').hidden=true });
+$('garage').addEventListener('click',function(e){
+  if(e.target===$('garage')) $('garage').hidden=true;
+});
+$('gar-cards').addEventListener('click',function(e){
+  const b=e.target.closest('button[data-get]');
+  if(b) acquire(b.dataset.get,b.dataset.how);
+});
 $('sv-close').addEventListener('click',function(){ $('savemgr').hidden=true });
 $('savemgr').addEventListener('click',function(e){
   if(e.target===$('savemgr')) $('savemgr').hidden=true;
@@ -2215,6 +2614,24 @@ document.addEventListener('visibilitychange',function(){
 });
 $('rp-go').addEventListener('click',function(){ autosave('day-end') });
 
+/* A new fleet always starts at the beginning: no car, the garage open, and
+   the tutorial from beat 1. Previously 'New fleet' only cleared the save. */
+function newFleet(){
+  S.cars=[]; S.rides=[]; S.offers=[]; S.log=[];
+  S.cash=3000; S.t=CFG.dayStart; S.day=1; S.seq=0; S.sel=null;
+  S.onClock=false; S.shiftNo=0; S.workedSec=0; S.billedSec=0;
+  S.surge=1.0; S.over=false; S.safety=80; S.fareMult=1.0;
+  S.unlocked=['garage'];
+  S.ray={seen:[],cur:null,skipped:false,idleFor:0};
+  PLATFORMS.forEach(function(p){ p.on=false; p.offered=0; p.accepted=0 });
+  newDay();
+  if(map){ for(const id in carLayer){ map.removeLayer(carLayer[id]); delete carLayer[id] } }
+  $('ray').hidden=true; raySpotClear();
+  setSpeed(0); render();
+  openGarage();
+  rayCheck();
+}
+
 /* ---------------- boot ---------------- */
 $('ver').textContent='v'+VERSION;
 /* The markup carries `hidden`, but assert it here too so a refactor that
@@ -2236,7 +2653,7 @@ setInterval(function(){
 (function bootResume(){
   setSpeed(0);
   Store.get('auto').then(function(sv){
-    if(!sv||!sv.meta){ setSpeed(1); return }
+    if(!sv||!sv.meta){ newFleet(); return }
     const m=sv.meta;
     $('rs-body').innerHTML=
       '<div class="rp-row"><span>Day</span><span>'+m.day+' · '+m.clock+'</span></div>'+
@@ -2253,9 +2670,9 @@ setInterval(function(){
       $('resume').hidden=true; setSpeed(1); render();
     });
     $('rs-new').addEventListener('click',function(){
-      $('resume').hidden=true; setSpeed(1); Store.del('auto');
+      $('resume').hidden=true; Store.del('auto'); newFleet();
     });
-  }).catch(function(){ setSpeed(1) });
+  }).catch(function(){ newFleet() });
 })();
 
 window.DH=S;
@@ -2265,6 +2682,10 @@ window.DH_ACT1={CFG:CFG,PLATFORMS:PLATFORMS,platform:platform,
   RAY:RAY,rayReady:rayReady,rayCheck:rayCheck,rayShow:rayShow,
   rayDismiss:rayDismiss,raySkip:raySkip,raySeen:raySeen,updateSurge:updateSurge,
   render:render,avgFatigue:avgFatigue,latency:latency,
+  CATALOG:CATALOG,catalog:catalog,spec:spec,acquire:acquire,canAfford:canAfford,
+  STAGES:STAGES,unlocked:unlocked,checkUnlocks:checkUnlocks,newFleet:newFleet,
+  openGarage:openGarage,renderGarage:renderGarage,fixedPerCar:fixedPerCar,
+  socNeeded:socNeeded,owns:owns,SILHOUETTE:SILHOUETTE,drive:drive,
   livePlatforms:livePlatforms,acceptRate:acceptRate,volumeMult:volumeMult,
   winProb:winProb,offerNet:offerNet,deadheadKm:deadheadKm,
   acceptOffer:acceptOffer,declineOffer:declineOffer,
