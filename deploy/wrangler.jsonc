@@ -12,12 +12,15 @@
     "run_worker_first": ["/api/*"]
   },
 
-  // PASTE YOUR OWN database_id HERE — see README step 2.
+  // The live D1 database. This is NOT a secret — it only names a database
+  // that your Cloudflare account alone can reach. A placeholder here fails
+  // the deploy with "binding DB of type d1 must have a valid database_id"
+  // (error 10021), because wrangler validates bindings before publishing.
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "deadhead-db",
-      "database_id": "PASTE_YOUR_DATABASE_ID_HERE"
+      "database_id": "0cb161d0-763f-4696-b9d6-ce9e795c7013"
     }
   ],
 
