@@ -208,6 +208,11 @@
 .acct{padding:11px 13px;border:1px solid var(--brd);border-radius:8px;
   background:var(--c-card);margin:4px 0}
 .acct-row{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+/* display:flex beats the hidden attribute's own display:none, so without
+   this both the signed-in and signed-out rows render at once and the panel
+   claims you are signed in when you are not. No backticks in here: this
+   block lives inside a JS template literal. */
+.acct-row[hidden]{display:none}
 .acct-lbl{font-size:10px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;
   color:var(--text-3);flex:0 0 auto}
 .acct-row form{display:flex;gap:6px;flex:1;min-width:220px}
