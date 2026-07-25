@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="day">
+<head>
+<meta charset="utf-8">
+<title>Deadhead — Robotaxi Fleet Simulator — style shell</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap">
+<style>
+/* ============================================================
+   DEADHEAD — style shell
+   Target canvas: 3840 x 1080 (32:9). Designed for a 49" panel.
+   Two visual registers:
+     1. CONSOLE  — flat, opaque, authentic in-car look. No glass.
+     2. MANAGEMENT — frosted glass panels. The "PC" layer.
+   ============================================================ */
+
+:root{
+  /* management surfaces */
+  --canvas:#EDEFF2;
+  --glass:rgba(255,255,255,0.72);
+  --glass-brd:rgba(255,255,255,0.65);
+  --glass-ring:rgba(23,26,32,0.08);
+  --panel-solid:rgba(255,255,255,0.92);
+  --inset:rgba(23,26,32,0.035);
+
+  --text-1:#171A20;
+  --text-2:#393C41;
+  --text-3:#5C5E62;
+  --text-4:#8A8D93;
+  --brd:rgba(23,26,32,0.09);
+  --brd-2:rgba(23,26,32,0.16);
+
+  --accent:#3E6AE1;
+  --accent-2:#2F55C4;
+
+  --s-idle:#8E8E8E;
+  --s-active:#3E6AE1;
+  --s-charge:#1F8A4C;
+  --s-attn:#B87503;
+  --s-crit:#C0392B;
+
+  /* console chrome — fixed, does not theme */
+  --c-black:#000;
+  --c-bar:#0C0D0F;
+  --c-navy:#23406A;
+  --c-card:#FFFFFF;
+  --c-div:#2A2C30;
+  --c-dim:#8A8D93;
+  --app-green:#21BF5B;
+  --app-orange:#F2A03D;
+  --app-red:#E0453C;
+  --app-blue:#3E6AE1;
+
+  --r-ctl:4px;
+  --r-srf:12px;
+  --dur-fast:.15s;
+  --dur-base:.33s;
+  --ease:cubic-bezier(.5,0,0,.75);
+  --bgmap-filter:saturate(.18) brightness(1.04) contrast(.92);
+  --bgmap-op:.55;
+  --tile-filter:none;
+}
+
+html[data-theme="night"]{
+  --canvas:#0E1013;
+  --glass:rgba(39,44,51,0.66);
+  --glass-brd:rgba(255,255,255,0.10);
+  --glass-ring:rgba(0,0,0,0.5);
+  --panel-solid:rgba(31,35,41,0.92);
+  --inset:rgba(255,255,255,0.045);
+
+  --text-1:#FFFFFF;
+  --text-2:#C4C7CC;
+  --text-3:#9498A0;
+  --text-4:#6E727A;
+  --brd:rgba(255,255,255,0.10);
+  --brd-2:rgba(255,255,255,0.18);
+
+  --accent:#5A82EB;
+  --accent-2:#3E6AE1;
+
+  --s-idle:#6E727A;
+  --s-active:#5A82EB;
+  --s-charge:#34C77B;
+  --s-attn:#F5B92E;
+  --s-crit:#E5564B;
+
+  --bgmap-filter:invert(1) hue-rotate(180deg) saturate(.25) brightness(.85);
+  --bgmap-op:.40;
+  --tile-filter:invert(1) hue-rotate(180deg) saturate(.7) brightness(.9);
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{
+  font-family:Inter,-apple-system,"Segoe UI",Arial,sans-serif;
+  font-size:14px;line-height:1.45;
+  color:var(--text-1);
+  background:var(--canvas);
+  -webkit-font-smoothing:antialiased;
+  font-variant-numeric:tabular-nums;
+}
+.ms{width:1em;height:1em;display:inline-block;flex:0 0 auto;vertical-align:-.14em;
+  fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.ms .f{fill:currentColor;stroke:none}
+
+/* ---- background map: gives the glass something real to frost ---- */
+#bgmap{position:fixed;inset:0;z-index:0;filter:var(--bgmap-filter);opacity:var(--bgmap-op)}
+#bgtint{position:fixed;inset:0;z-index:1;pointer-events:none;background:var(--canvas);opacity:.30}
+
+/* ---- shell ---- */
+.app{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;
+  padding:10px;gap:10px}
+
+/* ============ top bar ============ */
+.topbar{
+  flex:0 0 48px;display:flex;align-items:center;gap:22px;padding:0 16px;
+  background:var(--glass);backdrop-filter:blur(16px) saturate(1.15);
+  -webkit-backdrop-filter:blur(16px) saturate(1.15);
+  border:1px solid var(--glass-brd);border-radius:var(--r-srf);
+  box-shadow:0 0 0 1px var(--glass-ring);
+}
+.brand{display:flex;align-items:baseline;gap:9px;padding-right:20px;border-right:1px solid var(--brd)}
+.brand b{font-weight:500;font-size:16px;letter-spacing:.14em;text-transform:uppercase}
+.brand span{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-4)}
+.tb-item{display:flex;align-items:baseline;gap:7px}
+.tb-item label{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--text-4)}
+.tb-item b{font-weight:500;font-size:15px}
+.tb-cash b{font-size:19px}
+.spacer{flex:1}
+.seg{display:flex;border:1px solid var(--brd-2);border-radius:var(--r-ctl);overflow:hidden}
+.seg button{background:none;border:0;font:inherit;font-size:12px;font-weight:500;color:var(--text-3);
+  min-width:44px;height:30px;cursor:pointer;transition:background var(--dur-fast),color var(--dur-fast)}
+.seg button+button{border-left:1px solid var(--brd-2)}
+.seg button:hover{background:var(--inset)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:#fff}
+.ghost{display:flex;align-items:center;gap:7px;background:none;border:1px solid var(--brd-2);
+  border-radius:var(--r-ctl);height:30px;padding:0 12px;font:inherit;font-size:12px;font-weight:500;
+  color:var(--text-2);cursor:pointer;transition:background var(--dur-fast),border-color var(--dur-fast)}
+.ghost:hover{background:var(--inset);border-color:var(--text-4)}
+.ghost .ms{font-size:16px}
+
+/* ============ ops grid ============
+   Wings are FIXED width; the console takes every remaining pixel.
+   On a 3840 canvas that gives the fleet view ~2760px.               */
+.ops{flex:1;min-height:0;display:grid;grid-template-columns:520px minmax(0,1fr) 520px;gap:10px}
+/* Wings are always a single column of three stacked panels. They are fixed
+   width now, so splitting them two-up would squeeze each panel to ~255px. */
+.wing{display:grid;grid-template-columns:1fr;grid-template-rows:1fr 2fr;gap:10px;min-height:0}
+.stack{display:grid;grid-template-rows:1fr 1fr;gap:10px;min-height:0}
+
+/* ============ glass panel ============ */
+.panel{
+  display:flex;flex-direction:column;min-height:0;overflow:hidden;
+  background:var(--glass);backdrop-filter:blur(16px) saturate(1.15);
+  -webkit-backdrop-filter:blur(16px) saturate(1.15);
+  border:1px solid var(--glass-brd);border-radius:var(--r-srf);
+  box-shadow:0 0 0 1px var(--glass-ring);
+}
+.p-head{flex:0 0 auto;display:flex;align-items:center;gap:9px;padding:9px 12px;
+  border-bottom:1px solid var(--brd)}
+.p-head .ms{font-size:17px;color:var(--text-3)}
+.p-head h2{font-size:11px;font-weight:500;letter-spacing:.11em;text-transform:uppercase;color:var(--text-2)}
+.p-head .tag{margin-left:auto;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-4)}
+.p-body{flex:1;min-height:0;overflow-y:auto;padding:8px 12px 10px;
+  scrollbar-width:thin;scrollbar-gutter:stable;scrollbar-color:var(--brd-2) transparent}
+.p-body::-webkit-scrollbar{width:7px}
+.p-body::-webkit-scrollbar-track{background:transparent}
+.p-body::-webkit-scrollbar-thumb{background:var(--brd-2);border-radius:4px}
+
+/* ---- shared bits ---- */
+.lbl{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--text-4);display:block}
+/* Density tuned for a ~440-520px panel — the fixed wing width at every tier. */
+.metrics{display:grid;gap:6px;margin-bottom:9px}
+.metrics.c3{grid-template-columns:repeat(3,1fr)}
+.metrics.c2{grid-template-columns:repeat(2,1fr)}
+.metric{background:var(--inset);border-radius:var(--r-ctl);padding:7px 9px}
+.metric b{display:block;font-weight:500;font-size:20px;margin-top:2px;letter-spacing:-.01em}
+.metric small{font-size:11px;color:var(--text-4);font-weight:400}
+
+table{width:100%;border-collapse:collapse}
+th{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--text-4);
+  font-weight:400;text-align:left;padding:0 0 7px}
+th.r,td.r{text-align:right}
+td{padding:7px 0;border-top:1px solid var(--brd);font-size:12.5px}
+tr:first-child td{border-top:0}
+.cid{font-weight:500;font-size:13px}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;vertical-align:0}
+.st{font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+.d-idle{background:var(--s-idle)} .t-idle{color:var(--s-idle)}
+.d-active{background:var(--s-active)} .t-active{color:var(--s-active)}
+.d-charge{background:var(--s-charge)} .t-charge{color:var(--s-charge)}
+.d-attn{background:var(--s-attn)} .t-attn{color:var(--s-attn)}
+.d-crit{background:var(--s-crit)} .t-crit{color:var(--s-crit)}
+
+.bar{height:5px;border-radius:3px;background:var(--inset);overflow:hidden;margin-top:5px}
+.bar i{display:block;height:100%;border-radius:3px;background:var(--accent)}
+
+.row{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--brd)}
+.row:first-child{border-top:0}
+.row .grow{flex:1;min-width:0}
+.row b{font-weight:500;font-size:13px}
+.row .sub{font-size:11px;color:var(--text-4)}
+
+.costline{display:flex;align-items:center;gap:9px;font-size:12px;padding:3px 0}
+.costline span:first-child{flex:1;color:var(--text-3)}
+.costline .amt{font-weight:500;min-width:52px;text-align:right}
+.costline .track{width:76px;height:4px;border-radius:2px;background:var(--inset);overflow:hidden}
+.costline .track i{display:block;height:100%;background:var(--text-4)}
+.costline.hi .track i{background:var(--s-attn)}
+.costline.hi .amt{color:var(--s-attn)}
+
+.alert{border-left:3px solid var(--s-attn);background:var(--inset);border-radius:0 var(--r-ctl) var(--r-ctl) 0;
+  padding:7px 10px;margin-bottom:6px}
+.alert.crit{border-left-color:var(--s-crit)}
+.alert .top{display:flex;align-items:center;gap:7px;margin-bottom:3px}
+.alert .top b{font-size:12px;font-weight:500}
+.alert .top .ms{font-size:15px;color:var(--s-attn)}
+.alert.crit .top .ms{color:var(--s-crit)}
+.alert p{font-size:11px;color:var(--text-3)}
+.alert .clock{margin-left:auto;font-size:12px;font-weight:500;color:var(--s-attn)}
+
+.opsrow{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--brd)}
+.opsrow:first-child{border-top:0}
+.av{width:32px;height:32px;border-radius:50%;background:var(--inset);display:grid;place-items:center;
+  font-size:11px;font-weight:500;color:var(--text-3);flex:0 0 auto}
+.load{display:flex;gap:3px}
+.load i{width:6px;height:6px;border-radius:50%;background:var(--brd-2)}
+.load i.on{background:var(--s-active)}
+.load i.over{background:var(--s-attn)}
+
+/* ============================================================
+   CONSOLE — flat, opaque, authentic. No glass in here.
+   ============================================================ */
+.console{display:flex;flex-direction:column;min-height:0;min-width:0;background:var(--c-black);
+  border-radius:var(--r-srf);overflow:hidden;box-shadow:0 0 0 1px rgba(0,0,0,.55);
+  container-type:inline-size}
+
+.t-status{flex:0 0 30px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 12px;background:var(--c-black);color:#fff;font-size:11px;letter-spacing:.02em}
+.t-status .grp{display:flex;align-items:center;gap:7px}
+.t-status .ms{font-size:14px}
+.t-status .mid{display:flex;align-items:center;gap:11px;font-weight:500}
+.t-status .mk{font-size:10px;letter-spacing:.22em;font-weight:500}
+.t-status .warn{color:var(--app-red);font-weight:500;letter-spacing:.06em}
+.t-status .ok{color:var(--app-green);font-weight:500;letter-spacing:.06em}
+
+.t-apps{flex:0 0 74px;display:flex;align-items:center;justify-content:space-around;
+  padding:0 6px;background:var(--c-bar);border-bottom:1px solid #000}
+.t-app{background:none;border:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;
+  gap:5px;padding:4px 2px;min-width:56px;color:#fff;font:inherit}
+.t-app .ring{width:38px;height:38px;border-radius:50%;border:1.5px solid rgba(255,255,255,.6);
+  display:grid;place-items:center;transition:background var(--dur-base) var(--ease),border-color var(--dur-base)}
+.t-app .ring .ms{font-size:20px;color:#fff}
+.t-app label{font-size:9px;letter-spacing:.11em;text-transform:uppercase;color:rgba(255,255,255,.72);cursor:pointer}
+.t-app:hover .ring{border-color:#fff}
+.t-app[aria-pressed="true"] .ring{border-color:transparent;border-radius:9px}
+.t-app[aria-pressed="true"] label{color:#fff}
+.t-app[data-c="green"][aria-pressed="true"] .ring{background:var(--app-green)}
+.t-app[data-c="red"][aria-pressed="true"] .ring{background:var(--app-red)}
+.t-app[data-c="orange"][aria-pressed="true"] .ring{background:var(--app-orange)}
+.t-app[data-c="blue"][aria-pressed="true"] .ring{background:var(--app-blue)}
+
+.t-card{flex:1;min-height:0;display:flex;flex-direction:column;margin:8px;
+  border-radius:6px;overflow:hidden;background:var(--c-card)}
+.t-cardbar{flex:0 0 34px;display:flex;align-items:center;gap:9px;padding:0 11px;
+  background:var(--c-navy);color:#fff}
+.t-cardbar .ms{font-size:16px}
+.t-cardbar b{font-size:11px;font-weight:500;letter-spacing:.12em;text-transform:uppercase}
+.t-cardbar .sub{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.62)}
+.t-cardbar .exp{margin-left:auto;opacity:.75}
+
+.t-cardbody{flex:1;min-height:0;min-width:0;display:flex;flex-direction:column}
+.t-side{flex:0 0 auto;min-width:0;display:flex;flex-direction:column}
+#map{flex:1;min-height:120px;min-width:0;background:#DFE3E7}
+#map.night{filter:var(--tile-filter)}
+.leaflet-container{font-family:Inter,sans-serif}
+.carpin{border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.35)}
+.chpin{display:grid;place-items:center;border-radius:3px;background:#171A20;color:#fff;font-size:11px}
+.chpin .ms{font-size:13px}
+
+.t-split{flex:0 0 auto;display:grid;grid-template-columns:1fr 1fr;border-top:1px solid #E6E8EB}
+.t-split>div{padding:11px 14px}
+.t-split>div+div{border-left:1px solid #E6E8EB}
+.t-split .lbl{color:#9A9DA2;margin-bottom:6px}
+.t-split .v{display:flex;align-items:center;gap:9px;color:#171A20}
+.t-split .v b{font-size:15px;font-weight:500}
+.t-split .v .ms{font-size:22px;color:#5C5E62}
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:3px;padding:3px 8px;
+  font-size:10px;font-weight:500;letter-spacing:.09em;text-transform:uppercase;
+  background:rgba(62,106,225,.12);color:#2F55C4}
+
+.t-metrics{flex:0 0 auto;display:grid;grid-template-columns:repeat(3,1fr);
+  border-top:1px solid #E6E8EB;text-align:center}
+.t-metrics>div{padding:10px 6px}
+.t-metrics>div+div{border-left:1px solid #E6E8EB}
+.t-metrics .lbl{color:#9A9DA2;margin-bottom:3px}
+.t-metrics b{font-size:17px;font-weight:500;color:#171A20}
+.t-metrics b.warn{color:#B87503}
+
+/* rail-only live feed — hidden while the card is portrait, where there is no room */
+.t-live{display:none;flex-direction:column;flex:1;min-height:0;overflow-y:auto;
+  padding:11px 14px;border-top:1px solid #E6E8EB;scrollbar-width:thin}
+.t-live .lbl{color:#9A9DA2;margin-bottom:7px}
+.t-ev{display:flex;align-items:baseline;gap:8px;padding:6px 0;border-top:1px solid #F0F2F4;font-size:12px}
+.t-ev:first-of-type{border-top:0}
+.t-ev b{font-weight:500;color:#171A20;flex:0 0 auto}
+.t-ev span{color:#5C5E62;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.t-ev i{font-style:normal;color:#9A9DA2;flex:0 0 auto}
+.t-ev.attn b{color:#B87503}
+
+.t-cta{flex:0 0 auto;display:flex;height:52px;margin:10px;border-radius:4px;overflow:hidden;
+  background:var(--accent-2);cursor:pointer;border:0;font:inherit;
+  transition:filter var(--dur-base) var(--ease)}
+.t-cta:hover{filter:brightness(1.08)}
+.t-cta .main{flex:1;display:grid;place-items:center;background:var(--app-blue);color:#fff;
+  font-size:16px;font-weight:400;padding-right:24px;
+  clip-path:polygon(0 0,calc(100% - 20px) 0,100% 50%,calc(100% - 20px) 100%,0 100%)}
+.t-cta .side{flex:0 0 158px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:1px;color:#fff}
+.t-cta .side b{font-size:13px;font-weight:500;letter-spacing:.05em}
+.t-cta .side small{font-size:10px;letter-spacing:.09em;opacity:.8}
+
+/* ---- console bottom bar: the climate strip, repurposed ---- */
+.t-ctl{flex:0 0 104px;display:grid;
+  grid-template-columns:88px 1px 96px 1px 1fr 1px 96px 1px 148px;
+  background:var(--c-black);border-top:1px solid var(--c-div);color:#fff}
+.t-ctl .vr{background:var(--c-div)}
+.t-ctl .cell{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:6px;padding:6px;min-width:0;overflow:hidden}
+.t-ctl .cap{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--c-dim);
+  text-align:center;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.t-ctl .ms{font-size:21px}
+.stepper{display:flex;flex-direction:column;align-items:center;gap:1px}
+.stepper button{background:none;border:0;color:var(--app-red);font-size:19px;line-height:1;
+  cursor:pointer;padding:2px 10px;font-family:inherit}
+.stepper button.dn{color:var(--app-blue)}
+.stepper .val{font-size:24px;font-weight:400;letter-spacing:-.01em}
+.t-ctl .icons{display:flex;align-items:center;gap:22px}
+.t-ctl .icons button{background:none;border:0;color:#fff;cursor:pointer;display:flex;
+  flex-direction:column;align-items:center;gap:4px;font:inherit;padding:2px}
+/* Per-icon captions never fit a portrait console. The real climate bar labels
+   icon *clusters*, not individual icons — so only the group label below shows. */
+.t-ctl .icons .cap{display:none}
+.t-ctl .icons button[aria-pressed="true"] .ms,
+.t-ctl .icons button[aria-pressed="true"] .cap{color:var(--app-green)}
+.spd{display:flex;align-items:center;gap:9px;min-width:0;max-width:100%}
+.dots{display:flex;gap:3px}
+.dots i{width:5px;height:5px;border-radius:50%;background:#3A3D42}
+.dots i.on{background:var(--app-green)}
+.dots i.hot{background:var(--app-orange)}
+input[type=range]{-webkit-appearance:none;appearance:none;width:104px;height:4px;border-radius:2px;
+  background:#3A3D42;outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;
+  border-radius:50%;background:#fff;cursor:pointer}
+input[type=range]::-moz-range-thumb{width:16px;height:16px;border:0;border-radius:50%;background:#fff;cursor:pointer}
+
+/* ============================================================
+   WIDE CONSOLE — container query on .console, not the viewport.
+   Past ~980px the portrait card stack stops working: the map would
+   be a letterbox strip above a very wide info block. Instead the
+   card splits into a large map plus a right rail, which is how the
+   real landscape in-car UI is arranged.
+   ============================================================ */
+@container (min-width:980px){
+  .t-cardbody{flex-direction:row}
+  .t-side{flex:0 0 340px;border-left:1px solid #E6E8EB}
+  .t-split{grid-template-columns:1fr;border-top:0}
+  .t-split>div+div{border-left:0;border-top:1px solid #E6E8EB}
+  .t-live{display:flex}
+  .t-cta{margin-top:auto}
+  .t-apps{justify-content:center;gap:clamp(28px,5cqi,110px)}
+  .t-app .ring{width:44px;height:44px}
+  .t-app .ring .ms{font-size:23px}
+  .t-app label{font-size:10px}
+  /* fixed track widths + centred track list: a 2760px console must not
+     smear five controls across the full width */
+  .t-ctl{grid-template-columns:130px 1px 140px 1px 360px 1px 140px 1px 200px;
+    justify-content:center}
+  .t-ctl .icons{gap:34px}
+}
+@container (min-width:1500px){
+  .t-side{flex:0 0 400px}
+  .t-metrics b{font-size:19px}
+  .t-cta{height:58px}
+  .t-cta .main{font-size:17px}
+}
+
+/* ============================================================
+   RESPONSIVE TIERS
+   T1  >=3000px  32:9 ultrawide  — 5 visual columns (3840x1080 target)
+   T2  2200-2999 21:9 / 2560     — 3 columns, wings stack vertically
+   T3  1500-2199 Full HD 1920    — 3 columns, tighter console + type
+   T4  <1500                     — single scrolling column
+   Vertical: compresses under 900px height.
+   ============================================================ */
+
+/* ---- T2 ---- */
+@media (max-width:2999px){
+  .ops{grid-template-columns:500px minmax(0,1fr) 500px}
+}
+
+/* ---- T3: Full HD ---- */
+@media (max-width:2199px){
+  body{font-size:13px}
+  .app{padding:8px;gap:8px}
+  .ops,.wing,.stack{gap:8px}
+  .ops{grid-template-columns:472px minmax(0,1fr) 472px}
+  .topbar{flex:0 0 44px;gap:16px;padding:0 12px}
+  .brand{padding-right:14px}
+  .brand b{font-size:14px}
+  .tb-item b{font-size:14px}
+  .tb-cash b{font-size:17px}
+  .metric b{font-size:19px}
+  .p-head{padding:9px 12px}
+  .p-body{padding:9px 12px 11px}
+  td{padding:7px 0;font-size:12px}
+  .t-apps{flex:0 0 66px}
+  .t-app{min-width:46px}
+  .t-app .ring{width:33px;height:33px}
+  .t-app .ring .ms{font-size:18px}
+  .t-app label{font-size:8px}
+  .t-metrics b{font-size:15px}
+  .t-cta{height:46px}
+  .t-cta .main{font-size:14px}
+  .t-cta .side{flex:0 0 130px}
+  .t-ctl{flex:0 0 94px;grid-template-columns:70px 1px 78px 1px 1fr 1px 78px 1px 124px}
+  .t-ctl .icons{gap:15px}
+  .stepper .val{font-size:20px}
+  input[type=range]{width:74px}
+}
+
+/* ---- T3b: 1600px and under — drop the least critical topbar fields ---- */
+@media (max-width:1699px){
+  .ops{grid-template-columns:440px minmax(0,1fr) 440px}
+  .tb-opt{display:none}
+  .t-ctl .icons{gap:6px}
+  .t-ctl .icons .ms{font-size:19px}
+  .t-ctl .icons button{padding:1px}
+  .spd{gap:5px}
+  input[type=range]{width:56px}
+}
+
+/* ---- T4: below Full HD — single scrolling column ---- */
+@media (max-width:1499px){
+  html,body{overflow:auto}
+  .app{height:auto;min-height:100%}
+  .ops{grid-template-columns:1fr;gap:8px}
+  .wing{grid-template-rows:none;grid-auto-rows:390px}
+  .stack{grid-template-rows:none;grid-auto-rows:390px}
+  .console{order:-1;height:920px}
+  .panel{min-height:0}
+  #bgmap,#bgtint{position:absolute;height:100%}
+}
+
+/* ---- vertical compression ---- */
+@media (max-height:899px){
+  .t-apps{flex:0 0 58px}
+  .t-app .ring{width:30px;height:30px}
+  .t-ctl{flex:0 0 82px}
+  .t-split>div{padding:8px 12px}
+  .t-metrics>div{padding:7px 5px}
+  .t-cta{height:42px;margin:8px}
+  #map{min-height:90px}
+}
+
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><symbol id="i-car" viewBox="0 0 24 24"><path d="M4 14l1.9-5.4A2 2 0 017.8 7.2h8.4a2 2 0 011.9 1.4L20 14v4h-2.2M6.2 18H4v-4m0 0h16"/><circle cx="7.6" cy="18" r="1.5"/><circle cx="16.4" cy="18" r="1.5"/></symbol><symbol id="i-groups" viewBox="0 0 24 24"><circle cx="9" cy="9" r="2.6"/><path d="M3.5 19v-1.2A3.8 3.8 0 017.3 14h3.4a3.8 3.8 0 013.8 3.8V19"/><circle cx="17" cy="10" r="2"/><path d="M16 14h1.2A2.8 2.8 0 0120 16.8V18"/></symbol><symbol id="i-station" viewBox="0 0 24 24"><rect x="5" y="3.5" width="11" height="17" rx="2"/><path d="M11 7.5l-2.2 4h2.6L10.8 16l3.2-4.8h-2.6z"/><path d="M18.5 8.5v6a2 2 0 01-2 2"/></symbol><symbol id="i-receipt" viewBox="0 0 24 24"><path d="M6 3.5h12v16l-2-1.4-2 1.4-2-1.4-2 1.4-2-1.4z"/><path d="M9 8h6M9 12h5"/></symbol><symbol id="i-warning" viewBox="0 0 24 24"><path d="M12 4.5L21 19.5H3z"/><path d="M12 10v4.2M12 17h.01"/></symbol><symbol id="i-route" viewBox="0 0 24 24"><path d="M7 20.5V10a4 4 0 014-4h2.5"/><path d="M12 3.5L15 6l-3 2.5"/><path d="M17 20.5v-5.5a4 4 0 00-4-4"/></symbol><symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></symbol><symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.4 14.3A8.6 8.6 0 0110.2 3.7a7.6 7.6 0 1010.2 10.6z"/></symbol><symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 3v2m0 14v2M3 12h2m14 0h2M5.6 5.6L7 7m10 10l1.4 1.4m0-12.8L17 7M7 17l-1.4 1.4"/></symbol><symbol id="i-battery" viewBox="0 0 24 24"><rect x="3" y="8" width="15" height="8" rx="1.7"/><path d="M20.5 11v2"/><path d="M5.2 10.2h8.6v3.6H5.2z" class="f"/></symbol><symbol id="i-bt" viewBox="0 0 24 24"><path d="M12 3v18l5.4-5.4L7 8.6M12 3l5.4 5.4L7 15.4"/></symbol><symbol id="i-signal" viewBox="0 0 24 24"><path d="M4 20v-3M9 20v-6M14 20V9.5M19 20V5"/></symbol><symbol id="i-list" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2.2"/><path d="M8 9h8M8 13h8M8 17h5"/></symbol><symbol id="i-nav" viewBox="0 0 24 24"><path d="M20.5 3.5L3.5 10.8l7.6 2.1 2.1 7.6z"/></symbol><symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13.2 3L6 13.2h4.6L9.8 21l7.4-10.4h-4.6z"/></symbol><symbol id="i-agent" viewBox="0 0 24 24"><path d="M4 14v-2a8 8 0 0116 0v2"/><rect x="2.4" y="13" width="4.2" height="6.2" rx="1.7"/><rect x="17.4" y="13" width="4.2" height="6.2" rx="1.7"/><path d="M12.5 21.2H15a2 2 0 002-2"/></symbol><symbol id="i-cam" viewBox="0 0 24 24"><rect x="3" y="7" width="12" height="10" rx="2.2"/><path d="M15 11l6-3.2v8.4L15 13z"/></symbol><symbol id="i-call" viewBox="0 0 24 24"><path d="M6.4 3.6h3.1l1.5 3.9-2 1.5a11.2 11.2 0 006 6l1.5-2 3.9 1.5v3.1a1.5 1.5 0 01-1.7 1.5A16.6 16.6 0 015 5.3 1.5 1.5 0 016.4 3.6z"/></symbol><symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol><symbol id="i-expand" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-6.5 6.5M10 20H4v-6M4 20l6.5-6.5"/></symbol><symbol id="i-tune" viewBox="0 0 24 24"><path d="M4 7.5h9M19 7.5h1M4 16.5h4M14 16.5h6"/><circle cx="16" cy="7.5" r="2.2"/><circle cx="11" cy="16.5" r="2.2"/></symbol><symbol id="i-renew" viewBox="0 0 24 24"><path d="M4.8 12A7.2 7.2 0 0116.4 6.3"/><path d="M19.2 12a7.2 7.2 0 01-11.6 5.7"/><path d="M13.6 3.4l3 2.9-3.4 1.5M10.4 20.6l-3-2.9 3.4-1.5"/></symbol><symbol id="i-charging" viewBox="0 0 24 24"><rect x="3" y="8" width="15" height="8" rx="1.7"/><path d="M20.5 11v2"/><path d="M11.4 9.4L8.6 12.6h2.6L10.4 15.6l3-3.4h-2.4z"/></symbol><symbol id="i-fence" viewBox="0 0 24 24"><path d="M5 20.5V8l2-2 2 2v12.5M15 20.5V8l2-2 2 2v12.5M3 11h18M3 15.5h18"/></symbol><symbol id="i-plane" viewBox="0 0 24 24"><path d="M3 20h18"/><path d="M4.2 14.6L20 10l-2.4-3-3 1L9.4 5.2 7.2 5.8l3.9 4.6-5.1 1z"/></symbol><symbol id="i-speed" viewBox="0 0 24 24"><path d="M4.5 17.5a8.5 8.5 0 1115 0"/><path d="M12.4 13.6L16.5 10"/><circle cx="12" cy="14.4" r="1.4"/></symbol><symbol id="i-report" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.8v4.6M12 16h.01"/></symbol><symbol id="i-gavel" viewBox="0 0 24 24"><path d="M4 20.5h9"/><path d="M7.5 16.5l6.5-6.5"/><path d="M11.2 5.2l6.4 6.4-2.4 2.4-6.4-6.4z"/><path d="M15.4 3l5.6 5.6"/></symbol></defs></svg>
+
+<div id="bgmap"></div>
+<div id="bgtint"></div>
+
+<div class="app">
+
+  <!-- ============ management top bar ============ -->
+  <header class="topbar">
+    <div class="brand"><b>Deadhead</b><span>robotaxi fleet ops</span></div>
+    <div class="tb-item"><label>City</label><b>Austin</b></div>
+    <div class="tb-item"><label>Day</label><b>14</b></div>
+    <div class="tb-item"><label>Clock</label><b>17:42</b></div>
+    <div class="tb-item tb-cash"><label>Cash</label><b>$18,430</b></div>
+    <div class="tb-item tb-opt"><label>Permit</label><b>Supervised</b></div>
+    <div class="spacer"></div>
+    <div class="seg" role="group" aria-label="Time speed">
+      <button aria-pressed="false" aria-label="Pause"><svg class="ms" style="font-size:15px;vertical-align:-3px"><use href="#i-pause"/></svg></button>
+      <button aria-pressed="true">1&times;</button>
+      <button aria-pressed="false">2&times;</button>
+      <button aria-pressed="false">4&times;</button>
+    </div>
+    <button class="ghost" id="theme"><svg class="ms"><use href="#i-moon"/></svg>Night</button>
+  </header>
+
+  <!-- ============ three-column ops centre ============ -->
+  <div class="ops">
+
+    <!-- ---------- LEFT WING ---------- -->
+    <div class="wing">
+
+      <section class="panel">
+        <div class="p-head"><svg class="ms"><use href="#i-car"/></svg><h2>Fleet roster</h2><span class="tag">6 vehicles</span></div>
+        <div class="p-body">
+          <div class="metrics c3">
+            <div class="metric"><span class="lbl">Earning</span><b>3</b></div>
+            <div class="metric"><span class="lbl">Idle</span><b>2</b></div>
+            <div class="metric"><span class="lbl">Down</span><b>1</b></div>
+          </div>
+          <table>
+            <thead><tr><th>Vehicle</th><th>State</th><th class="r">SoC</th><th class="r">Today</th></tr></thead>
+            <tbody>
+              <tr><td class="cid">MY-01</td><td><span class="dot d-idle"></span><span class="st t-idle">Idle</span></td><td class="r">64%</td><td class="r">$41</td></tr>
+              <tr><td class="cid">MY-02</td><td><span class="dot d-charge"></span><span class="st t-charge">Charging</span></td><td class="r">37%</td><td class="r">$88</td></tr>
+              <tr><td class="cid">MY-03</td><td><span class="dot d-active"></span><span class="st t-active">On trip</span></td><td class="r">78%</td><td class="r">$126</td></tr>
+              <tr><td class="cid">MY-04</td><td><span class="dot d-active"></span><span class="st t-active">On trip</span></td><td class="r">52%</td><td class="r">$103</td></tr>
+              <tr><td class="cid">MY-05</td><td><span class="dot d-idle"></span><span class="st t-idle">Idle</span></td><td class="r">91%</td><td class="r">$34</td></tr>
+              <tr><td class="cid">CC-06</td><td><span class="dot d-attn"></span><span class="st t-attn">Blocked</span></td><td class="r">45%</td><td class="r">$67</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <div class="stack">
+        <section class="panel">
+          <div class="p-head"><svg class="ms"><use href="#i-groups"/></svg><h2>Remote operators</h2><span class="tag">2 on shift</span></div>
+          <div class="p-body">
+            <div class="metrics c2">
+              <div class="metric"><span class="lbl">Cars / operator</span><b>3.0</b></div>
+              <div class="metric"><span class="lbl">Mean latency</span><b>41<small>s</small></b></div>
+            </div>
+            <div class="opsrow">
+              <div class="av">DK</div>
+              <div class="grow">
+                <b>D. Kowalski</b>
+                <div class="sub">Evening &middot; 4 cars &middot; 28s</div>
+                <div class="bar"><i style="width:46%"></i></div>
+              </div>
+              <div class="load"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></div>
+            </div>
+            <div class="opsrow">
+              <div class="av">RT</div>
+              <div class="grow">
+                <b>R. Trujillo</b>
+                <div class="sub">Evening &middot; 2 cars &middot; 62s &middot; fatigued</div>
+                <div class="bar"><i style="width:81%;background:var(--s-attn)"></i></div>
+              </div>
+              <div class="load"><i class="on"></i><i class="on"></i><i class="over"></i><i></i><i></i><i></i></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="p-head"><svg class="ms"><use href="#i-station"/></svg><h2>Rapid network</h2><span class="tag">peak tariff</span></div>
+          <div class="p-body">
+            <div class="metrics c2">
+              <div class="metric"><span class="lbl">Now</span><b>$0.34<small>/kWh</small></b></div>
+              <div class="metric"><span class="lbl">From 23:00</span><b>$0.11<small>/kWh</small></b></div>
+            </div>
+            <div class="row"><div class="grow"><b>6th &amp; Red River</b><div class="sub">8 stalls &middot; 2 free</div></div><span class="st t-charge">Open</span></div>
+            <div class="row"><div class="grow"><b>Barton Springs</b><div class="sub">4 stalls &middot; queue 12 min</div></div><span class="st t-attn">Queue</span></div>
+            <div class="row"><div class="grow"><b>Rainey St</b><div class="sub">6 stalls &middot; 5 free</div></div><span class="st t-charge">Open</span></div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- ---------- CENTRE: THE CONSOLE ---------- -->
+    <section class="console" aria-label="Robotaxi IRL console">
+
+      <div class="t-status">
+        <div class="grp"><span>34&deg;C</span><svg class="ms"><use href="#i-battery"/></svg></div>
+        <div class="mid"><span class="mk">Nova</span><span>17:42</span></div>
+        <div class="grp"><svg class="ms"><use href="#i-bt"/></svg><span>LTE</span><svg class="ms"><use href="#i-signal"/></svg><span class="ok">Fleet 6 active</span></div>
+      </div>
+
+      <nav class="t-apps">
+        <button class="t-app" data-c="blue"  aria-pressed="false"><span class="ring"><svg class="ms"><use href="#i-list"/></svg></span><label>Fleet</label></button>
+        <button class="t-app" data-c="green" aria-pressed="true"><span class="ring"><svg class="ms"><use href="#i-nav"/></svg></span><label>Map</label></button>
+        <button class="t-app" data-c="orange" aria-pressed="false"><span class="ring"><svg class="ms"><use href="#i-bolt"/></svg></span><label>Energy</label></button>
+        <button class="t-app" data-c="blue"  aria-pressed="false"><span class="ring"><svg class="ms"><use href="#i-receipt"/></svg></span><label>Books</label></button>
+        <button class="t-app" data-c="red"   aria-pressed="false"><span class="ring"><svg class="ms"><use href="#i-agent"/></svg></span><label>Ops</label></button>
+        <button class="t-app" data-c="green" aria-pressed="false"><span class="ring"><svg class="ms"><use href="#i-cam"/></svg></span><label>Camera</label></button>
+        <button class="t-app" data-c="blue"  aria-pressed="false"><span class="ring"><svg class="ms"><use href="#i-call"/></svg></span><label>Comms</label></button>
+      </nav>
+
+      <div class="t-card">
+        <div class="t-cardbar">
+          <svg class="ms"><use href="#i-menu"/></svg>
+          <svg class="ms"><use href="#i-nav"/></svg>
+          <b>Main fleet view</b>
+          <span class="sub">Robotaxi IRL</span>
+          <svg class="ms exp"><use href="#i-expand"/></svg>
+        </div>
+
+        <div class="t-cardbody">
+          <div id="map"></div>
+
+          <div class="t-side">
+            <div class="t-split">
+              <div>
+                <span class="lbl">Selected vehicle</span>
+                <div class="v"><svg class="ms"><use href="#i-car"/></svg><b>Nova S2 &middot; MY-03</b></div>
+              </div>
+              <div>
+                <span class="lbl">Status</span>
+                <div class="v"><span class="pill">On trip</span><b>78%</b></div>
+              </div>
+            </div>
+
+            <div class="t-metrics">
+              <div><span class="lbl">Arrival SoC</span><b class="warn">19%</b></div>
+              <div><span class="lbl">Fare</span><b>$14.20</b></div>
+              <div><span class="lbl">Drop-off</span><b>17:58</b></div>
+            </div>
+
+            <div class="t-live">
+              <span class="lbl">Live activity</span>
+              <div class="t-ev attn"><b>CC-06</b><span>blocked &middot; E 5th &amp; Brazos</span><i>17:40</i></div>
+              <div class="t-ev"><b>MY-04</b><span>picked up &middot; Congress &amp; 6th</span><i>17:39</i></div>
+              <div class="t-ev"><b>MY-02</b><span>charging &middot; 6th &amp; Red River</span><i>17:31</i></div>
+              <div class="t-ev"><b>MY-03</b><span>fare $14.20 &middot; Rainey St</span><i>17:28</i></div>
+              <div class="t-ev"><b>MY-01</b><span>idle 6 min &middot; Downtown</span><i>17:26</i></div>
+              <div class="t-ev"><b>MY-05</b><span>dropped off &middot; Zilker</span><i>17:22</i></div>
+              <div class="t-ev attn"><b>MY-02</b><span>soiled &mdash; cleaned $30</span><i>16:20</i></div>
+              <div class="t-ev"><b>MY-04</b><span>fare $21.40 &middot; Mueller</span><i>16:11</i></div>
+            </div>
+
+            <button class="t-cta">
+              <span class="main">Dispatch to Rainey St</span>
+              <span class="side"><b>1.4&times; surge</b><small>4 waiting</small></span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="t-ctl">
+        <div class="cell">
+          <svg class="ms"><use href="#i-tune"/></svg><span class="cap">Console</span>
+        </div>
+        <div class="vr"></div>
+        <div class="cell">
+          <div class="stepper">
+            <button aria-label="Increase fare">+</button>
+            <span class="val">1.4&times;</span>
+            <button class="dn" aria-label="Decrease fare">&minus;</button>
+          </div>
+          <span class="cap">Fare</span>
+        </div>
+        <div class="vr"></div>
+        <div class="cell">
+          <div class="icons">
+            <button aria-pressed="true"><svg class="ms"><use href="#i-renew"/></svg><span class="cap">Auto&nbsp;dispatch</span></button>
+            <button aria-pressed="true"><svg class="ms"><use href="#i-charging"/></svg><span class="cap">Charge&nbsp;policy</span></button>
+            <button aria-pressed="false"><svg class="ms"><use href="#i-fence"/></svg><span class="cap">Geofence</span></button>
+            <button aria-pressed="false"><svg class="ms"><use href="#i-plane"/></svg><span class="cap">Airport</span></button>
+          </div>
+          <span class="cap">Dispatch policy</span>
+        </div>
+        <div class="vr"></div>
+        <div class="cell">
+          <div class="stepper">
+            <button aria-label="More cars per operator">+</button>
+            <span class="val">3</span>
+            <button class="dn" aria-label="Fewer cars per operator">&minus;</button>
+          </div>
+          <span class="cap">Cars / op</span>
+        </div>
+        <div class="vr"></div>
+        <div class="cell">
+          <div class="spd">
+            <svg class="ms"><use href="#i-speed"/></svg>
+            <input type="range" min="0" max="3" step="1" value="1" aria-label="Time speed">
+          </div>
+          <div class="dots"><i class="on"></i><i class="on"></i><i class="hot"></i><i></i></div>
+          <span class="cap">Sim speed</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- RIGHT WING ---------- -->
+    <div class="wing">
+      <section class="panel">
+        <div class="p-head"><svg class="ms"><use href="#i-receipt"/></svg><h2>Books</h2><span class="tag">day 14</span></div>
+        <div class="p-body">
+          <div class="metrics c3">
+            <div class="metric"><span class="lbl">Gross today</span><b>$459</b></div>
+            <div class="metric"><span class="lbl">Net today</span><b>$112</b></div>
+            <div class="metric"><span class="lbl">Cost / mile</span><b>$0.58</b></div>
+          </div>
+          <span class="lbl" style="margin:4px 0 8px">Cost per mile breakdown</span>
+          <div class="costline"><span>Depreciation</span><span class="track"><i style="width:62%"></i></span><span class="amt">$0.11</span></div>
+          <div class="costline"><span>Energy</span><span class="track"><i style="width:28%"></i></span><span class="amt">$0.05</span></div>
+          <div class="costline"><span>Maintenance</span><span class="track"><i style="width:22%"></i></span><span class="amt">$0.04</span></div>
+          <div class="costline"><span>Insurance</span><span class="track"><i style="width:44%"></i></span><span class="amt">$0.08</span></div>
+          <div class="costline hi"><span>Remote monitoring</span><span class="track"><i style="width:100%"></i></span><span class="amt">$0.18</span></div>
+          <div class="costline"><span>Software</span><span class="track"><i style="width:17%"></i></span><span class="amt">$0.03</span></div>
+          <div class="row" style="margin-top:8px">
+            <div class="grow"><b>Payroll due 23:00</b><div class="sub">2 operators &middot; evening shift</div></div>
+            <b>&minus;$264</b>
+          </div>
+          <div class="row">
+            <div class="grow"><b>Loan &middot; MY-04</b><div class="sub">next payment day 16</div></div>
+            <b>&minus;$412</b>
+          </div>
+        </div>
+      </section>
+
+      <div class="stack">
+        <section class="panel">
+          <div class="p-head"><svg class="ms"><use href="#i-warning"/></svg><h2>Incidents</h2><span class="tag">1 open</span></div>
+          <div class="p-body">
+            <div class="alert">
+              <div class="top"><svg class="ms"><use href="#i-report"/></svg><b>CC-06 blocked</b><span class="clock">02:14</span></div>
+              <p>Construction closure, E 5th &amp; Brazos. Waiting on operator &mdash; R. Trujillo queued behind 2 cars.</p>
+            </div>
+            <div class="alert crit">
+              <div class="top"><svg class="ms"><use href="#i-gavel"/></svg><b>Safety score falling</b><span class="clock" style="color:var(--s-crit)">72</span></div>
+              <p>Three latency breaches in 7 days. Unsupervised permit review at 65.</p>
+            </div>
+            <div class="row"><div class="grow"><b>MY-02 soiled</b><div class="sub">resolved 16:20 &middot; $30 clean</div></div><span class="st t-charge">Closed</span></div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="p-head"><svg class="ms"><use href="#i-route"/></svg><h2>Ride queue</h2><span class="tag">4 waiting</span></div>
+          <div class="p-body">
+            <table>
+              <thead><tr><th>Pickup</th><th>Zone</th><th class="r">Fare</th><th class="r">Arr. SoC</th></tr></thead>
+              <tbody>
+                <tr><td class="cid">Rainey St</td><td class="sub">Downtown</td><td class="r">$14.20</td><td class="r" style="color:var(--s-attn)">19%</td></tr>
+                <tr><td class="cid">Congress &amp; 6th</td><td class="sub">Downtown</td><td class="r">$9.80</td><td class="r">44%</td></tr>
+                <tr><td class="cid">Zilker</td><td class="sub">West</td><td class="r">$21.40</td><td class="r">31%</td></tr>
+                <tr><td class="cid">Mueller</td><td class="sub">Northeast</td><td class="r" style="color:var(--s-crit)">$7.10</td><td class="r" style="color:var(--s-crit)">8%</td></tr>
+              </tbody>
+            </table>
+            <div class="row" style="margin-top:8px">
+              <div class="grow"><b>Meridian</b><div class="sub">rival &middot; 6 min wait &middot; $19.90 same trip</div></div>
+              <b>58%</b>
+            </div>
+            <div class="row">
+              <div class="grow"><b>Halo</b><div class="sub">rival &middot; 11 min wait &middot; $12.40 same trip</div></div>
+              <b>17%</b>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+(function(){
+
+  /* ============================================================
+     1. UI wiring first, and independent of the map.
+        If Leaflet or the tile server is unreachable the console
+        must still be fully operable.
+     ============================================================ */
+  var root=document.documentElement, btn=document.getElementById('theme'),
+      mapEl=document.getElementById('map');
+
+  btn.addEventListener('click',function(){
+    var night=root.getAttribute('data-theme')==='night';
+    root.setAttribute('data-theme',night?'day':'night');
+    mapEl.classList.toggle('night',!night);
+    btn.innerHTML='<svg class="ms"><use href="#i-'+(night?'moon':'sun')+'"/></svg>'+(night?'Night':'Day');
+  });
+
+  document.querySelectorAll('.t-apps .t-app').forEach(function(b){
+    b.addEventListener('click',function(){
+      document.querySelectorAll('.t-apps .t-app').forEach(function(o){o.setAttribute('aria-pressed','false')});
+      b.setAttribute('aria-pressed','true');
+    });
+  });
+  document.querySelectorAll('.seg button').forEach(function(b){
+    b.addEventListener('click',function(){
+      b.parentNode.querySelectorAll('button').forEach(function(o){o.setAttribute('aria-pressed','false')});
+      b.setAttribute('aria-pressed','true');
+    });
+  });
+  document.querySelectorAll('.t-ctl .icons button').forEach(function(b){
+    b.addEventListener('click',function(){
+      b.setAttribute('aria-pressed',b.getAttribute('aria-pressed')==='true'?'false':'true');
+    });
+  });
+  document.querySelectorAll('.stepper').forEach(function(s){
+    var v=s.querySelector('.val'), fare=v.textContent.indexOf('×')>-1;
+    s.querySelectorAll('button').forEach(function(b){
+      b.addEventListener('click',function(){
+        var n=parseFloat(v.textContent), up=!b.classList.contains('dn');
+        if(fare){ n=Math.min(1.6,Math.max(0.7,n+(up?0.1:-0.1))); v.textContent=n.toFixed(1)+'×'; }
+        else { n=Math.min(8,Math.max(1,n+(up?1:-1))); v.textContent=n; }
+      });
+    });
+  });
+
+  /* ============================================================
+     2. Maps. Guarded — a CDN or tile-server failure degrades to a
+        labelled placeholder instead of taking the page down.
+     ============================================================ */
+  if(typeof L==='undefined'){
+    mapEl.innerHTML='<div style="height:100%;display:grid;place-items:center;text-align:center;'+
+      'color:#8A8D93;font-size:12px;letter-spacing:.09em;text-transform:uppercase;padding:20px">'+
+      'Map unavailable<br><span style="text-transform:none;letter-spacing:0;font-size:11px">'+
+      'Leaflet could not load &mdash; check network access to cdnjs.cloudflare.com</span></div>';
+    return;
+  }
+
+  var AUSTIN=[30.2672,-97.7431], TILE='https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      ATTR='&copy; OpenStreetMap';
+
+  /* dimmed background map — gives the frosted panels something real to blur */
+  var bg=L.map('bgmap',{zoomControl:false,attributionControl:false,dragging:false,
+    scrollWheelZoom:false,doubleClickZoom:false,boxZoom:false,keyboard:false,
+    touchZoom:false,inertia:false}).setView(AUSTIN,13);
+  L.tileLayer(TILE,{maxZoom:19}).addTo(bg);
+
+  /* console map */
+  var map=L.map('map',{zoomControl:false,attributionControl:true}).setView(AUSTIN,14);
+  L.tileLayer(TILE,{maxZoom:19,attribution:ATTR}).addTo(map);
+  L.control.zoom({position:'bottomright'}).addTo(map);
+
+  var C={idle:'#8E8E8E',active:'#3E6AE1',charge:'#1F8A4C',attn:'#B87503',crit:'#C0392B'};
+
+  /* geofence */
+  L.polygon([[30.2545,-97.7580],[30.2545,-97.7255],[30.2830,-97.7255],[30.2830,-97.7580]],
+    {color:'#3E6AE1',weight:1.5,opacity:.7,fillColor:'#3E6AE1',fillOpacity:.05,dashArray:'6 5'}
+  ).addTo(map).bindTooltip('Geofence &middot; downtown');
+
+  /* demand heat */
+  [[30.2670,-97.7405,520,.20],[30.2600,-97.7370,420,.13],[30.2755,-97.7440,380,.10],
+   [30.2620,-97.7500,300,.07]].forEach(function(z){
+    L.circle([z[0],z[1]],{radius:z[2],stroke:false,fillColor:'#E0453C',fillOpacity:z[3]}).addTo(map);
+  });
+
+  /* vehicles */
+  [['MY-01',30.2650,-97.7400,'idle','Idle &middot; 64%'],
+   ['MY-02',30.2722,-97.7478,'charge','Charging &middot; 37%'],
+   ['MY-03',30.2685,-97.7420,'active','On trip &middot; 78%'],
+   ['MY-04',30.2612,-97.7368,'active','On trip &middot; 52%'],
+   ['MY-05',30.2748,-97.7442,'idle','Idle &middot; 91%'],
+   ['CC-06',30.2661,-97.7502,'attn','Blocked &middot; 45%']
+  ].forEach(function(v){
+    var big=v[3]==='active'||v[3]==='attn', s=big?18:14;
+    L.marker([v[1],v[2]],{icon:L.divIcon({className:'',iconSize:[s,s],iconAnchor:[s/2,s/2],
+      html:'<div class="carpin" style="width:'+s+'px;height:'+s+'px;background:'+C[v[3]]+'"></div>'})
+    }).addTo(map).bindTooltip('<b>'+v[0]+'</b> &middot; '+v[4]);
+  });
+
+  /* trip line for the selected car */
+  L.polyline([[30.2685,-97.7420],[30.2700,-97.7398],[30.2712,-97.7375],[30.2648,-97.7358]],
+    {color:'#3E6AE1',weight:3,opacity:.85}).addTo(map);
+
+  /* Rapid chargers */
+  [[30.2700,-97.7390],[30.2620,-97.7480],[30.2782,-97.7422]].forEach(function(p){
+    L.marker(p,{icon:L.divIcon({className:'',iconSize:[20,20],iconAnchor:[10,10],
+      html:'<div class="chpin" style="width:20px;height:20px"><svg class="ms" style="font-size:13px"><use href="#i-bolt"/></svg></div>'})
+    }).addTo(map).bindTooltip('Rapid charger');
+  });
+
+})();
+</script>
+</body>
+</html>

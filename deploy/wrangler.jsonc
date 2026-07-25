@@ -1,0 +1,25 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "deadhead-robotaxi-fleet-simulator",
+  "main": "src/index.js",
+  "compatibility_date": "2026-07-24",
+
+  // Static hosting. public/index.html is the game; the Worker only runs
+  // for paths that do not match a file, plus /api/* which is forced below.
+  "assets": {
+    "directory": "./public/",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"]
+  },
+
+  // PASTE YOUR OWN database_id HERE — see README step 2.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "deadhead-db",
+      "database_id": "PASTE_YOUR_DATABASE_ID_HERE"
+    }
+  ],
+
+  "observability": { "enabled": true }
+}
