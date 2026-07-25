@@ -1,6 +1,6 @@
 # Deadhead — robotaxi fleet simulator
 
-**Version 0.8.0**
+**Version 0.9.0**
 
 A future-job simulator played entirely through a car's centre console screen. You never
 drive. You own and operate a small robotaxi fleet, and your job is the one that *replaces*
@@ -32,6 +32,7 @@ a bug report from a stranger diagnosable.
 
 | Version | What landed |
 |---|---|
+| 0.9.0 | **Act 1 rebuild** (`GameMechanics.md`). Real-time clock — 1× is the wall clock, speeds pause/1/4/20. Clock on/off shift model: cars earn only while you are supervising, and the car still owes $42 at midnight. Manual accept/decline of offers on a 45-second countdown. Two platforms, Hitchr (25%) and Zipp (15%), with acceptance rate driving offer volume. Start position $1,000 and one owned car. Fixed cost decomposed to $42 base. Insurance tiers at 3 cars. Two prototype bugs fixed: the offer cap never fired, and neutral pricing shed 44% of demand. Save shape v3 with a v2 migration. |
 | 0.8.0 | Save/load: versioned snapshot with reference rehydration, IndexedDB autosave, three manual slots, JSON export/import. Cloudflare Worker + D1 backend for accounts and cloud saves. Version badge in the top bar. |
 
 ### Recovering an old version

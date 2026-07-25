@@ -128,6 +128,31 @@ body{
 .brand span{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-4)}
 .brand .ver{font-style:normal;font-size:9.5px;letter-spacing:.1em;color:var(--text-4);
   padding:1px 5px;border:1px solid var(--brd-2);border-radius:3px;align-self:center}
+.clockbtn.on{background:var(--s-charge);border-color:var(--s-charge);color:#fff}
+/* ---- platforms ---- */
+.plat{display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--brd)}
+.plat:last-child{border-bottom:0}
+.plat-n{flex:1;min-width:0;font-size:12.5px;font-weight:500}
+.plat-n small{display:block;font-weight:400;font-size:10px;color:var(--text-3);margin-top:1px}
+.plat button{height:26px;padding:0 10px;font:inherit;font-size:11px;cursor:pointer;
+  border:1px solid var(--brd-2);border-radius:var(--r-ctl);background:transparent;color:var(--text)}
+.plat button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.plat .ar{font-size:10.5px;color:var(--text-3);flex:0 0 62px;text-align:right}
+/* ---- offer cards ---- */
+.offer{border:1px solid var(--brd);border-radius:7px;padding:8px 9px;margin-bottom:6px;
+  background:var(--c-card)}
+.offer.warn{border-color:var(--s-attn)}
+.offer-top{display:flex;align-items:baseline;gap:7px;font-size:12px}
+.offer-top .pn{font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3)}
+.offer-top .net{margin-left:auto;font-weight:500}
+.offer-rt{font-size:11px;color:var(--text-3);margin:3px 0 6px}
+.offer-act{display:flex;gap:5px;align-items:center}
+.offer-act button{flex:1;height:26px;font:inherit;font-size:11px;cursor:pointer;
+  border:1px solid var(--brd-2);border-radius:var(--r-ctl);background:transparent;color:var(--text)}
+.offer-act button.acc{background:var(--accent);border-color:var(--accent);color:#fff}
+.offer-act .cd{flex:0 0 34px;text-align:right;font-size:11px;color:var(--text-3);
+  font-variant-numeric:tabular-nums}
+.offer.warn .cd{color:var(--s-attn)}
 .tb-item{display:flex;align-items:baseline;gap:7px}
 .tb-item label{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--text-4)}
 .tb-item b{font-weight:500;font-size:15px}
@@ -562,12 +587,14 @@ tr[data-car].on td{background:var(--inset)}
     <div class="tb-item"><label>Clock</label><b id="tb-clock">06:00</b></div>
     <div class="tb-item tb-cash"><label>Cash</label><b id="tb-cash">$0</b></div>
     <div class="tb-item tb-opt"><label>Permit</label><b id="tb-permit">Supervised</b></div>
+    <div class="tb-item"><label>Shift</label><b id="tb-shift">Off</b></div>
     <div class="spacer"></div>
+    <button class="ghost clockbtn" id="clock">Clock on</button>
     <div class="seg" role="group" aria-label="Time speed">
       <button data-speed="0" aria-pressed="false" aria-label="Pause"><svg class="ms" style="font-size:15px;vertical-align:-3px"><use href="#i-pause"/></svg></button>
       <button data-speed="1" aria-pressed="true">1&times;</button>
-      <button data-speed="2" aria-pressed="false">2&times;</button>
       <button data-speed="4" aria-pressed="false">4&times;</button>
+      <button data-speed="20" aria-pressed="false">20&times;</button>
     </div>
     <button class="ghost" id="saves"><svg class="ms"><use href="#i-list"/></svg>Saves</button>
     <button class="ghost" id="theme"><svg class="ms"><use href="#i-moon"/></svg>Night</button>
@@ -595,14 +622,10 @@ tr[data-car].on td{background:var(--inset)}
 
       <div class="stack">
         <section class="panel">
-          <div class="p-head"><svg class="ms"><use href="#i-groups"/></svg><h2>Remote operators</h2><span class="tag" id="ops-tag">&mdash;</span></div>
+          <div class="p-head"><svg class="ms"><use href="#i-groups"/></svg><h2>Platforms</h2><span class="tag" id="ops-tag">&mdash;</span></div>
           <div class="p-body" id="pb-ops">
-            <div class="metrics c2">
-              <div class="metric"><span class="lbl">Cars / operator</span><b id="ops-cpo">3.0</b></div>
-              <div class="metric"><span class="lbl">Mean latency</span><b id="ops-lat">&mdash;</b></div>
-            </div>
-            <div id="ops-rows"></div>
-            <button class="wbtn" id="hire">Hire operator &mdash; $22/h</button>
+            <div id="plat-rows"></div>
+            <div class="sub" id="plat-note"></div>
           </div>
         </section>
 
@@ -716,7 +739,7 @@ tr[data-car].on td{background:var(--inset)}
         <div class="cell">
           <div class="spd">
             <svg class="ms"><use href="#i-speed"/></svg>
-            <input type="range" id="spd" min="0" max="3" step="1" value="1" aria-label="Time speed">
+            <input type="range" id="spd" min="0" max="3" step="1" value="0" aria-label="Time speed">
           </div>
           <div class="dots"><i class="on"></i><i class="on"></i><i class="hot"></i><i></i></div>
           <span class="cap">Sim speed</span>
@@ -747,11 +770,10 @@ tr[data-car].on td{background:var(--inset)}
         </section>
 
         <section class="panel">
-          <div class="p-head"><svg class="ms"><use href="#i-route"/></svg><h2>Ride queue</h2><span class="tag" id="rq-tag">0 waiting</span></div>
+          <div class="p-head"><svg class="ms"><use href="#i-route"/></svg><h2>Offers</h2><span class="tag" id="rq-tag">0 waiting</span></div>
           <div class="p-body" id="pb-rq">
             <div class="chips" id="zone-chips"></div>
-            <table><thead><tr><th>Pickup</th><th>Drop-off</th><th class="r">Fare</th><th class="r">Waiting</th></tr></thead>
-            <tbody id="rq-rows"></tbody></table>
+            <div id="offer-list"></div>
           </div>
         </section>
       </div>
@@ -762,9 +784,9 @@ tr[data-car].on td{background:var(--inset)}
 
 <div class="modal" id="report" hidden>
   <div class="rep">
-    <h3>Day <span id="rp-day">1</span> complete</h3>
+    <h3>Shift <span id="rp-day">1</span> complete</h3>
     <div id="rp-body"></div>
-    <button id="rp-go">Start day <span id="rp-next">2</span></button>
+    <button id="rp-go">Close <span id="rp-next" hidden></span></button>
   </div>
 </div>
 
@@ -820,16 +842,61 @@ const pct=function(v){return Math.round(v)+'%'};
 
 /* ---------------- configuration ---------------- */
 const CFG={
-  dayStart:6*3600, dayEnd:24*3600,
-  simPerReal:150, tickMs:100,
+  dayStart:6*3600, dayEnd:24*3600,   /* the DEMAND window, not the session */
+  /* 1x is the wall clock. This is the change that converts the game from a
+     management screen into an occupation: a 5.5 km trip takes 11 real
+     minutes and you sit through it, and 28->85% charging costs you 23 real
+     minutes of your own afternoon. */
+  simPerReal:1, tickMs:100,
+  /* Sub-step cap, in sim-seconds. Was a hardcoded local in step(); promoted
+     here because it fixes a whole-day zero-rides bug and must not be
+     refactored away by someone who does not know that. At 1x a tick is a
+     tick — this only bites at 20x, where it matters most. */
+  maxSubstep:15,
+  speeds:[0,1,4,20],
   battery:75, kwhPerKm:0.19, heatPenalty:1.13,
   carPrice:18000, fare:{base:2.60,perKm:1.05,perMin:0.22},
-  platformCut:0.20,        /* the ride platform's share of every fare */
-  fixedPerCarDay:70,       /* lease, base insurance, permit fees — due parked or not */
-  cpm:{dep:0.11,maint:0.04,ins:0.08,soft:0.03},
-  wage:22, chargeKW:150, speedKmh:34, reserveSoc:12,
-  chargeAt:28, chargeTo:85, rideExpire:9*60, cancelAt:150
+  /* Your car is owned outright, so the old flat $70 decomposes. $42 is the
+     part you owe whether you clock on or not: insurance minimum, permit
+     fees, platform subscription, parking, autonomy licence. Leasing adds
+     $28, financing adds $13.60. */
+  fixedPerCarDay:42,
+  leaseAdd:28, financeDaily:13.60,
+  /* Gig-rideshare insurance is dearer than a fleet policy. Crossing three
+     cars is what earns the fleet rate. */
+  cpm:{dep:0.11,maint:0.04,ins:0.11,soft:0.03},
+  insFleet:0.08, insFleetAt:3,
+  /* $0 in Act 1 — the player IS the operator. Act 2 buys hours, not ratios. */
+  wage:22, chargeKW:150, speedKmh:30, reserveSoc:12,
+  chargeAt:28, chargeTo:85, rideExpire:9*60, cancelAt:150,
+  /* Platform UI limit, not a demand limit. Previously the code compared
+     against CFG.offerCap, which did not exist — so every comparison was
+     against undefined, and the cap never once fired. */
+  offerCap:8,
+  offerDecideSec:45,       /* countdown on the offer card, real seconds */
+  socAlertAmber:25         /* amber rail warning; red is projected-arrival */
 };
+
+/* Two aggregators sitting ABOVE you as suppliers of demand. Hitchr takes
+   more and gives more; Zipp is fairer but thinner. Running both is almost
+   always right — whichever offer lands first wins, so two feeds mean less
+   idle time — but acceptance rate is diluted on each, and they notice. */
+const PLATFORMS=[
+  {id:'hitchr',n:'Hitchr',cut:0.25,share:0.70,on:false,offered:0,accepted:0},
+  {id:'zipp',  n:'Zipp',  cut:0.15,share:0.30,on:false,offered:0,accepted:0}
+];
+function platform(id){ return PLATFORMS.filter(function(p){return p.id===id})[0] }
+function livePlatforms(){ return PLATFORMS.filter(function(p){return p.on}) }
+/* Rolling accept ratio drives offer volume, which is what makes declining a
+   bad ride cost something instead of being a free lunch. */
+function acceptRate(p){ return p.offered<5?1:p.accepted/p.offered }
+function volumeMult(p){
+  const a=acceptRate(p), hard=p.id==='hitchr';
+  if(a>=0.85) return hard?1.10:1.05;
+  if(a>=0.60) return 1;
+  if(a>=0.40) return hard?0.75:0.90;
+  return hard?0.40:0.75;
+}
 const C={idle:'#8E8E8E',dispatched:'#3E6AE1',onTrip:'#3E6AE1',toCharge:'#1F8A4C',
          charging:'#1F8A4C',blocked:'#B87503'};
 const LABEL={idle:'Idle',dispatched:'To pickup',onTrip:'On trip',toCharge:'To charger',
@@ -865,10 +932,17 @@ const NAMES=['D. Kowalski','R. Trujillo','S. Okafor','M. Vance'];
 
 /* ---------------- state ---------------- */
 const S={
-  t:CFG.dayStart, day:1, cash:60000, speed:1, running:true, over:false,
+  t:CFG.dayStart, day:1, cash:1000, speed:0, running:false, over:false,
   fareMult:1.0, carsPerOp:3, sel:null, seq:0,
   cars:[], rides:[], ops:[], log:[],
   safety:80, permit:'Supervised',
+  /* Act 1 shift model. Cars earn only while you are clocked on, because you
+     are the remote operator. Clock off and the car parks — and still owes
+     $42 that midnight. A four-hour shift owns a car idle for twenty hours
+     and billed for all of them, which is the most accurate thing this game
+     says about gig work, and it arrives as arithmetic, not a speech. */
+  onClock:false, shiftStart:0, workedSec:0, billedSec:0, shiftNo:0,
+  offers:[],          /* undecided offers awaiting accept/decline */
   d:null
 };
 function newDay(){
@@ -885,8 +959,11 @@ function addCar(model){
     state:'idle',soc:70+Math.random()*25,odo:0,earn:0,route:[],ride:null,
     blocked:0,needs:0,idleFor:0,ch:null});
 }
-addCar('S2'); addCar('S2'); addCar('S2');
-S.ops=[{n:NAMES[0],fatigue:0,cars:0},{n:NAMES[1],fatigue:.15,cars:0}];
+/* One Nova S2, owned outright, 34,000 mi. You bought it before the game
+   started, which is why you have $1,000 and not $19,000 — the car is the
+   inheritance and the cash is what is left. */
+addCar('S2'); S.cars[0].odo=34000; S.cars[0].owned=true;
+S.ops=[];
 S.sel=S.cars[0].id;
 
 /* ---------------- geometry ---------------- */
@@ -910,7 +987,12 @@ function jit(z){ return [z.lat+(Math.random()-.5)*.008, z.lng+(Math.random()-.5)
    operator means fewer people on payroll AND slower interventions — that is
    the trade-off. Previously carsPerOp only raised a capacity ceiling that a
    small fleet never reached, so the slider did nothing. */
-function staffed(){ return Math.max(1,Math.ceil(S.cars.length/S.carsPerOp)) }
+/* Act 1 has no payroll: you are the operator. Act 2 reinstates this. */
+function staffed(){ return S.onClock?0:0 }
+function insPerMile(){ return S.cars.length>=CFG.insFleetAt?CFG.insFleet:CFG.cpm.ins }
+function fixedPerCar(c){
+  return CFG.fixedPerCarDay + (c.leased?CFG.leaseAdd:0) + (c.financed?CFG.financeDaily:0);
+}
 function syncOps(){
   const want=staffed();
   while(S.ops.length<want) S.ops.push({n:NAMES[S.ops.length%NAMES.length],fatigue:0,cars:0});
@@ -930,16 +1012,32 @@ function latency(){
 }
 
 /* ---------------- demand ---------------- */
-function winProb(m){ return clamp(1.18-0.62*m,0.05,0.97) }
+/* Riders compare you against the platform's own price. Below ~1.15x you are
+   competitive and lose almost nothing; above it you start visibly shedding
+   offers. The previous curve (1.18-0.62m) shed 44% of demand at NEUTRAL
+   pricing, which quietly broke the competition axis of the trilemma — the
+   player was punished for a choice they had not made. */
+function winProb(m){
+  return m<=1.15 ? clamp(0.97+(1.15-m)*0.06,0.05,0.99)
+                 : clamp(0.97-(m-1.15)*1.5,0.08,0.99);
+}
 let spawnAcc=0;
 function spawnRides(dt){
+  /* No feeds connected, or clocked off, means no offers. Demand does not
+     wait for you — it simply goes to someone else. */
+  const live=livePlatforms();
+  if(!S.onClock||!live.length) return;
   const h=hour();
   let rate=0;
   activeZones().forEach(function(z){ rate+=z.base*CURVES[z.p][h] });
-  spawnAcc+=rate*dt/3600;
+  /* Only the share of city demand your connected platforms actually see,
+     scaled by what your accept rate has earned you on each. */
+  let share=0;
+  live.forEach(function(p){ share+=p.share*volumeMult(p) });
+  spawnAcc+=rate*share*dt/3600;
   while(spawnAcc>=1){
     spawnAcc-=1;
-    if(S.rides.filter(function(r){return !r.car}).length>=CFG.offerCap) continue;
+    if(S.offers.length>=CFG.offerCap) continue;
     const zs=activeZones(); if(!zs.length) break;
     let tot=0; zs.forEach(function(z){tot+=z.base*CURVES[z.p][h]});
     let r=Math.random()*tot, from=zs[0];
@@ -950,11 +1048,58 @@ function spawnRides(dt){
     const base=CFG.fare.base+km*CFG.fare.perKm+mins*CFG.fare.perMin;
     const fare=base*S.fareMult;
     if(Math.random()>winProb(S.fareMult)){
-      S.d.lost++; log('Meridian','took '+from.n+' — priced out',1); continue;
+      S.d.lost++; log('Rider','chose another ride in '+from.n+' — priced out',1); continue;
     }
-    S.rides.push({id:'r'+Math.random().toString(36).slice(2,7),from:from.n,to:to.n,
-      p:p,d:d,km:km,fare:fare,wait:0,car:null});
+    /* Weighted pick of which feed this lands on. Whichever offer arrives
+       first wins, so running both platforms is what cuts idle time. */
+    let pick=live[0];
+    if(live.length>1){
+      let w=Math.random()*live.reduce(function(a,p){return a+p.share},0);
+      for(let i=0;i<live.length;i++){ w-=live[i].share; if(w<=0){ pick=live[i]; break } }
+    }
+    pick.offered++;
+    S.offers.push({id:'r'+Math.random().toString(36).slice(2,7),from:from.n,to:to.n,
+      p:p,d:d,km:km,fare:fare,wait:0,car:null,plat:pick.id,left:CFG.offerDecideSec});
   }
+}
+
+/* ---------------- offers ----------------
+   The real job is mostly evaluating offers you will not take. Declining is
+   free in the moment and expensive over a window, which is what stops
+   "cherry-pick the good fares" from being a free lunch. */
+function offerNet(o){ return o.fare*(1-platform(o.plat).cut) }
+function deadheadKm(o){
+  let best=1e9;
+  S.cars.forEach(function(c){
+    if(c.state!=='idle') return;
+    const d=dist(c.lat,c.lng,o.p[0],o.p[1]);
+    if(d<best) best=d;
+  });
+  return best===1e9?null:best;
+}
+function acceptOffer(id){
+  const o=S.offers.filter(function(x){return x.id===id})[0];
+  if(!o) return;
+  S.offers=S.offers.filter(function(x){return x!==o});
+  const p=platform(o.plat); p.accepted++;
+  S.rides.push(o);
+  if(!assign(o)){
+    /* Accepted with nothing free to serve it: the rider waits, and will
+       give up if you leave them there. */
+    log(p.n,'accepted '+o.from+' — no car free',1);
+  } else {
+    log(p.n,'accepted '+o.from+' → '+o.to+' · '+money2(offerNet(o)),0);
+  }
+  render();
+}
+function declineOffer(id,silent){
+  const o=S.offers.filter(function(x){return x.id===id})[0];
+  if(!o) return;
+  S.offers=S.offers.filter(function(x){return x!==o});
+  const p=platform(o.plat);
+  if(!silent) log(p.n,'declined '+o.from,0);
+  else { S.d.unserved++; log(p.n,'offer expired — '+o.from,1) }
+  render();
 }
 
 /* ---------------- dispatch ---------------- */
@@ -977,6 +1122,8 @@ function assign(ride){
   best.route=[[ride.p[0],ride.p[1]],[ride.d[0],ride.d[1]]];
   return true;
 }
+/* Only rides you already ACCEPTED get a car. Offers wait for your decision;
+   nothing is dispatched behind your back. */
 function autoDispatch(){
   S.rides.filter(function(r){return !r.car})
     .sort(function(a,b){return b.fare-a.fare})
@@ -1073,12 +1220,24 @@ function stepCar(c,dt){
 }
 let dispatchAcc=0;
 function step(dt){
-  const MAX=15;                       /* never integrate more than 15 sim-seconds at once */
+  const MAX=CFG.maxSubstep;
   while(dt>0 && !S.over){ const s=Math.min(MAX,dt); stepOnce(s); dt-=s }
 }
 function stepOnce(dt){
+  const wasDay=Math.floor(S.t/86400);
   S.t+=dt; syncOps();
+  if(S.onClock) S.workedSec+=dt;
+  S.billedSec+=dt;
+  /* Fixed cost lands AT MIDNIGHT, not smeared across the demand window.
+     That is the whole point: the car owes $42 for a day it spent parked. */
+  if(Math.floor(S.t/86400)>wasDay) billMidnight();
   spawnRides(dt);
+  /* Offer countdown. An offer you ignore is a decline the platform counts. */
+  if(S.offers.length){
+    S.offers.forEach(function(o){ o.left-=dt });
+    const gone=S.offers.filter(function(o){return o.left<=0});
+    gone.forEach(function(o){ declineOffer(o.id,true) });
+  }
   dispatchAcc+=dt; if(dispatchAcc>5){ dispatchAcc=0; autoDispatch() }
   S.rides.forEach(function(r){ if(!r.car) r.wait+=dt });
   const expired=S.rides.filter(function(r){return !r.car&&r.wait>CFG.rideExpire});
@@ -1086,19 +1245,86 @@ function stepOnce(dt){
     expired.forEach(function(r){ S.d.unserved++; log('Rider','gave up in '+r.from,1) });
     S.rides=S.rides.filter(function(r){return expired.indexOf(r)<0});
   }
-  S.cars.forEach(function(c){ stepCar(c,dt) });
-  /* payroll accrues whether or not cars earn */
-  const pay=S.ops.length*CFG.wage*dt/3600;
-  S.d.payroll+=pay; S.d.cost+=pay; S.cash-=pay;
-  const fix=S.cars.length*CFG.fixedPerCarDay*dt/(CFG.dayEnd-CFG.dayStart);
-  S.d.fixed+=fix; S.d.cost+=fix; S.cash-=fix;
-  /* fatigue tracks load, not just clock */
+  /* Cars only move while you are supervising them. */
+  if(S.onClock) S.cars.forEach(function(c){ stepCar(c,dt) });
+  /* No payroll in Act 1 — you are the operator, and you are unpaid. */
   const l=loadRatio();
   S.ops.forEach(function(o){ o.fatigue=clamp(o.fatigue+dt/3600*0.07*(0.5+l),0,1) });
-  if(S.t>=CFG.dayEnd) endDay();
+  if(S.cash<0) bankrupt();
 }
 
-/* ---------------- day boundary ---------------- */
+/* Fixed costs are owed per calendar day, clocked on or not. */
+function billMidnight(){
+  let fix=0;
+  S.cars.forEach(function(c){ fix+=fixedPerCar(c) });
+  S.d.fixed+=fix; S.d.cost+=fix; S.cash-=fix;
+  S.day++;
+  log('Books','midnight — '+money2(fix)+' fixed costs due',fix>0?1:0);
+}
+function bankrupt(){
+  if(S.over) return;
+  S.over=true; setSpeed(0); clockOff(true);
+  log('Books','out of cash',2);
+}
+
+/* ---------------- the shift ----------------
+   Clocking on is the only way cars earn. Clocking off gives you the report
+   that carries the whole Act 1 thesis: hours worked against hours billed. */
+function clockOn(){
+  if(S.onClock||S.over) return;
+  S.onClock=true; S.shiftNo++;
+  S.shiftStart=S.t; S.workedSec=0; S.billedSec=0;
+  newDay();
+  log('Shift','clocked on at '+hhmm(S.t),0);
+  setSpeed(1); render();
+}
+function clockOff(quiet){
+  if(!S.onClock) return;
+  S.onClock=false;
+  /* Offers do not survive a shift; the feeds go quiet when you do. */
+  S.offers=[];
+  S.cars.forEach(function(c){
+    if(c.state!=='charging'){ c.state='idle'; c.route=[]; c.ride=null; c.reached=false }
+  });
+  S.rides=[];
+  log('Shift','clocked off at '+hhmm(S.t),0);
+  setSpeed(0);
+  if(!quiet) shiftReport();
+  render();
+}
+function shiftReport(){
+  const d=S.d, net=d.gross-d.cost;
+  const workedH=S.workedSec/3600;
+  $('rp-day').textContent=S.shiftNo;
+  $('rp-next').textContent=S.shiftNo+1;
+  $('rp-body').innerHTML=
+    row('Shift length',workedH.toFixed(1)+' h')+
+    row('Rides completed',d.done)+
+    row('Fares billed',money2(d.gross))+
+    row('Platform commission',money2(-d.commission))+
+    '<div class="rp-sep"></div>'+
+    row('Energy',money2(d.energy))+
+    row('Depreciation, maintenance, insurance, software',
+        money2(d.dep+d.maint+d.ins+d.soft))+
+    row('Fixed — billed at midnight',money2(d.fixed))+
+    row('Total cost',money2(d.cost))+
+    '<div class="rp-sep"></div>'+
+    row('Miles driven',Math.round(d.miles))+
+    /* Cost per mile counts OPERATING lines only. Commission is a share of
+       revenue, not a cost of driving a mile, and summing them would flatter
+       or damn the wrong decision. */
+    row('Operating cost per mile',d.miles>1?money2((d.energy+d.dep+d.maint+d.ins+d.soft)/d.miles):'—')+
+    row('Platform take rate',d.gross>0?Math.round(d.commission/d.gross*100)+'%':'—')+
+    '<div class="rp-sep"></div>'+
+    row('<b>Net this shift</b>','<b class="'+(net<0?'neg':'pos')+'">'+money2(net)+'</b>')+
+    row('Cash on hand',money(S.cash))+
+    /* The line the whole act is built to deliver. */
+    row('Hours worked',workedH.toFixed(1)+' h')+
+    row('Hours billed',(24).toFixed(1)+' h — the car owes '+money2(fixedPerCar(S.cars[0]||{}))+' a day whether you work or not');
+  $('report').hidden=false;
+}
+
+/* ---------------- day boundary (legacy end-of-day path) ---------------- */
 function endDay(){
   S.running=false; S.over=true;
   const d=S.d, net=d.gross-d.cost;
@@ -1127,12 +1353,9 @@ function endDay(){
   $('report').hidden=false;
 }
 function row(a,b){ return '<div class="rp-row"><span>'+a+'</span><span>'+b+'</span></div>' }
-$('rp-go').addEventListener('click',function(){
-  $('report').hidden=true; S.day++; S.t=CFG.dayStart; newDay(); S.over=false; S.running=true;
-  S.ops.forEach(function(o){o.fatigue=0});
-  S.rides=[]; S.log=[];
-  S.cars.forEach(function(c){ c.earn=0; c.idleFor=0 });
-});
+/* The clock is continuous now: closing the report does not advance time or
+   reset the world. You come back to the hour you left. */
+$('rp-go').addEventListener('click',function(){ $('report').hidden=true; render() });
 
 /* ---------------- map ---------------- */
 let map=null,carLayer={},zoneLayer=[],tripLine=null;
@@ -1220,30 +1443,11 @@ function render(){
   $('buy').textContent='Buy Nova S2 — '+money(CFG.carPrice);
   $('buy').disabled=S.cash<CFG.carPrice;
 
-  /* operators */
-  const lat=latency(), l=loadRatio();
-  $('ops-cpo').textContent=S.carsPerOp.toFixed(1);
-  $('ops-lat').innerHTML=Math.round(lat)+'<small>s</small>';
-  $('ops-lat').className='';
-  if(lat>45) $('ops-lat').style.color='var(--s-attn)';
-  else if(lat>90) $('ops-lat').style.color='var(--s-crit)';
-  else $('ops-lat').style.color='';
-  $('ops-tag').textContent=S.ops.length+' on shift · load '+(l*100).toFixed(0)+'%';
-  const hb=$('hire');
-  hb.className='infoline'; hb.disabled=true;
-  hb.textContent=S.ops.length+' staffed for '+S.cars.length+' cars · '+
-    money2(S.ops.length*CFG.wage)+'/h payroll';
-  $('ops-rows').innerHTML=S.ops.map(function(o,i){
-    const mine=Math.min(S.carsPerOp,Math.max(0,busyCars()-i*S.carsPerOp));
-    const dots=[];
-    for(let k=0;k<6;k++) dots.push('<i class="'+(k<mine?(k>=S.carsPerOp?'over':'on'):'')+'"></i>');
-    return '<div class="opsrow"><div class="av">'+o.n.replace(/[^A-Z]/g,'').slice(0,2)+'</div>'+
-      '<div class="grow"><b>'+o.n+'</b><div class="sub">'+mine+' cars · fatigue '+
-      Math.round(o.fatigue*100)+'%'+(o.fatigue>.7?' · fatigued':'')+'</div>'+
-      '<div class="bar"><i style="width:'+Math.round(o.fatigue*100)+'%'+
-      (o.fatigue>.7?';background:var(--s-attn)':'')+'"></i></div></div>'+
-      '<div class="load">'+dots.join('')+'</div></div>';
-  }).join('');
+  /* The operators panel is Act 2 material — in Act 1 you ARE the operator,
+     so that panel is now Platforms and is rendered further down. Latency is
+     still computed because the incidents panel reports it: in Act 1 an
+     intervention waits on you, not on staffing. */
+  const lat=latency();
 
   /* rapid */
   $('rapid-now').innerHTML=money2(tariff(h))+'<small>/kWh</small>';
@@ -1301,14 +1505,39 @@ function render(){
   $('inc-list').innerHTML=inc;
 
   /* ride queue */
-  const waiting=S.rides.filter(function(r){return !r.car});
-  $('rq-tag').textContent=waiting.length+' waiting';
-  $('rq-rows').innerHTML=waiting.slice(0,7).map(function(r){
-    const need=socNeeded(r.km), arr=100-need;
-    const cls=arr<10?' style="color:var(--s-crit)"':arr<25?' style="color:var(--s-attn)"':'';
-    return '<tr><td class="cid">'+r.from+'</td><td class="sub">'+r.to+'</td>'+
-      '<td class="r">'+money2(r.fare)+'</td><td class="r"'+cls+'>'+Math.round(r.wait)+'s</td></tr>';
-  }).join('')||'<tr><td colspan="4" class="sub">No riders waiting.</td></tr>';
+  /* platforms */
+  $('plat-rows').innerHTML=PLATFORMS.map(function(p){
+    const ar=p.offered<5?'—':Math.round(acceptRate(p)*100)+'%';
+    const vm=volumeMult(p);
+    return '<div class="plat"><div class="plat-n">'+p.n+
+      '<small>'+Math.round(p.cut*100)+'% commission · '+Math.round(p.share*100)+'% of demand'+
+      (vm!==1?' · volume '+(vm>1?'+':'')+Math.round((vm-1)*100)+'%':'')+'</small></div>'+
+      '<span class="ar">'+ar+'</span>'+
+      '<button class="'+(p.on?'on':'')+'" data-plat="'+p.id+'">'+(p.on?'On':'Connect')+'</button></div>';
+  }).join('');
+  const live=livePlatforms();
+  $('ops-tag').textContent=live.length?live.length+' connected':'none';
+  $('plat-note').textContent=live.length
+    ? 'Accept rate drives offer volume.'
+    : 'No feeds connected — no offers will arrive.';
+
+  /* offers */
+  $('offer-list').innerHTML=S.offers.length?S.offers.slice(0,CFG.offerCap).map(function(o){
+    const dh=deadheadKm(o), p=platform(o.plat);
+    const mins=Math.round(o.km/CFG.speedKmh*60);
+    return '<div class="offer'+(o.left<15?' warn':'')+'">'+
+      '<div class="offer-top"><span class="pn">'+p.n+'</span><b>'+o.from+'</b>'+
+        '<span class="sub">→ '+o.to+'</span>'+
+        '<span class="net">'+money2(offerNet(o))+'</span></div>'+
+      '<div class="offer-rt">'+o.km.toFixed(1)+' km · '+mins+' min · '+
+        (dh===null?'no car free':dh.toFixed(1)+' km deadhead')+
+        ' · '+money2(o.fare)+' fare less '+Math.round(p.cut*100)+'%</div>'+
+      '<div class="offer-act"><button class="acc" data-acc="'+o.id+'">Accept</button>'+
+        '<button data-dec="'+o.id+'">Decline</button>'+
+        '<span class="cd">'+Math.ceil(o.left)+'s</span></div></div>';
+  }).join(''):'<div class="sub">'+(S.onClock?(live.length?'Waiting for offers.':'Connect a platform.'):'Clocked off.')+'</div>';
+
+  $('rq-tag').textContent=S.offers.length+' offers';
   $('zone-chips').innerHTML=ZONES.map(function(z,i){
     return '<button class="chip'+(z.on!==false?' on':'')+'" data-zone="'+i+'">'+z.n+'</button>';
   }).join('');
@@ -1332,11 +1561,12 @@ function render(){
       $('m-drop').textContent=sel.state==='charging'?'charging':'idle '+Math.round(sel.idleFor/60)+'m';
     }
   }
-  const top=waiting.slice().sort(function(a,b){return b.fare-a.fare})[0];
-  $('cta-main').textContent=top?('Dispatch to '+top.from):'No riders waiting';
+  const top=S.offers.slice().sort(function(a,b){return offerNet(b)-offerNet(a)})[0];
+  $('cta-main').textContent=top?('Accept '+top.from+' · '+money2(offerNet(top)))
+    :(S.onClock?'No offers':'Clocked off');
   $('cta').disabled=!top||!idle;
   $('cta-surge').textContent=S.fareMult.toFixed(1)+'× fare';
-  $('cta-wait').textContent=waiting.length+' waiting · '+idle+' idle';
+  $('cta-wait').textContent=S.offers.length+' offers · '+idle+' idle';
 
   /* live feed */
   $('live-list').innerHTML=S.log.slice(0,14).map(function(e){
@@ -1344,6 +1574,10 @@ function render(){
       '</b><span>'+e.what+'</span><i>'+hhmm(e.t)+'</i></div>';
   }).join('')||'<div class="t-ev"><span>Waiting for the first ride.</span></div>';
 
+  $('tb-shift').textContent=S.onClock?('On · '+(S.workedSec/3600).toFixed(1)+' h'):'Off';
+  const cb=$('clock');
+  cb.textContent=S.onClock?'Clock off':'Clock on';
+  cb.className='ghost clockbtn'+(S.onClock?' on':'');
   $('fare-val').textContent=S.fareMult.toFixed(1)+'×';
   $('cpo-val').textContent=S.carsPerOp;
 }
@@ -1353,12 +1587,12 @@ document.querySelectorAll('.seg button').forEach(function(b){
   b.addEventListener('click',function(){ setSpeed(parseFloat(b.dataset.speed)) });
 });
 $('spd').addEventListener('input',function(){
-  setSpeed([0,1,2,4][parseInt(this.value,10)]);
+  setSpeed(CFG.speeds[parseInt(this.value,10)]);
 });
 $('fare-up').addEventListener('click',function(){S.fareMult=clamp(S.fareMult+0.1,0.7,1.6);render()});
 $('fare-dn').addEventListener('click',function(){S.fareMult=clamp(S.fareMult-0.1,0.7,1.6);render()});
-$('cpo-up').addEventListener('click',function(){S.carsPerOp=clamp(S.carsPerOp+1,1,8);syncOps();render()});
-$('cpo-dn').addEventListener('click',function(){S.carsPerOp=clamp(S.carsPerOp-1,1,8);syncOps();render()});
+$('cpo-up').addEventListener('click',function(){S.carsPerOp=clamp(S.carsPerOp+1,1,20);syncOps();render()});
+$('cpo-dn').addEventListener('click',function(){S.carsPerOp=clamp(S.carsPerOp-1,1,20);syncOps();render()});
 $('buy').addEventListener('click',function(){
   if(S.cash<CFG.carPrice) return;
   S.cash-=CFG.carPrice; addCar('S2'); syncOps();
@@ -1374,10 +1608,23 @@ $('zone-chips').addEventListener('click',function(e){
   const z=ZONES[parseInt(b.dataset.zone,10)];
   z.on=z.on===false; render();
 });
+/* CTA accepts the best-paying offer, net of commission. */
 $('cta').addEventListener('click',function(){
-  const w=S.rides.filter(function(r){return !r.car}).sort(function(a,b){return b.fare-a.fare})[0];
-  if(w&&assign(w)) log('Dispatch','manual — '+w.from,0);
+  const best=S.offers.slice().sort(function(a,b){return offerNet(b)-offerNet(a)})[0];
+  if(best) acceptOffer(best.id);
+});
+$('clock').addEventListener('click',function(){ S.onClock?clockOff():clockOn() });
+$('plat-rows').addEventListener('click',function(e){
+  const b=e.target.closest('button[data-plat]'); if(!b) return;
+  const p=platform(b.dataset.plat); p.on=!p.on;
+  log(p.n,p.on?'connected':'disconnected',0);
   render();
+});
+$('offer-list').addEventListener('click',function(e){
+  const a=e.target.closest('button[data-acc]');
+  if(a) return acceptOffer(a.dataset.acc);
+  const d=e.target.closest('button[data-dec]');
+  if(d) return declineOffer(d.dataset.dec);
 });
 document.querySelectorAll('.t-apps .t-app').forEach(function(b){
   b.addEventListener('click',function(){
@@ -1418,14 +1665,14 @@ tbtn.addEventListener('click',function(){
    ZONES[i].on and spawnAcc are player/sim state living outside S,
    so they ride along explicitly.
    ============================================================ */
-const SAVE_V=2;
+const SAVE_V=3;
 const SLOTS=['slot1','slot2','slot3'];
 
 /* Build version, shown in the top bar and stamped into every save.
    SAVE_V above is the STATE SHAPE version and moves only when the
    snapshot format changes — the two are deliberately independent, so
    shipping 0.9.0 does not invalidate 0.8.0 saves. */
-const VERSION='0.8.0';
+const VERSION='0.9.0';
 
 function snapshot(){
   return {
@@ -1435,6 +1682,12 @@ function snapshot(){
       t:S.t, day:S.day, cash:S.cash, fareMult:S.fareMult, carsPerOp:S.carsPerOp,
       sel:S.sel, seq:S.seq, safety:S.safety, permit:S.permit,
       over:S.over, d:S.d,
+      onClock:S.onClock, shiftStart:S.shiftStart, workedSec:S.workedSec,
+      billedSec:S.billedSec, shiftNo:S.shiftNo,
+      offers:S.offers,
+      platforms:PLATFORMS.map(function(p){
+        return {id:p.id,on:p.on,offered:p.offered,accepted:p.accepted};
+      }),
       /* strip the two reference fields, keep everything else verbatim */
       cars:S.cars.map(function(c){
         const o={}; for(const k in c){ if(k!=='ride'&&k!=='ch') o[k]=c[k] }
@@ -1460,6 +1713,16 @@ function migrate(save){
     if(typeof s.spawnAcc!=='number') s.spawnAcc=0;
     save.v=2;
   }
+  if(save.v<3){
+    /* v2 predates Act 1: no shift model, no platforms, and its economy was
+       $60k/3 cars. The world is not convertible, so start the shift model
+       clean rather than pretend. Cash, cars and clock survive. */
+    s.onClock=false; s.workedSec=0; s.billedSec=0; s.shiftNo=0;
+    s.offers=[];
+    s.platforms=[{id:'hitchr',on:false,offered:0,accepted:0},
+                 {id:'zipp',on:false,offered:0,accepted:0}];
+    save.v=3;
+  }
   return save;
 }
 
@@ -1471,6 +1734,13 @@ function restore(save){
   S.carsPerOp=s.carsPerOp; S.seq=s.seq; S.safety=s.safety;
   S.permit=s.permit; S.over=!!s.over; S.d=s.d;
   S.ops=s.ops||[]; S.log=s.log||[];
+  S.onClock=!!s.onClock; S.shiftStart=s.shiftStart||0;
+  S.workedSec=s.workedSec||0; S.billedSec=s.billedSec||0; S.shiftNo=s.shiftNo||0;
+  S.offers=s.offers||[];
+  if(s.platforms) s.platforms.forEach(function(sp){
+    const p=platform(sp.id);
+    if(p){ p.on=!!sp.on; p.offered=sp.offered||0; p.accepted=sp.accepted||0 }
+  });
   S.rides=(s.rides||[]).map(function(r){ return r });
 
   /* rebuild cars, then re-point the two reference fields */
@@ -1516,7 +1786,7 @@ function setSpeed(v){
   document.querySelectorAll('.seg button').forEach(function(o){
     o.setAttribute('aria-pressed',String(parseFloat(o.dataset.speed)===v));
   });
-  const sl=$('spd'); if(sl) sl.value=String([0,1,2,4].indexOf(v));
+  const sl=$('spd'); if(sl) sl.value=String(CFG.speeds.indexOf(v));
 }
 
 /* ---- store: async by design, so a Cloudflare Worker can replace it ----
@@ -1721,6 +1991,14 @@ setInterval(function(){
 })();
 
 window.DH=S;
+/* Act 1 internals, exposed for the headless test harness and for poking at
+   the economy from the console. Read-only by convention. */
+window.DH_ACT1={CFG:CFG,PLATFORMS:PLATFORMS,platform:platform,
+  livePlatforms:livePlatforms,acceptRate:acceptRate,volumeMult:volumeMult,
+  winProb:winProb,offerNet:offerNet,deadheadKm:deadheadKm,
+  acceptOffer:acceptOffer,declineOffer:declineOffer,
+  clockOn:clockOn,clockOff:clockOff,shiftReport:shiftReport,
+  fixedPerCar:fixedPerCar,insPerMile:insPerMile,setSpeed:setSpeed};
 window.DH_SAVE={snapshot:snapshot,restore:restore,migrate:migrate,VERSION:VERSION,
   Store:Store,LocalStore:LocalStore,V:SAVE_V,SLOTS:SLOTS,
   refresh:renderSaves,toast:toast,autosave:autosave,open:openSaves};
