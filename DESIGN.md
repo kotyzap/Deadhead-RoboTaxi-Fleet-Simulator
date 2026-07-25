@@ -407,7 +407,7 @@ Clearance still owed before any public release: USPTO TESS, EUIPO, Steam, itch.i
 
 | Real thing | Deadhead name |
 |---|---|
-| Vehicle marque | **Nova** — Nova S2 (5-seat sedan), Nova P1 (purpose-built 2-seat pod) |
+| Vehicle marque | **Real Teslas** — Cybercab (2-seat, purpose-built), Model 3, Model Y. Superseded the fictional Nova marque; see §2.5 |
 | Charging network | **Rapid** |
 | Incumbent rival | **Meridian** |
 | Price-cutting rival | **Halo** |
@@ -434,7 +434,7 @@ protectable. Names, logos and typefaces are.
 
 ## 10. Open items
 
-- Whether the Nova P1 (2-seat pod: cheaper per mile, no manual controls, useless for airport luggage runs) enters as a distinct vehicle class in the full game.
+- **Resolved in 0.11.0.** The 2-seat pod shipped as the Cybercab and is a distinct class: cheapest per mile, smallest pack so it charges most often, and two seats. Seats are recorded but inert until group and airport rides exist — that is the open part now.
 - The Austin scenario capping near 17 cars is faithful to reality but may feel like an anticlimactic campaign ceiling. Decide during prototype tuning whether to hold the line or let the fiction diverge.
 - Icon set: needs a freely licensed outline family (Tabler or Lucide).
 

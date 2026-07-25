@@ -17,7 +17,7 @@ states intent, this document states rules and numbers.
 terrible place to *begin*. There is nothing to learn from, no reason the systems matter,
 and the trilemma is abstract from the first frame.
 
-The game now opens **one car and $1,000**, working for someone else's app. Three
+The game now opens on **$3,000 and no car**, working for someone else's app. Three
 consequences, all good:
 
 1. **Every system is introduced by need, not by menu.** You meet the operator system
@@ -66,38 +66,97 @@ damage than it looked.
 
 | | |
 |---|---|
-| Cash | **$1,000** |
-| Fleet | **One Nova S2**, owned outright, 34,000 mi |
+| Cash | **$3,000** |
+| Fleet | **None.** The first decision is which car, and how you hold it |
 | Platforms | None connected |
-| Permit | Supervised commercial (inherited with the car) |
+| Permit | Supervised commercial |
 | Geofence | Downtown core, Rainey St, UT campus |
 | Insurance | Gig-rideshare policy, $500 deductible |
 | Rating | Unrated on both platforms |
 
-$1,000 against a **$42/day fixed cost** is twenty-three days of runway if you never clock
-on. This is deliberate and should be stated plainly by the narrator: the first shift has to
-make money. There is no settling-in period, because there wasn't one for the people this
-game is about.
+$3,000 buys **none** of the three vehicles outright. That is the point. The opening move is
+not *which car* — the cards make that comparison easy — it is *how you hold the asset*, and
+every option is a different way to be exposed:
 
-**On the $42.** The prototype charges $70/car/day, which bundles a lease. Your car is owned
-outright, so it decomposes:
+| | Up front | Per day | What you own at the end |
+|---|---|---|---|
+| **Rent** | nothing | highest | nothing |
+| **Finance** | a deposit | middling | the car |
+| **Buy** | everything | lowest | the car |
+
+Renting is the only option that leaves the balance untouched, which makes it the obvious
+first move and the most expensive one over a week. Discovering that is the first lesson the
+game teaches, and it teaches it with arithmetic rather than a warning.
+
+Financing a Cybercab costs $1,500 down and leaves $1,500 — close to the old fixed start,
+but chosen. A player who rents instead keeps $3,000 and pays $73/day against $42.
+
+**On the $42.** The base is what you owe whether or not you clock on:
 
 | Component | Per car per day |
 |---|---|
-| Base — insurance minimum, permit fees, platform subscription, parking, autonomy licence | **$42** |
-| *plus* lease, if leased | $28 → $70 total |
+| Base — insurance minimum, permit fees, platform subscription, parking, autonomy licence | **$42** (Cybercab) |
+| *plus* rental day rate | $31 → $73 total |
 | *plus* loan payment, if financed (§8.1) | $13.60 → $55.60 total |
 | *plus* nothing, if owned outright | **$42** |
 
-Financing is $14.40/day cheaper than leasing, which is what the down payment buys you
-besides the car. It is also why the prototype's flat $70 needs replacing rather than
-reinterpreting.
+The base is per vehicle, not global: a Model 3 is $48 and a Model Y $52, because a dearer
+car costs more to insure and depreciate. See §3.1a.
 
-### 3.2 Why the car is already yours
+### 3.1a The catalogue
 
-You bought it before the game started, which is why you have $1,000 and not $19,000. The
-car is the inheritance; the cash is what's left. This avoids opening the game on a
-purchase decision the player has no information to make.
+Three vehicles, all of which drive themselves. **Autonomy is the setting, not a spec you
+shop for** — it is never a difference between two cards. The Cybercab simply has no
+steering wheel to remove.
+
+| | **Cybercab** | **Model 3** | **Model Y** |
+|---|---|---|---|
+| Battery | 48 kWh | 75 kWh | 75 kWh |
+| Motor | 163 kW | 208 kW | 208 kW |
+| EPA range | 300 mi | 350 mi | 320 mi |
+| Seats | 2 | 5 | 5 |
+| Consumption | 0.155 kWh/km | 0.19 | 0.21 |
+| Buy | $19,500 | $26,000 | $29,000 |
+| Finance | $1,500 down · $13.60/day | $2,200 · $18.10 | $2,400 · $20.20 |
+| Rent | $31/day | $39/day | $44/day |
+| Base fixed | $42/day | $48/day | $52/day |
+
+Technical figures are the published ones; the Cybercab's come from its EPA filing, and it
+is really deployed in Austin, which is where this game is set. **Prices are not MSRP.** They
+are balanced against a fare model where a ride nets about $8 — real sticker prices would
+need the whole economy rescaling, and that is a deliberate deferral, not an oversight.
+
+Every spec feeds a system that already exists, so the choice is mechanical rather than
+cosmetic:
+
+- **Battery and consumption** drive `socNeeded`, `drive` and charging. The Cybercab is the
+  cheapest to run *and* spends the most time plugged in: 50 km costs it 18.2% of its pack
+  against a Model 3's 14.3%. Cheap capital, expensive attention — which is the trilemma
+  again, expressed in hardware.
+- **Seats** are recorded but inert until group and airport rides exist (§14).
+
+### 3.2 Why you choose the car
+
+**Supersedes the original §3.2**, which handed the player a car outright on the grounds that
+opening on a purchase decision asks them to judge $19,000 against a daily rate with no
+basis for the comparison.
+
+That objection was right about *purchase* and wrong about *acquisition*. Buying is not on
+the table at $3,000, so the actual decision is rent-versus-finance — a choice between two
+clearly-stated daily numbers, which a player can read off the cards before committing. The
+original design avoided the decision; this one makes it small enough to make well.
+
+What it buys the game:
+
+- **The cost structure arrives on turn one**, as a choice the player made rather than a
+  number they inherited. Beat 2 can say "forty-two a day is the floor" and mean it.
+- **The catalogue earns its place.** A vehicle list you consult once, for your second car,
+  is a menu. One you must read to start is a mechanic.
+- **It creates the first regret.** Renting is correct on day one and wrong by day five.
+  A game about margin should let you feel that.
+
+What it costs: the opening is one click longer, and a player who rents without reading may
+not understand why they are poorer on day five. That is what Ray's beat 2 is for.
 
 ### 3.3 You are the remote operator
 
@@ -199,7 +258,7 @@ Riders rate each completed trip. The score is driven by things the player contro
 | 4.20 – 4.40 | Final warning; no surge offers |
 | < 4.20 | **Deactivated 3 game days.** Fixed costs continue. |
 
-Deactivation from Hitchr while running Hitchr-only is a near-certain loss with $1,000 on
+Deactivation from Hitchr while running Hitchr-only is a near-certain loss with a thin balance on
 hand. That is the argument for connecting both platforms, and it should be learned the
 hard way rather than told.
 
@@ -597,7 +656,7 @@ service until you send it to clean ($25, 20 min). Continuing to take rides while
 tanks cleanliness ratings. Teaches that revenue and rating pull in opposite directions.
 
 Collision exists but is rare (~1 per 900 rides) and mostly present as a threat: the $500
-deductible against $1,000 cash is genuinely frightening, which makes the opening
+deductible against a $1,500 balance is genuinely frightening, which makes the opening
 insurance choice — $500 deductible at $0.11/mi, or $250 at $0.14/mi — a real decision on
 turn one rather than a settings screen.
 
@@ -633,7 +692,7 @@ played casually** — an act, not a second job.
 
 The offer is a trap in the honest sense: it is correct to take, and it removes your margin
 for error. Two cars means **$97.60/day fixed** ($42 + $42 + $13.60) before you've moved, and
-the $1,000 you started the game with is now a $200 cushion against a doubled daily bill. The
+the cash you had left after acquiring the first car is now a thin cushion against a doubled daily bill. The
 mandatory reserve is the lender protecting itself, not you.
 
 ### 8.2 The hiring gate
@@ -776,32 +835,43 @@ Placement and behaviour:
 
 ### 9.3 Act 1 beat script
 
-Thirteen beats, all triggered by game state rather than a timer, so the tutorial follows the
+**Fourteen** beats, all triggered by game state rather than a timer, so the tutorial follows the
 player rather than the reverse. Ray never blocks the clock (§9.2) — at 1:1 there is room for
 him between offers, which is the whole reason a real-time game can afford a narrator at all.
 
 | # | Trigger | Beat | Spotlight |
 |---|---|---|---|
-| 1 | First clock-on, paused | Who he is. One car, a thousand dollars, forty-two a day whether you turn a wheel or not. Twenty-three days of nothing. Go. | Cash balance |
-| 2 | Card 1 dismissed | The car can't earn until someone's sending it rides. Two apps will. Neither is your friend. | Platforms app in dock |
-| 3 | First platform connected | Three numbers on every offer. Charge when you arrive, what you actually get paid, and how far you drive empty first. Watch the third one. | Offer card metric row |
-| 4 | First offer appears | Forty-five seconds to decide. That's not them being generous, that's them stopping you doing the arithmetic. Do it anyway. | Offer countdown |
-| 5 | First ride completed | Ten eighty on the meter, eight ten in your pocket. That's the deal. It doesn't improve. | Books app |
-| 6 | Deadhead over 3 km, while the car is driving it | Watch that. Six minutes, nobody paying, and you'll do it a dozen times today. We called it deadheading. Killed more cabbies than bad drivers did. | The moving car |
-| 7 | First surge ≥ 1.4× | Surge means everyone's stranded at once. Take it. Raise your own multiplier too — but not past about 1.15, or they'll route around you. | Pricing quick-set |
-| 8 | First idle stretch over 4 real minutes | Most of this job is sitting. I did thirty-one years of sitting. You can speed the clock up — just don't get clever and speed through a peak. | Speed control |
-| 9 | SoC first hits 28% | Twenty-three minutes on a charger. Yours, not the car's. Do it at four in the morning when power's cheap and nobody's going anywhere. Not at six in the evening. | Charger pins + minutes-to-85% |
-| 10 | First blocked car | Somebody's got it wedged. In a big outfit a room full of people watch for that. Right now the room is you, and you're free. Remember that. | Urgent alert |
-| 11 | First clock-off | Read the whole thing, not just the bottom line. Cost per mile tells you how hard the car worked. It isn't what you're paid. Don't chase it. | Shift report cost-per-mile row |
-| 12 | Rating drops below 4.70, or first cancellation | They're scoring you. Two bad weeks and they switch you off, and the forty-two a day doesn't switch off with you. Run both apps. | Rating readout |
-| 13 | 10 shifts logged, or cash ≥ $1,700 | You worked six hours. The car was billed for twenty-four. Your margin was you, sitting there for free — and there's only one of you. Second car doesn't fix that. A second pair of eyes does. | Hours idle vs. worked, on the report |
+| 1 | Garage opens on a new fleet, clock stopped | Who he is. Three thousand dollars and no car — you can't buy one outright on that, so you'll rent or put money down. Rent costs nothing today and the most every day after. | The vehicle cards |
+| 2 | Card 1 dismissed | Whatever you pick, forty-two a day is the floor — before rent, before finance, before a wheel turns. Do the arithmetic before you sign, not after. | Cash balance |
+| 3 | A car is in service | The car can't earn until someone's sending it rides. Two apps will. Neither is your friend. | Platforms panel |
+| 4 | First platform connected | Three numbers on every offer. What's on the meter, what you actually get paid, and how far you drive empty to reach them. Watch the third one. | Offer card metric row |
+| 5 | First offer appears | Forty-five seconds to decide. That's not them being generous, that's them stopping you doing the arithmetic. Do it anyway. | Offer countdown |
+| 6 | First ride completed | Ten eighty on the meter, eight ten in your pocket. That's the deal. It doesn't improve. | Books app |
+| 7 | Deadhead over 3 km, while the car is driving it | Watch that. Six minutes, nobody paying, and you'll do it a dozen times today. We called it deadheading. Killed more cabbies than bad drivers did. | The moving car |
+| 8 | First surge ≥ 1.4× | Surge means everyone's stranded at once. Take it. Raise your own multiplier too — but not past about 1.15, or they'll route around you. | Pricing quick-set |
+| 9 | First idle stretch over 4 real minutes | Most of this job is sitting. I did thirty-one years of sitting. You can speed the clock up — just don't get clever and speed through a peak. | Speed control |
+| 10 | SoC first hits 28% | Twenty-three minutes on a charger. Yours, not the car's. Do it at four in the morning when power's cheap and nobody's going anywhere. Not at six in the evening. | Charger pins + minutes-to-85% |
+| 11 | First blocked car | Somebody's got it wedged. In a big outfit a room full of people watch for that. Right now the room is you, and you're free. Remember that. | Urgent alert |
+| 12 | First clock-off having completed a ride | Read the whole thing, not just the bottom line. Cost per mile tells you how hard the car worked. It isn't what you're paid. Don't chase it. | Shift report cost-per-mile row |
+| 13 | Rating drops below 4.70, or first cancellation | They're scoring you. Two bad weeks and they switch you off, and the forty-two a day doesn't switch off with you. Run both apps. | Rating readout |
+| 14 | Three shifts logged | You worked six hours. The car was billed for twenty-four. Your margin was you, sitting there for free — and there's only one of you. Second car doesn't fix that. A second pair of eyes does. | Hours idle vs. worked, on the report |
 
-Beat 13 is the thesis of the game and should be the best-written 45 words in it. Note that
+**Two beats were added at the front** because the player no longer starts with a car: beat 1
+introduces the acquisition decision and beat 2 names the floor cost before they commit to
+it. Everything from the old beat 2 onward shifted down by one.
+
+**Beat 14's trigger changed.** The original was "10 shifts logged, or cash ≥ $1,700",
+written when the game started you on $1,000. At a $3,000 start the money half was true on
+turn one, and the thesis fired before the player had worked an hour — the closing argument
+delivered as an opening. It is now three logged shifts, which cannot be satisfied by
+standing still.
+
+Beat 14 is the thesis of the game and should be the best-written 45 words in it. Note that
 it points at the **hours idle** line, not the financing offer: the reveal is not "buy another
 car", it is "you are the bottleneck." The financing offer is what the player reaches for
 next, and reaching for it should feel slightly like a mistake.
 
-Beat 8 is the one that earns real time its keep. A narrator who acknowledges the boredom —
+Beat 9 is the one that earns real time its keep. A narrator who acknowledges the boredom —
 and who did thirty-one years of it — converts dead air from a design flaw into the subject.
 
 ### 9.4 What the tutorial deliberately does not explain
@@ -815,7 +885,7 @@ Left for the player to find, because being told ruins them:
 - That the fixed $42/day, not driving, is most of what a mile costs
 - That standing orders (§5.2c) are the job description you'll hire against in Act 2
 
-Ray warns against chasing cost per mile in beat 11 without explaining why. A player who
+Ray warns against chasing cost per mile in beat 12 without explaining why. A player who
 works the trough to flatter that number and earns less has learned the lesson properly.
 
 ---
@@ -850,18 +920,19 @@ Reconciled with `deadhead.html`'s `CFG`. Bold entries are new or changed for Act
 | `maxSubstep` | **15 sim-sec** | Timestep fix — currently a hardcoded local `const MAX=15` in `step()`, not a CFG key. Promote it, and do not regress |
 | **`shiftModel`** | **clock on / off** | Game clock persists across sessions; cars earn only while clocked on in Act 1 (§5.2) |
 | `dayStart` / `dayEnd` | 06:00 / 24:00 | Now the *demand* window, not the session length |
-| **`startCash`** | **1000** | was 60000 |
-| **`startCars`** | **1** | was 3 |
-| `carPrice` | 18000 | Nova S2, owned outright at start |
-| **`downPayment`** | **1500** | 8.3%; was 2500 before real time (§8.1) |
+| **`startCash`** | **3000** | was 1000. Buys no vehicle outright — see §3.1 |
+| **`startCars`** | **0** | was 1. You choose and acquire it (§3.1a) |
+| **`carPrice`** | **per vehicle** | 19,500 / 26,000 / 29,000. The flat 18000 is gone |
+| **`rentDaily`** | **31 / 39 / 44** | Rent adds this to the base; you build no equity |
+| **`downPayment`** | **1500 / 2200 / 2400** | Per vehicle; was a single 1500 |
 | **`financeReserve`** | **200** | Minimum cash the lender requires you to keep |
-| **`financeDaily`** | **13.60** | $16,500, 48 mo @ 9.4% = $413.75/mo |
+| **`financeDaily`** | **13.60 / 18.10 / 20.20** | Per vehicle |
 | `fare.base` / `perKm` / `perMin` | 2.60 / 1.05 / 0.22 | |
 | **`commission`** | **Hitchr 0.25, Zipp 0.15** | was flat 0.20 |
-| **`fixedPerCarDay`** | **42 base** | was flat 70. +28 leased, +13.60 financed, +0 owned (§3.1). Accrues at midnight, clocked on or not |
+| **`fixedPerCarDay`** | **42 / 48 / 52** | Per vehicle base. Plus rent or finance (§3.1). Accrues at midnight, clocked on or not |
 | `cpm.dep` / `maint` / `soft` | 0.11 / 0.04 / 0.03 | |
 | **`cpm.ins`** | **0.11 gig → 0.08 fleet at 3+ cars** | was flat 0.08 |
-| `battery` / `kwhPerKm` / `heatPenalty` | 75 kWh / 0.19 / 1.13 | Austin summer; ≈349 km range |
+| **`battery`** / **`kwhPerKm`** | **per vehicle** | 48/0.155, 75/0.19, 75/0.21. `heatPenalty` 1.13 stays global |
 | `chargeAt` / `chargeTo` / `reserveSoc` | 28% / 85% / 12% | Now **standing-order defaults** (§5.2c), player-editable |
 | `chargeKW` | 150 peak, ~110 avg | 28→85% = **23 real minutes** |
 | **`speedKmh`** | **30** | was 34. Downtown average; makes the 5.5 km trip **11.0 real min**, matching §6.1's fare input |
@@ -986,6 +1057,28 @@ This document supersedes parts of `DESIGN.md`, which has not been updated:
 ---
 
 ## 14. Open items
+
+### New in 0.11.0
+
+- **Real prices versus the fare model.** Card prices ($19,500–$29,000) are balanced for a
+  game where a ride nets ~$8. Real MSRPs are roughly 50% higher and would need the fare
+  model, the shift length, or both rescaled. Deliberately deferred — but the cards now
+  invite the comparison, so somebody will notice.
+- **Seats are inert.** The Cybercab's two seats against five is recorded and shown on the
+  card, but nothing in the sim asks for more than one rider. Until group or airport rides
+  exist, the Cybercab's only real cost is its 48 kWh pack. That makes it close to
+  strictly-best at present, which is a balance problem the catalogue created.
+- **Rent has no exit.** You can rent a car but not hand it back, so the option that should
+  be flexible is currently just expensive. `hold` is stored per car, so returning one is a
+  small change — it simply has no UI yet.
+- **Whether progressive disclosure fights the diegesis.** A car's console does not grey out
+  its own radio. The locks teach well and read as a game convention rather than a real
+  dashboard, which is a small break with DESIGN.md §2.1. Live with it or find a diegetic
+  framing (a permit tier? an app not yet installed?).
+- **Ratings still do not exist**, so beat 13 rides on the cancellation half of its trigger
+  and the "Rating readout" spotlight has nothing to point at. Unchanged from 0.10.0.
+
+### Carried over
 
 - **Ray's ending.** He should stop texting at some point in Act 2, and the reason matters.
   Undecided.
