@@ -568,6 +568,41 @@ tr[data-car].on td{background:var(--inset)}
   background:transparent;color:var(--text);font:inherit;font-size:14px;cursor:pointer}
 .rs-btns button.pri{background:var(--accent);border-color:var(--accent);color:#fff}
 
+/* ---------------- Ray: tutorial messages + spotlight ----------------
+   §9.2 — an opaque card in the one corner nothing important occupies, so
+   it physically cannot cover its own spotlight target. Never modal. */
+#ray{position:fixed;left:18px;bottom:122px;z-index:70;width:320px;
+  background:var(--panel-solid);border:1px solid var(--brd);border-radius:12px;
+  padding:18px 20px 14px;box-shadow:none}
+#ray[hidden]{display:none}
+#ray .who{display:flex;align-items:baseline;gap:7px;margin-bottom:8px}
+#ray .who b{font-size:12.5px;font-weight:500;letter-spacing:.02em}
+#ray .who span{font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--text-4)}
+#ray .body{font-size:13px;line-height:1.5;color:var(--text-2)}
+#ray .foot{display:flex;align-items:center;gap:8px;margin-top:14px}
+#ray-go{flex:1;height:34px;border:0;border-radius:var(--r-ctl);background:var(--accent);
+  color:#fff;font:inherit;font-size:12.5px;cursor:pointer;display:flex;
+  align-items:center;justify-content:center;gap:8px}
+#ray-go small{opacity:.75;font-size:11px}
+#ray-skip{height:34px;padding:0 11px;border:1px solid var(--brd-2);border-radius:var(--r-ctl);
+  background:transparent;color:var(--text-3);font:inherit;font-size:11.5px;cursor:pointer}
+#ray-skip:hover{color:var(--text)}
+
+/* Spotlight: a ring on the target and everything else dimmed 25%. An arrow
+   would have to point across the screen; a ring does not move. */
+body.dimmed .app{filter:brightness(.75)}
+.spotlight{position:relative;z-index:71;box-shadow:0 0 0 2px var(--accent);
+  border-radius:6px;filter:none!important}
+body.dimmed .spotlight{filter:brightness(1.33)}
+
+/* Messages app — every beat stays readable, so nothing important is said
+   only once (§9.2). */
+.msg{border-bottom:1px solid var(--brd);padding:9px 0;font-size:12px;line-height:1.5;
+  color:var(--text-2)}
+.msg:last-child{border-bottom:0}
+.msg b{display:block;font-size:10px;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--text-4);font-weight:500;margin-bottom:3px}
+
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -590,7 +625,7 @@ tr[data-car].on td{background:var(--inset)}
     <div class="tb-item"><label>Shift</label><b id="tb-shift">Off</b></div>
     <div class="spacer"></div>
     <button class="ghost clockbtn" id="clock">Clock on</button>
-    <div class="seg" role="group" aria-label="Time speed">
+    <div class="seg" id="seg" role="group" aria-label="Time speed">
       <button data-speed="0" aria-pressed="false" aria-label="Pause"><svg class="ms" style="font-size:15px;vertical-align:-3px"><use href="#i-pause"/></svg></button>
       <button data-speed="1" aria-pressed="true">1&times;</button>
       <button data-speed="4" aria-pressed="false">4&times;</button>
@@ -770,6 +805,11 @@ tr[data-car].on td{background:var(--inset)}
         </section>
 
         <section class="panel">
+          <div class="p-head"><svg class="ms"><use href="#i-call"/></svg><h2>Messages</h2><span class="tag" id="msg-tag">0</span></div>
+          <div class="p-body" id="pb-msg"><div id="msg-list"></div></div>
+        </section>
+
+        <section class="panel">
           <div class="p-head"><svg class="ms"><use href="#i-route"/></svg><h2>Offers</h2><span class="tag" id="rq-tag">0 waiting</span></div>
           <div class="p-body" id="pb-rq">
             <div class="chips" id="zone-chips"></div>
@@ -787,6 +827,16 @@ tr[data-car].on td{background:var(--inset)}
     <h3>Shift <span id="rp-day">1</span> complete</h3>
     <div id="rp-body"></div>
     <button id="rp-go">Close <span id="rp-next" hidden></span></button>
+  </div>
+</div>
+
+<!-- Ray. Bottom-left, above the dock, never modal, never over the car rail. -->
+<div id="ray" hidden>
+  <div class="who"><b>Ray Salcido</b><span>Messages</span></div>
+  <div class="body" id="ray-text"></div>
+  <div class="foot">
+    <button id="ray-go">Got it <small id="ray-count"></small></button>
+    <button id="ray-skip">Skip</button>
   </div>
 </div>
 
@@ -942,6 +992,10 @@ const S={
      and billed for all of them, which is the most accurate thing this game
      says about gig work, and it arrives as arithmetic, not a speech. */
   onClock:false, shiftStart:0, workedSec:0, billedSec:0, shiftNo:0,
+  surge:1.0,
+  /* Tutorial progress. Beats are recorded by number so a save resumes the
+     script where it left off rather than replaying it. */
+  ray:{seen:[],cur:null,skipped:false,idleFor:0},
   offers:[],          /* undecided offers awaiting accept/decline */
   d:null
 };
@@ -1046,7 +1100,7 @@ function spawnRides(dt){
     const p=jit(from), d=jit(to), km=Math.max(1.1,dist(p[0],p[1],d[0],d[1]));
     const mins=km/CFG.speedKmh*60;
     const base=CFG.fare.base+km*CFG.fare.perKm+mins*CFG.fare.perMin;
-    const fare=base*S.fareMult;
+    const fare=base*S.fareMult*S.surge;
     if(Math.random()>winProb(S.fareMult)){
       S.d.lost++; log('Rider','chose another ride in '+from.n+' — priced out',1); continue;
     }
@@ -1100,6 +1154,19 @@ function declineOffer(id,silent){
   if(!silent) log(p.n,'declined '+o.from,0);
   else { S.d.unserved++; log(p.n,'offer expired — '+o.from,1) }
   render();
+}
+
+/* ---------------- surge ----------------
+   Model-generated, distinct from the player's own fareMult. Rises when
+   demand outruns the cars available to serve it, which is what makes beat 7
+   ("surge means everyone's stranded at once") true rather than decorative. */
+function updateSurge(dt){
+  const idle=S.cars.filter(function(c){return c.state==='idle'}).length;
+  const want=S.offers.length+S.rides.filter(function(r){return !r.car}).length;
+  const press=want/Math.max(1,idle+0.5);
+  const target=clamp(0.8+press*0.42,0.8,2.0);
+  /* Ease toward the target so it drifts rather than snapping. */
+  S.surge+=(target-S.surge)*Math.min(1,dt/240);
 }
 
 /* ---------------- dispatch ---------------- */
@@ -1231,6 +1298,7 @@ function stepOnce(dt){
   /* Fixed cost lands AT MIDNIGHT, not smeared across the demand window.
      That is the whole point: the car owes $42 for a day it spent parked. */
   if(Math.floor(S.t/86400)>wasDay) billMidnight();
+  updateSurge(dt);
   spawnRides(dt);
   /* Offer countdown. An offer you ignore is a decline the platform counts. */
   if(S.offers.length){
@@ -1245,12 +1313,16 @@ function stepOnce(dt){
     expired.forEach(function(r){ S.d.unserved++; log('Rider','gave up in '+r.from,1) });
     S.rides=S.rides.filter(function(r){return expired.indexOf(r)<0});
   }
+  /* Beat 8 needs to know how long nothing has been happening. */
+  const busy=S.cars.some(function(c){return c.state!=='idle'})||S.offers.length>0;
+  S.ray.idleFor=busy?0:S.ray.idleFor+dt;
   /* Cars only move while you are supervising them. */
   if(S.onClock) S.cars.forEach(function(c){ stepCar(c,dt) });
   /* No payroll in Act 1 — you are the operator, and you are unpaid. */
   const l=loadRatio();
   S.ops.forEach(function(o){ o.fatigue=clamp(o.fatigue+dt/3600*0.07*(0.5+l),0,1) });
   if(S.cash<0) bankrupt();
+  rayCheck();
 }
 
 /* Fixed costs are owed per calendar day, clocked on or not. */
@@ -1267,6 +1339,148 @@ function bankrupt(){
   log('Books','out of cash',2);
 }
 
+/* ============================================================
+   RAY  (GameMechanics.md §9)
+
+   Ray Salcido sold you the car. He is not your employer, your assistant,
+   or a UI voice — he texts because he wants to know whether the thing that
+   ended his trade is at least a real job.
+
+   Every beat is triggered by GAME STATE, never a timer, so the tutorial
+   follows the player rather than the reverse. Nothing he says pauses the
+   clock (beat 1 arrives while the game is already paused), because a
+   tutorial that stops the world teaches nothing about time pressure.
+   ============================================================ */
+const RAY=[
+  {n:1, spot:'tb-cash',
+   t:"Ray Salcido. I sold you that car. Forty-one years in a cab before I got out, "+
+     "while getting out was still my idea.<br><br>One car. A thousand dollars. "+
+     "Forty-two a day whether you turn a wheel or not. That's twenty-three days of "+
+     "nothing. Go."},
+  {n:2, spot:'plat-rows',
+   t:"The car can't earn until somebody's sending it rides. Two apps will. "+
+     "Neither one is your friend."},
+  {n:3, spot:'offer-list',
+   t:"Three numbers on every offer. What's on the meter, what you actually get paid, "+
+     "and how far you drive empty to reach them.<br><br>Watch the third one."},
+  {n:4, spot:'offer-list',
+   t:"Forty-five seconds to decide. That's not them being generous. That's them "+
+     "stopping you doing the arithmetic.<br><br>Do it anyway."},
+  {n:5, spot:'pb-books',
+   t:"Ten eighty on the meter, eight ten in your pocket. That's the deal. "+
+     "It doesn't improve."},
+  {n:6, spot:'map',
+   t:"Watch that. Six minutes, nobody paying, and you'll do it a dozen times today."+
+     "<br><br>We called it deadheading. Killed more cabbies than bad drivers did."},
+  {n:7, spot:'fare-val',
+   t:"Surge means everyone's stranded at once. Take it.<br><br>Raise your own "+
+     "multiplier too — but not past about 1.15, or they'll route around you."},
+  {n:8, spot:'seg',
+   t:"Most of this job is sitting. I did thirty-one years of sitting.<br><br>"+
+     "You can speed the clock up. Just don't get clever and speed through a peak."},
+  {n:9, spot:'pb-rapid',
+   t:"Twenty-three minutes on a charger. Yours, not the car's.<br><br>Do it at four "+
+     "in the morning when power's cheap and nobody's going anywhere. Not at six "+
+     "in the evening."},
+  {n:10, spot:'inc-list',
+   t:"Somebody's got it wedged. In a big outfit there's a room full of people "+
+     "watching for that.<br><br>Right now the room is you, and you're free. "+
+     "Remember that."},
+  {n:11, spot:'rp-body',
+   t:"Read the whole thing, not just the bottom line. Cost per mile tells you how "+
+     "hard the car worked. It isn't what you're paid.<br><br>Don't chase it."},
+  {n:12, spot:'plat-rows',
+   t:"They're scoring you. Two bad weeks and they switch you off — and the "+
+     "forty-two a day doesn't switch off with you.<br><br>Run both apps."},
+  /* §9.3: the thesis of the game, and it points at the HOURS line, not at
+     the financing offer. The reveal is "you are the bottleneck", not "buy
+     another car" — reaching for a second car should feel slightly like a
+     mistake. */
+  {n:13, spot:'rp-body',
+   t:"You worked six hours. The car was billed for twenty-four.<br><br>Your margin "+
+     "was you, sitting there for free. And there's only one of you.<br><br>"+
+     "A second car doesn't fix that. A second pair of eyes does."}
+];
+
+function raySeen(n){ return S.ray.seen.indexOf(n)>=0 }
+
+/* Trigger predicates, in beat order. First unseen beat whose predicate is
+   true gets shown. Beat 1 is fired explicitly by clockOn(). */
+function rayReady(n){
+  const d=S.d||{};
+  switch(n){
+    case 2:  return raySeen(1);
+    case 3:  return livePlatforms().length>0;
+    case 4:  return S.offers.length>0;
+    case 5:  return d.done>0;
+    /* while the car is actually driving the empty leg */
+    case 6:  return S.cars.some(function(c){
+               return c.state==='dispatched'&&c.ride&&
+                      dist(c.lat,c.lng,c.ride.p[0],c.ride.p[1])>3;
+             });
+    case 7:  return S.surge>=1.4;
+    case 8:  return S.ray.idleFor>240;
+    case 9:  return S.cars.some(function(c){return c.soc<=CFG.chargeAt});
+    case 10: return S.cars.some(function(c){return c.state==='blocked'});
+    case 11: return S.shiftNo>0&&!S.onClock&&d.done>0;
+    /* Ratings do not exist yet, so this rides on the cancellation half of
+       the trigger the doc offers. */
+    case 12: return (d.cancels||0)>0;
+    case 13: return S.shiftNo>=10||S.cash>=1700;
+    default: return false;
+  }
+}
+
+function rayCheck(){
+  if(S.ray.skipped||S.ray.cur) return;
+  for(let i=0;i<RAY.length;i++){
+    const b=RAY[i];
+    if(!raySeen(b.n)&&rayReady(b.n)){ rayShow(b.n); return }
+  }
+}
+
+function rayShow(n){
+  const b=RAY.filter(function(x){return x.n===n})[0];
+  if(!b||S.ray.skipped) return;
+  S.ray.cur=n;
+  $('ray-text').innerHTML=b.t;
+  $('ray-count').textContent=n+' of '+RAY.length;
+  $('ray').hidden=false;
+  raySpot(b.spot);
+}
+
+/* The referenced control gets a ring; everything else dims. */
+let spotEl=null;
+function raySpot(id){
+  raySpotClear();
+  const el=id?$(id):null;
+  if(!el) return;
+  el.classList.add('spotlight');
+  document.body.classList.add('dimmed');
+  spotEl=el;
+}
+function raySpotClear(){
+  if(spotEl){ spotEl.classList.remove('spotlight'); spotEl=null }
+  document.body.classList.remove('dimmed');
+}
+
+function rayDismiss(){
+  const n=S.ray.cur;
+  if(n&&!raySeen(n)) S.ray.seen.push(n);
+  S.ray.cur=null;
+  $('ray').hidden=true;
+  raySpotClear();
+  render();
+  /* Beat 2 follows straight on from beat 1 being dismissed. */
+  rayCheck();
+}
+
+function raySkip(){
+  S.ray.skipped=true; S.ray.cur=null;
+  $('ray').hidden=true; raySpotClear();
+  render();
+}
+
 /* ---------------- the shift ----------------
    Clocking on is the only way cars earn. Clocking off gives you the report
    that carries the whole Act 1 thesis: hours worked against hours billed. */
@@ -1276,6 +1490,10 @@ function clockOn(){
   S.shiftStart=S.t; S.workedSec=0; S.billedSec=0;
   newDay();
   log('Shift','clocked on at '+hhmm(S.t),0);
+  /* Beat 1 arrives at the first clock-on while the clock is still stopped —
+     the only beat that gets the player's undivided attention, because it is
+     the only one that does not have to compete with a running world. */
+  if(!raySeen(1)&&!S.ray.skipped){ render(); rayShow(1); return }
   setSpeed(1); render();
 }
 function clockOff(quiet){
@@ -1291,6 +1509,7 @@ function clockOff(quiet){
   setSpeed(0);
   if(!quiet) shiftReport();
   render();
+  if(!quiet) rayCheck();
 }
 function shiftReport(){
   const d=S.d, net=d.gross-d.cost;
@@ -1355,7 +1574,9 @@ function endDay(){
 function row(a,b){ return '<div class="rp-row"><span>'+a+'</span><span>'+b+'</span></div>' }
 /* The clock is continuous now: closing the report does not advance time or
    reset the world. You come back to the hour you left. */
-$('rp-go').addEventListener('click',function(){ $('report').hidden=true; render() });
+$('rp-go').addEventListener('click',function(){ $('report').hidden=true; render(); rayCheck() });
+$('ray-go').addEventListener('click',rayDismiss);
+$('ray-skip').addEventListener('click',raySkip);
 
 /* ---------------- map ---------------- */
 let map=null,carLayer={},zoneLayer=[],tripLine=null;
@@ -1565,7 +1786,7 @@ function render(){
   $('cta-main').textContent=top?('Accept '+top.from+' · '+money2(offerNet(top)))
     :(S.onClock?'No offers':'Clocked off');
   $('cta').disabled=!top||!idle;
-  $('cta-surge').textContent=S.fareMult.toFixed(1)+'× fare';
+  $('cta-surge').textContent=S.surge.toFixed(1)+'× surge';
   $('cta-wait').textContent=S.offers.length+' offers · '+idle+' idle';
 
   /* live feed */
@@ -1573,6 +1794,13 @@ function render(){
     return '<div class="t-ev'+(e.kind===1?' attn':e.kind===2?' crit':'')+'"><b>'+e.who+
       '</b><span>'+e.what+'</span><i>'+hhmm(e.t)+'</i></div>';
   }).join('')||'<div class="t-ev"><span>Waiting for the first ride.</span></div>';
+
+  /* Messages: every beat stays readable afterwards. */
+  const seen=RAY.filter(function(b){return raySeen(b.n)});
+  $('msg-tag').textContent=String(seen.length);
+  $('msg-list').innerHTML=seen.length?seen.slice().reverse().map(function(b){
+    return '<div class="msg"><b>Ray · '+b.n+' of '+RAY.length+'</b>'+b.t+'</div>';
+  }).join(''):'<div class="sub">No messages yet.</div>';
 
   $('tb-shift').textContent=S.onClock?('On · '+(S.workedSec/3600).toFixed(1)+' h'):'Off';
   const cb=$('clock');
@@ -1665,14 +1893,14 @@ tbtn.addEventListener('click',function(){
    ZONES[i].on and spawnAcc are player/sim state living outside S,
    so they ride along explicitly.
    ============================================================ */
-const SAVE_V=3;
+const SAVE_V=4;
 const SLOTS=['slot1','slot2','slot3'];
 
 /* Build version, shown in the top bar and stamped into every save.
    SAVE_V above is the STATE SHAPE version and moves only when the
    snapshot format changes — the two are deliberately independent, so
    shipping 0.9.0 does not invalidate 0.8.0 saves. */
-const VERSION='0.9.0';
+const VERSION='0.10.0';
 
 function snapshot(){
   return {
@@ -1682,6 +1910,7 @@ function snapshot(){
       t:S.t, day:S.day, cash:S.cash, fareMult:S.fareMult, carsPerOp:S.carsPerOp,
       sel:S.sel, seq:S.seq, safety:S.safety, permit:S.permit,
       over:S.over, d:S.d,
+      surge:S.surge, ray:S.ray,
       onClock:S.onClock, shiftStart:S.shiftStart, workedSec:S.workedSec,
       billedSec:S.billedSec, shiftNo:S.shiftNo,
       offers:S.offers,
@@ -1713,6 +1942,14 @@ function migrate(save){
     if(typeof s.spawnAcc!=='number') s.spawnAcc=0;
     save.v=2;
   }
+  if(save.v<4&&save.v>=3){
+    /* v3 predates Ray and the surge model. An existing Act 1 run should not
+       suddenly be lectured from beat 1, so treat the script as already
+       delivered rather than replaying it over a game in progress. */
+    if(typeof s.surge!=='number') s.surge=1.0;
+    if(!s.ray) s.ray={seen:[1,2,3,4,5,6,7,8,9,10,11,12,13],cur:null,
+                      skipped:true,idleFor:0};
+  }
   if(save.v<3){
     /* v2 predates Act 1: no shift model, no platforms, and its economy was
        $60k/3 cars. The world is not convertible, so start the shift model
@@ -1722,7 +1959,11 @@ function migrate(save){
     s.platforms=[{id:'hitchr',on:false,offered:0,accepted:0},
                  {id:'zipp',on:false,offered:0,accepted:0}];
     save.v=3;
+    /* A pre-Act-1 save has no tutorial state and no surge either. */
+    s.surge=1.0;
+    s.ray={seen:[],cur:null,skipped:false,idleFor:0};
   }
+  save.v=SAVE_V;
   return save;
 }
 
@@ -1734,6 +1975,11 @@ function restore(save){
   S.carsPerOp=s.carsPerOp; S.seq=s.seq; S.safety=s.safety;
   S.permit=s.permit; S.over=!!s.over; S.d=s.d;
   S.ops=s.ops||[]; S.log=s.log||[];
+  S.surge=typeof s.surge==='number'?s.surge:1.0;
+  S.ray=s.ray||{seen:[],cur:null,skipped:false,idleFor:0};
+  if(!Array.isArray(S.ray.seen)) S.ray.seen=[];
+  S.ray.cur=null;                 /* never restore mid-card */
+  $('ray').hidden=true; raySpotClear();
   S.onClock=!!s.onClock; S.shiftStart=s.shiftStart||0;
   S.workedSec=s.workedSec||0; S.billedSec=s.billedSec||0; S.shiftNo=s.shiftNo||0;
   S.offers=s.offers||[];
@@ -1952,6 +2198,9 @@ $('rp-go').addEventListener('click',function(){ autosave('day-end') });
 
 /* ---------------- boot ---------------- */
 $('ver').textContent='v'+VERSION;
+/* The markup carries `hidden`, but assert it here too so a refactor that
+   drops the attribute cannot ship a card stuck on screen. */
+$('ray').hidden=true; raySpotClear();
 document.title='Deadhead v'+VERSION+' — robotaxi fleet simulator';
 syncOps(); initMap(); render(); drawMap();
 let acc=0;
@@ -1994,6 +2243,9 @@ window.DH=S;
 /* Act 1 internals, exposed for the headless test harness and for poking at
    the economy from the console. Read-only by convention. */
 window.DH_ACT1={CFG:CFG,PLATFORMS:PLATFORMS,platform:platform,
+  RAY:RAY,rayReady:rayReady,rayCheck:rayCheck,rayShow:rayShow,
+  rayDismiss:rayDismiss,raySkip:raySkip,raySeen:raySeen,updateSurge:updateSurge,
+  render:render,
   livePlatforms:livePlatforms,acceptRate:acceptRate,volumeMult:volumeMult,
   winProb:winProb,offerNet:offerNet,deadheadKm:deadheadKm,
   acceptOffer:acceptOffer,declineOffer:declineOffer,
