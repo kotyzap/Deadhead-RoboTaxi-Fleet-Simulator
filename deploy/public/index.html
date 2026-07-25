@@ -1059,7 +1059,12 @@ function capacity(){ return S.ops.length*S.carsPerOp }
 function busyCars(){ return S.cars.filter(function(c){
   return c.state==='onTrip'||c.state==='dispatched'||c.state==='blocked'}).length }
 function loadRatio(){ return busyCars()/Math.max(1,capacity()) }
-function avgFatigue(){ let f=0; S.ops.forEach(function(o){f+=o.fatigue}); return f/S.ops.length }
+/* Act 1 has no operators, and 0/0 is NaN — which propagated through
+   latency() and printed "Latency NaNs" on the live site. */
+function avgFatigue(){
+  if(!S.ops.length) return 0;
+  let f=0; S.ops.forEach(function(o){f+=o.fatigue}); return f/S.ops.length;
+}
 /* The core trade-off: raising cars-per-operator cuts payroll but
    stretches every operator, and latency is superlinear past 1.0 load. */
 function latency(){
@@ -1725,7 +1730,11 @@ function render(){
     '<div class="top"><svg class="ms"><use href="#i-gavel"/></svg><b>Safety score</b>'+
     '<span class="clock">'+Math.round(S.safety)+'</span></div>'+
     '<p>Unsupervised permit review at 65. '+d.cancels+' cancellations today.</p></div>';
-  if(!inc) inc='<div class="empty">No open incidents. Latency '+Math.round(lat)+'s.</div>';
+  /* With no operators on payroll the response time is the player's own, so
+     quoting a computed number would be a lie (GameMechanics §3.3). */
+  if(!inc) inc='<div class="empty">No open incidents. '+(S.ops.length
+    ? 'Latency '+Math.round(lat)+'s.'
+    : 'You are the only operator.')+'</div>';
   $('inc-list').innerHTML=inc;
 
   /* ride queue */
@@ -1903,7 +1912,7 @@ const SLOTS=['slot1','slot2','slot3'];
    SAVE_V above is the STATE SHAPE version and moves only when the
    snapshot format changes — the two are deliberately independent, so
    shipping 0.9.0 does not invalidate 0.8.0 saves. */
-const VERSION='0.10.0';
+const VERSION='0.10.1';
 
 function snapshot(){
   return {
@@ -2255,7 +2264,7 @@ window.DH=S;
 window.DH_ACT1={CFG:CFG,PLATFORMS:PLATFORMS,platform:platform,
   RAY:RAY,rayReady:rayReady,rayCheck:rayCheck,rayShow:rayShow,
   rayDismiss:rayDismiss,raySkip:raySkip,raySeen:raySeen,updateSurge:updateSurge,
-  render:render,
+  render:render,avgFatigue:avgFatigue,latency:latency,
   livePlatforms:livePlatforms,acceptRate:acceptRate,volumeMult:volumeMult,
   winProb:winProb,offerNet:offerNet,deadheadKm:deadheadKm,
   acceptOffer:acceptOffer,declineOffer:declineOffer,
