@@ -555,6 +555,9 @@ tr[data-car].on td{background:var(--inset)}
 .slot-act button.pri:hover{opacity:.86;color:#fff}
 .slot-act button.del:hover{border-color:var(--s-crit);color:var(--s-crit)}
 .slot-act button:disabled{opacity:.34;cursor:default}
+.slot-none{font-size:11px;color:var(--text-4)}
+.slot-meta .dim{color:var(--text-4)}
+.slot.empty .slot-id{color:var(--text-3)}
 .sv-foot{display:flex;align-items:center;gap:10px;margin-top:16px;
   padding-top:13px;border-top:1px solid var(--brd)}
 .sv-foot .note{flex:1;font-size:10.5px;color:var(--text-3);line-height:1.45}
@@ -2101,17 +2104,24 @@ function ago(ts){
 }
 function slotRow(key,save,label,sub){
   const m=save&&save.meta;
+  /* An empty slot shows only the action that is possible. Previously Load and
+     Delete were rendered disabled, and a dimmed PRIMARY button still reads as
+     the thing to click — three greyed controls on every empty row made the
+     panel look broken rather than empty. */
+  const acts=save
+    ? (key==='auto'?'':'<button data-sv-save="'+key+'">Overwrite</button>')+
+      '<button class="pri" data-sv-load="'+key+'">Load</button>'+
+      '<button class="del" data-sv-del="'+key+'">Delete</button>'
+    : (key==='auto'
+        ? '<span class="slot-none">Nothing saved yet</span>'
+        : '<button class="pri" data-sv-save="'+key+'">Save here</button>');
   return '<div class="slot'+(save?'':' empty')+'">'+
     '<div class="slot-id">'+label+(sub?'<small>'+sub+'</small>':'')+'</div>'+
     '<div class="slot-meta">'+(m
       ? '<b>Day '+m.day+'</b> · '+m.clock+' · '+money(m.cash)+' · '+m.cars+(m.cars===1?' car':' cars')+
-        '<span>saved '+ago(save.ts)+'</span>'
-      : 'Empty')+'</div>'+
-    '<div class="slot-act">'+
-      (key==='auto'?'':'<button data-sv-save="'+key+'">Save</button>')+
-      '<button class="pri" data-sv-load="'+key+'"'+(save?'':' disabled')+'>Load</button>'+
-      '<button class="del" data-sv-del="'+key+'"'+(save?'':' disabled')+'>Delete</button>'+
-    '</div></div>';
+        '<span>saved '+ago(save.ts)+(save.app?' · v'+save.app:'')+'</span>'
+      : '<span class="dim">Empty slot</span>')+'</div>'+
+    '<div class="slot-act">'+acts+'</div></div>';
 }
 function renderSaves(){
   return Store.list().then(function(all){

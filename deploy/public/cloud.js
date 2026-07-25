@@ -203,70 +203,170 @@
     if (document.visibilityState === 'hidden') flushOnExit();
   });
 
-  /* ---------------- UI ---------------- */
+  /* ---------------- UI ----------------
+     Design notes, since the first pass got several things wrong:
+
+     - "Sign in" and "Create" sat side by side with equal weight, so a new
+       player could not tell which one applied to them. Now two text tabs
+       switch MODE and there is exactly one primary button, whose label says
+       what will happen.
+     - The three controls were crammed on one row, which truncated the email
+       placeholder to "you@example". Now they stack full width.
+     - The panel read as a gate. One line of copy says accounts are optional
+       and local saves keep working, because they do.
+     - A password field with no reveal is a guessing game on a 10-character
+       minimum, so there is a show/hide toggle.
+  */
   const CSS = `
-.acct{padding:11px 13px;border:1px solid var(--brd);border-radius:8px;
-  background:var(--c-card);margin:4px 0}
-.acct-row{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.acct{padding:0;border:1px solid var(--brd);border-radius:9px;
+  background:var(--c-card);margin:2px 0 4px;overflow:hidden}
+.acct-head{display:flex;align-items:baseline;gap:9px;padding:11px 13px 0}
+.acct-head h5{font-size:12px;font-weight:500;margin:0;letter-spacing:.01em}
+.acct-head span{font-size:11px;color:var(--text-3)}
+.acct-body{padding:10px 13px 12px}
 /* display:flex beats the hidden attribute's own display:none, so without
-   this both the signed-in and signed-out rows render at once and the panel
+   this both the signed-in and signed-out blocks render at once and the panel
    claims you are signed in when you are not. No backticks in here: this
    block lives inside a JS template literal. */
-.acct-row[hidden]{display:none}
-.acct-lbl{font-size:10px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;
-  color:var(--text-3);flex:0 0 auto}
-.acct-row form{display:flex;gap:6px;flex:1;min-width:220px}
-.acct-row input{flex:1;min-width:0;height:30px;padding:0 9px;font:inherit;font-size:12px;
-  color:var(--text);background:var(--inset);border:1px solid var(--brd-2);border-radius:var(--r-ctl)}
-.acct-row input:focus{outline:none;border-color:var(--accent)}
-.acct-row button{height:30px;padding:0 12px;font:inherit;font-size:11.5px;cursor:pointer;
+.acct-body[hidden],.acct-row[hidden]{display:none}
+.acct-row{display:flex;align-items:center;gap:9px}
+
+/* mode tabs */
+.acct-tabs{display:flex;gap:2px;margin-bottom:9px;background:var(--inset);
+  border-radius:var(--r-ctl);padding:2px;width:fit-content}
+.acct-tabs button{height:25px;padding:0 12px;font:inherit;font-size:11.5px;cursor:pointer;
+  border:0;border-radius:calc(var(--r-ctl) - 1px);background:transparent;color:var(--text-3)}
+.acct-tabs button[aria-selected="true"]{background:var(--panel-solid);color:var(--text);
+  font-weight:500;box-shadow:0 0 0 1px var(--brd)}
+
+/* the form itself */
+#dh-form{display:flex;flex-direction:column;gap:7px}
+.fld{position:relative;display:flex}
+.fld input{flex:1;min-width:0;height:34px;padding:0 11px;font:inherit;font-size:13px;
+  color:var(--text);background:var(--inset);border:1px solid var(--brd-2);
+  border-radius:var(--r-ctl)}
+.fld input::placeholder{color:var(--text-4)}
+.fld input:focus{outline:none;border-color:var(--accent);
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent)}
+.fld.pw input{padding-right:52px}
+.fld .peek{position:absolute;right:4px;top:4px;height:26px;padding:0 8px;border:0;
+  background:transparent;color:var(--text-3);font:inherit;font-size:10.5px;
+  letter-spacing:.06em;text-transform:uppercase;cursor:pointer;border-radius:4px}
+.fld .peek:hover{color:var(--accent)}
+#dh-submit{height:36px;border:0;border-radius:var(--r-ctl);background:var(--accent);
+  color:#fff;font:inherit;font-size:13px;font-weight:500;cursor:pointer;margin-top:1px}
+#dh-submit:hover:not(:disabled){filter:brightness(1.07)}
+#dh-submit:disabled{opacity:.5;cursor:default}
+.acct-hint{font-size:10.5px;color:var(--text-4);line-height:1.45}
+
+/* signed-in state */
+.acct-who{display:flex;align-items:center;gap:10px}
+.acct-av{flex:0 0 auto;width:30px;height:30px;border-radius:50%;background:var(--accent);
+  color:#fff;display:grid;place-items:center;font-size:12.5px;font-weight:500}
+.acct-id{flex:1;min-width:0}
+#dh-who{display:block;font-size:12.5px;font-weight:500;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#dh-sync{display:block;font-size:10.5px;color:var(--text-3);margin-top:1px}
+.acct-who button{height:29px;padding:0 11px;font:inherit;font-size:11.5px;cursor:pointer;
   border:1px solid var(--brd-2);border-radius:var(--r-ctl);background:transparent;
   color:var(--text);flex:0 0 auto}
-.acct-row button.pri{background:var(--accent);border-color:var(--accent);color:#fff}
-.acct-row button:disabled{opacity:.4;cursor:default}
-.acct-row button:hover:not(:disabled):not(.pri){border-color:var(--accent);color:var(--accent)}
-#dh-who{font-size:12.5px;font-weight:500;flex:1;min-width:0;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#dh-sync{font-size:10.5px;color:var(--text-3);flex:0 0 auto}
-#dh-msg{font-size:11px;color:var(--s-crit);margin-top:7px}
+.acct-who button:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.acct-who button:disabled{opacity:.4;cursor:default}
+
+#dh-msg{font-size:11.5px;color:var(--s-crit);margin-top:8px;line-height:1.4}
 #dh-msg.ok{color:var(--s-charge)}
+#dh-msg.work{color:var(--text-3)}
 #dh-msg:empty{margin-top:0}`;
 
   const HTML = `
 <div class="acct" id="dh-acct">
-  <div class="acct-row" id="dh-out">
-    <span class="acct-lbl">Play across devices</span>
-    <form id="dh-form" autocomplete="on">
-      <input type="email" id="dh-email" placeholder="you@example.com"
-             autocomplete="username" required>
-      <input type="password" id="dh-pw" placeholder="password"
-             autocomplete="current-password" minlength="${MIN_PASSWORD}" required>
-      <button type="submit" class="pri" id="dh-login">Sign in</button>
-      <button type="button" id="dh-reg">Create</button>
+  <div class="acct-head">
+    <h5>Play across devices</h5>
+    <span id="dh-head-note">Optional</span>
+  </div>
+
+  <div class="acct-body" id="dh-out">
+    <div class="acct-tabs" role="tablist">
+      <button type="button" id="dh-tab-in"  role="tab" aria-selected="true">Sign in</button>
+      <button type="button" id="dh-tab-new" role="tab" aria-selected="false">Create account</button>
+    </div>
+    <form id="dh-form" autocomplete="on" novalidate>
+      <div class="fld">
+        <input type="email" id="dh-email" placeholder="you@example.com"
+               autocomplete="username" aria-label="Email address" required>
+      </div>
+      <div class="fld pw">
+        <input type="password" id="dh-pw" placeholder="Password"
+               autocomplete="current-password" aria-label="Password"
+               minlength="${MIN_PASSWORD}" required>
+        <button type="button" class="peek" id="dh-peek" aria-label="Show password">Show</button>
+      </div>
+      <button type="submit" id="dh-submit">Sign in</button>
     </form>
+    <div class="acct-hint" id="dh-hint"></div>
   </div>
-  <div class="acct-row" id="dh-in" hidden>
-    <span class="acct-lbl">Signed in</span>
-    <b id="dh-who">&mdash;</b>
-    <span id="dh-sync"></span>
-    <button type="button" id="dh-upload">Upload local</button>
-    <button type="button" id="dh-out-btn">Sign out</button>
+
+  <div class="acct-body" id="dh-in" hidden>
+    <div class="acct-who">
+      <span class="acct-av" id="dh-av" aria-hidden="true"></span>
+      <span class="acct-id"><b id="dh-who">&mdash;</b><span id="dh-sync"></span></span>
+      <button type="button" id="dh-upload" hidden>Upload local</button>
+      <button type="button" id="dh-out-btn">Sign out</button>
+    </div>
   </div>
-  <div id="dh-msg"></div>
+
+  <div class="acct-body" style="padding-top:0"><div id="dh-msg" role="status" aria-live="polite"></div></div>
 </div>`;
+
+  /* 'login' or 'register' — one primary button, label follows the mode. */
+  let mode = 'login';
+  const COPY = {
+    login: {
+      submit: 'Sign in',
+      hint: 'Saves sync to every device you sign in on. Local browser saves keep working either way.',
+      pwAuto: 'current-password',
+    },
+    register: {
+      submit: 'Create account',
+      hint: `At least ${MIN_PASSWORD} characters. There is no password reset — no email is ever sent — so keep it somewhere safe, or use Export file as a backup.`,
+      pwAuto: 'new-password',
+    },
+  };
+
+  function paintMode() {
+    const c = COPY[mode];
+    const ti = $('dh-tab-in'), tn = $('dh-tab-new');
+    if (!ti) return;
+    ti.setAttribute('aria-selected', String(mode === 'login'));
+    tn.setAttribute('aria-selected', String(mode === 'register'));
+    $('dh-submit').textContent = c.submit;
+    $('dh-hint').textContent = c.hint;
+    $('dh-pw').setAttribute('autocomplete', c.pwAuto);
+    msg('');
+  }
+
+  function togglePeek() {
+    const pw = $('dh-pw'), b = $('dh-peek');
+    const showing = pw.type === 'text';
+    pw.type = showing ? 'password' : 'text';
+    b.textContent = showing ? 'Show' : 'Hide';
+    b.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
+    pw.focus();
+  }
 
   function setSyncNote(t) {
     const el = $('dh-sync');
     if (el) el.textContent = t || '';
   }
-  function msg(text, ok) {
+  /* kind: 'err' (default) | 'ok' | 'work' */
+  function msg(text, kind) {
     const el = $('dh-msg');
     if (!el) return;
     el.textContent = text || '';
-    el.className = ok ? 'ok' : '';
+    el.className = kind === true ? 'ok' : (kind || '');
   }
   function busy(state) {
-    ['dh-login', 'dh-reg', 'dh-upload', 'dh-out-btn'].forEach((id) => {
+    ['dh-submit', 'dh-upload', 'dh-out-btn', 'dh-tab-in', 'dh-tab-new'].forEach((id) => {
       const b = $(id);
       if (b) b.disabled = state;
     });
@@ -277,7 +377,25 @@
     if (!out || !inn) return;
     out.hidden = !!signedIn;
     inn.hidden = !signedIn;
-    if (signedIn) $('dh-who').textContent = signedIn;
+    const note = $('dh-head-note');
+    if (note) note.textContent = signedIn ? 'Syncing' : 'Optional';
+    if (signedIn) {
+      $('dh-who').textContent = signedIn;
+      $('dh-av').textContent = signedIn.trim().charAt(0).toUpperCase() || '?';
+      /* Only offer the upload when there is actually something local to
+         upload — an button that does nothing is worse than no button. */
+      const L = Local();
+      if (L) {
+        L.list().then((all) => {
+          const n = Object.keys(all).filter((k) => all[k]).length;
+          const b = $('dh-upload');
+          if (b) {
+            b.hidden = n === 0;
+            b.textContent = 'Upload ' + n + ' local';
+          }
+        }).catch(() => {});
+      }
+    }
   }
 
   function signOutLocally() {
@@ -296,16 +414,28 @@
     if (window.DH_SAVE && window.DH_SAVE.refresh) window.DH_SAVE.refresh();
   }
 
-  async function submitAuth(mode) {
+  async function submitAuth() {
     const email = ($('dh-email').value || '').trim();
     const pw = $('dh-pw').value || '';
-    if (!email) return msg('Enter your email address.');
+
+    /* Validate in the order the fields appear, and put the cursor where the
+       problem is rather than only naming it. */
+    if (!email) { $('dh-email').focus(); return msg('Enter your email address.') }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+      $('dh-email').focus();
+      return msg('That does not look like an email address.');
+    }
     if (pw.length < MIN_PASSWORD) {
-      return msg('Password must be at least ' + MIN_PASSWORD + ' characters.');
+      $('dh-pw').focus();
+      return msg(mode === 'register'
+        ? 'Pick a password of at least ' + MIN_PASSWORD + ' characters.'
+        : 'Password must be at least ' + MIN_PASSWORD + ' characters.');
     }
 
     busy(true);
-    msg(mode === 'register' ? 'Creating account…' : 'Signing in…', true);
+    /* The KDF takes a beat on purpose, so say so — an unexplained pause on a
+       sign-in button reads as broken. */
+    msg(mode === 'register' ? 'Creating your account…' : 'Signing in…', 'work');
     try {
       await loadParams();
       // The slow part, and it belongs here rather than on the server.
@@ -315,13 +445,34 @@
         body: JSON.stringify({ email, authKey }),
       });
       $('dh-pw').value = '';
+      togglePeekOff();
       goOnline((data && data.email) || email.toLowerCase());
-      msg(mode === 'register' ? 'Account created. Saves now sync.' : 'Signed in.', true);
+      msg(mode === 'register'
+        ? 'Account created. Your saves sync from now on.'
+        : 'Signed in.', 'ok');
     } catch (e) {
-      msg(e.message || 'Something went wrong.');
+      /* A 409 on sign-in means the address exists but under the old scheme,
+         and on register it means it is already taken — point at the tab that
+         actually helps instead of leaving them stuck. */
+      if (e.status === 409 && mode === 'register') {
+        msg('That email is already registered — switch to Sign in.');
+        setMode('login');
+      } else {
+        msg(e.message || 'Something went wrong.');
+      }
     } finally {
       busy(false);
     }
+  }
+
+  function togglePeekOff() {
+    const pw = $('dh-pw'), b = $('dh-peek');
+    if (pw && pw.type === 'text') { pw.type = 'password'; b.textContent = 'Show' }
+  }
+
+  function setMode(m) {
+    mode = m;
+    paintMode();
   }
 
   /* First sign-in on a browser that already has local progress: offer to
@@ -372,11 +523,23 @@
     holder.innerHTML = HTML;
     rep.insertBefore(holder.firstElementChild, firstH4);
 
-    $('dh-form').addEventListener('submit', (e) => { e.preventDefault(); submitAuth('login') });
-    $('dh-reg').addEventListener('click', () => submitAuth('register'));
+    /* One submit path for both modes — the mode decides the endpoint, so
+       Enter in either field does the expected thing. */
+    $('dh-form').addEventListener('submit', (e) => { e.preventDefault(); submitAuth() });
+    $('dh-tab-in').addEventListener('click', () => setMode('login'));
+    $('dh-tab-new').addEventListener('click', () => setMode('register'));
+    $('dh-peek').addEventListener('click', togglePeek);
     $('dh-out-btn').addEventListener('click', doSignOut);
     $('dh-upload').addEventListener('click', uploadLocal);
+    /* Clear a stale error as soon as the player starts fixing it. */
+    ['dh-email', 'dh-pw'].forEach((id) => {
+      $(id).addEventListener('input', () => {
+        const el = $('dh-msg');
+        if (el && el.className === '') msg('');
+      });
+    });
 
+    paintMode();
     paintAuthState();
 
     // Resume an existing session silently. A 401 here is the normal
