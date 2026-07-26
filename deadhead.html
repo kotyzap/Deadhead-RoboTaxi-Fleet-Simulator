@@ -2231,9 +2231,16 @@ const CITIES={
     goal:{cash:60000, text:'Clear $60,000 unsupervised — and keep safety above 70.'},
     order:1,
     /* Gated: the Dallas tab is visible from the first boot but padlocked
-       until guided day 1 is finished in Austin. A lock the player can see is
-       a goal; a tab that appears from nowhere is a surprise. */
-    needs:'day1',
+       until the first Austin shift is CLOCKED OFF. A lock the player can see
+       is a goal; a tab that appears from nowhere is a surprise.
+
+       This was 'day1' — the whole guided first day — and one shift is the
+       better trigger. Clocking off is the moment the game's actual argument
+       lands: the shift report shows what the car earned against what it costs
+       to own for the twenty hours you were not watching it. A player who has
+       read that page understands what a second city is FOR. Making them
+       finish the rest of the scripted day first only delays the offer. */
+    needs:'shift1',
     /* Burnt bronze. Highway dust, and far enough from --s-attn amber that a
        low-charge warning still reads as a warning — the one collision in this
        palette worth checking on screen rather than trusting. 5.17:1 against
@@ -4941,7 +4948,7 @@ function renderCityTabs(){
   el.innerHTML=cityList().map(function(id){
     const c=CITIES[id], open=cityUnlocked(id), live=(id===S.city);
     const tip=open?(live?c.name+' — current run':'Switch to '+c.name)
-                  :c.name+' — finish your first day in '+CITIES.austin.name+' to unlock';
+                  :c.name+' — '+gateHint(c.needs);
     return '<button class="citytab" data-city="'+id+'"'+
       ' aria-pressed="'+(live?'true':'false')+'"'+
       (open?'':' disabled')+' title="'+escapeHtml(tip)+'">'+
@@ -5675,7 +5682,7 @@ const SLOTS=['slot1','slot2','slot3'];
    SAVE_V above is the STATE SHAPE version and moves only when the
    snapshot format changes — the two are deliberately independent, so
    shipping 0.9.0 does not invalidate 0.8.0 saves. */
-const VERSION='0.23.0';
+const VERSION='0.23.1';
 
 function snapshot(){
   return {
@@ -6073,26 +6080,60 @@ function progLoad(){
     PROG.unlocked.austin=true;      /* the tutorial city is never locked */
   }).catch(function(){});
 }
+/* What each gate means, in ONE place, because two callers ask: cityUnlocked()
+   for the tab state and progGates() for the permanent promotion. When those
+   two disagreed the tab could light up without the unlock ever being recorded.
+
+   'shift1' — the first shift is FINISHED. Not started: S.shiftNo increments on
+   clock-ON, so `shiftNo>0` alone is true from the first minute of the first
+   shift. `shiftNo>0 && !onClock` is the codebase's existing expression for
+   "has completed a shift" — it already gates the ops panel and tutorial beat
+   12, and reusing it means there is one definition of that idea rather than
+   two that can drift apart.
+
+   'day1' — the whole guided first day. Kept because it is a real alternative
+   and costs nothing, not because anything uses it now.
+
+   An unrecognised gate stays LOCKED. A typo in a city's `needs` should hide a
+   scenario, not silently open it. */
+function gateMet(kind){
+  if(kind==='shift1') return S.shiftNo>0&&!S.onClock;
+  if(kind==='day1')   return !!(S.ray&&S.ray.day1Done);
+  return false;
+}
+/* Wording for a padlocked tab's tooltip. The city named is whichever scenario
+   comes first, rather than 'Austin' spelled out, so reordering CITIES cannot
+   leave the hint pointing at the wrong game. */
+function gateHint(kind){
+  const first=CITIES[cityList()[0]];
+  if(kind==='shift1') return 'clock off your first shift in '+first.name+' to unlock';
+  if(kind==='day1')   return 'finish your first day in '+first.name+' to unlock';
+  return 'not available yet';
+}
 /* A city is open if it asks for nothing, if progress remembers it being
    earned, or if the current run has just earned it. The third clause is what
-   makes the Dallas tab light up the moment guided day 1 ends, without waiting
-   for the progress write to land. */
+   makes the Dallas tab light up the instant the first shift ends, without
+   waiting for the progress write to land.
+
+   Note the ordering: PROG.unlocked is checked BEFORE gateMet(), so clocking
+   back on for a second shift cannot re-lock a city that has already been
+   earned — gateMet('shift1') goes false again while on shift, and only the
+   latch stops that mattering. */
 function cityUnlocked(id){
   const c=CITIES[id];
   if(!c) return false;
   if(!c.needs) return true;
   if(PROG.unlocked[id]) return true;
-  if(c.needs==='day1') return !!(S.ray&&S.ray.day1Done);
-  return false;
+  return gateMet(c.needs);
 }
 /* Promote anything the run has now earned into the permanent record. Called
    from render(), so it must stay free when there is nothing to do: the only
    work in the common case is one boolean test per city. */
 function progGates(){
-  if(!S.ray||!S.ray.day1Done) return;
   let gained=null;
   cityList().forEach(function(id){
-    if(CITIES[id].needs==='day1'&&!PROG.unlocked[id]){
+    const need=CITIES[id].needs;
+    if(need&&!PROG.unlocked[id]&&gateMet(need)){
       PROG.unlocked[id]=true; gained=id;
     }
   });
@@ -7016,6 +7057,7 @@ window.DH_ACT1={
   ROADS_BY_CITY:ROADS_BY_CITY,roadsFor:roadsFor,
   CITIES:CITIES,loadCityTables:loadCityTables,applyCityTone:applyCityTone,
   cityList:cityList,cityUnlocked:cityUnlocked,switchCity:switchCity,
+  gateMet:gateMet,gateHint:gateHint,progGates:progGates,
   physKey:physKey,PROG:function(){ return PROG },cityK:cityK,
   renderCityTabs:renderCityTabs,
   tone:function(){ return TONE },

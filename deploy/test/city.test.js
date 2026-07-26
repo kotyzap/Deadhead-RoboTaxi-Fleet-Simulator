@@ -210,15 +210,41 @@ async function run(file) {
 
   // ---- 6. the gate ----------------------------------------------------
   check('Austin is never locked', () => A.cityUnlocked('austin'));
-  check('Dallas is locked before guided day 1 finishes', () => {
-    S.ray.day1Done = false;
+  // Dallas gates on 'shift1' — the first shift FINISHED. The distinction is
+  // the point of these three checks: S.shiftNo increments on clock-ON, so a
+  // naive `shiftNo > 0` would open the tab during the first shift, before the
+  // player has ever seen a shift report.
+  check('Dallas is locked before any shift', () => {
     A.PROG().unlocked.dallas = false;
+    S.shiftNo = 0; S.onClock = false;
     return A.cityUnlocked('dallas') === false;
   });
-  check('finishing guided day 1 unlocks Dallas', () => {
-    S.ray.day1Done = true;
+  check('Dallas stays locked DURING the first shift', () => {
+    A.PROG().unlocked.dallas = false;
+    S.shiftNo = 1; S.onClock = true;
+    return A.cityUnlocked('dallas') === false;
+  });
+  check('clocking off the first shift unlocks Dallas', () => {
+    S.shiftNo = 1; S.onClock = false;
     return A.cityUnlocked('dallas') === true;
   });
+  // Once earned it must stay earned. gateMet('shift1') goes false again the
+  // moment the player clocks back on, so only the PROG latch stops the tab
+  // flickering shut for the whole of every later shift.
+  check('a second shift does not re-lock Dallas', () => {
+    A.progGates();                     // latch it, as render() would
+    S.shiftNo = 2; S.onClock = true;
+    return A.gateMet('shift1') === false && A.cityUnlocked('dallas') === true;
+  });
+  check('an unrecognised gate stays locked, not open',
+    () => A.gateMet('no-such-gate') === false);
+  check('the padlock hint names the first scenario',
+    () => A.gateHint('shift1').indexOf(A.CITIES[A.cityList()[0]].name) >= 0);
+  check("every city's gate is one gateMet() understands",
+    () => Object.keys(A.CITIES).every((id) => {
+      const n = A.CITIES[id].needs;
+      return !n || ['shift1', 'day1'].indexOf(n) >= 0;
+    }));
   check('cityList() is ordered by CITIES[].order',
     () => A.cityList().join(',') === 'austin,dallas');
 

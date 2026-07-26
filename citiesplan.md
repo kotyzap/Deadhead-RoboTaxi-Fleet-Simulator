@@ -8,7 +8,7 @@ _Decisions made 2026-07-26, against `deadhead.html` v0.22.0. Line numbers refer 
 | City model | **Sequential scenarios.** One live simulation. Tab bar switches which *run* you're in, with an explicit confirm; the other city is parked, not ticking. | Matches `DESIGN.md` §5 ("scenario missions… own goal, constraints, required strategy"). Parallel live branches would turn `S` into `S.branches[city]` and force `tick()`/`render()`/`snapshot()` to answer "which one, or both?" — that's Act 2's complexity bill paid before Act 2 exists. |
 | Economy | **No carryover. Each city starts at `CFG.startCash` ($7,500).** Meta-progression carries unlocks and a per-city result, never the balance sheet. | Arriving in Dallas with a mature bankroll means the Act 1 lesson — you cannot afford a single car outright, so you rent or you put money down — never lands again. That lesson is the game (see `S.cars=[]` at boot and the comment at 2610). |
 | City #2 | **Dallas / Houston.** | The only candidate that is real difficulty rather than a re-skin *and* needs zero new systems. Miami wants flooding/hurricane events (new content). SF wants a mandatory safety monitor, i.e. payroll from hour one — that **is** Act 2; don't ship it before Act 2. |
-| Gate | **`S.ray.day1Done`.** Dallas tab visible from the first boot, padlocked, unlocking when guided day 1 completes. | The flag already exists (2580, set at 3435/3799/3814). "One shift" is the wrong signal — a shift can be clocked off after 20 minutes. A visible padlock is a goal; a tab that materialises out of nowhere is a surprise. |
+| Gate | **First shift clocked off** (`needs:'shift1'`). Dallas tab visible from the first boot, padlocked until then. | Revised — see below. A visible padlock is a goal; a tab that materialises out of nowhere is a surprise. |
 | City identity | **Each city gets its own accent tone, tinting the chrome only.** See §"City identity" below. | With separate runs per city, "which run am I in" has to be answerable pre-attentively, from a screenshot, before any label is read. A city name in the topbar doesn't do that; ambient colour does. |
 
 Note `skipTutorial` (3814) also sets `day1Done=true`. That's intended: a player who skips the script still earns the gate.
@@ -266,6 +266,35 @@ OSRM server's time.
 
 **Verified invariant:** Downtown → AUS airport is 10.7 km straight against 18.1 km by road,
 and the fare still quotes on the straight line. The geometry stayed cosmetic.
+
+### The gate, revised — v0.23.1
+
+Originally `needs:'day1'`, gating on `S.ray.day1Done`. Now `needs:'shift1'`: **the first shift
+clocked off.** The reasoning for the change is that clocking off is the moment the game's
+argument actually lands — the shift report puts what the car earned against what it costs to
+own for the twenty hours you weren't watching it. A player who has read that page understands
+what a second city is *for*. Making them finish the rest of the scripted day first only delays
+the offer.
+
+The trap here, and why the implementation reads the way it does:
+
+- **`S.shiftNo` increments on clock-*on*.** So `shiftNo > 0` is true from the first minute of
+  the first shift, and would have opened the tab before the player ever saw a shift report.
+  The correct expression is `shiftNo > 0 && !onClock`, which is not invented for this — it's
+  the codebase's existing phrase for "has completed a shift", already gating the ops panel and
+  tutorial beat 12. One definition, not two that can drift.
+- **`gateMet(kind)` is the single definition**, shared by `cityUnlocked()` (tab state) and
+  `progGates()` (permanent promotion). When those two disagreed, a tab could light up without
+  the unlock ever being recorded.
+- **`PROG.unlocked` is checked *before* `gateMet()`.** `gateMet('shift1')` goes false again the
+  moment the player clocks back on, so without the latch the tab would flicker shut for the
+  whole of every later shift. There's a test for exactly that.
+- **An unrecognised `needs` value stays locked.** A typo should hide a scenario, not silently
+  open it.
+
+Verified across all four states (never clocked on → mid-shift-1 → clocked off → mid-shift-2),
+and the gate assertions were mutation-tested: weakening the expression to `shiftNo > 0` fails
+two checks immediately.
 
 ### Open
 
