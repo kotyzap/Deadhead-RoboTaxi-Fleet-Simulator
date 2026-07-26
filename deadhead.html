@@ -48,6 +48,21 @@
   --accent:#3E6AE1;
   --accent-2:#2F55C4;
   --accent-rgb:62,106,225;
+  /* The lighter top stop of every primary-action gradient. Was the literal
+     a hard-coded hex in six separate rules, which is why a per-city accent
+     would have produced
+     buttons that were bronze at the bottom and Tesla blue at the top — the
+     same bug class as the night-mode literals noted below. */
+  --accent-hi:#4B77E8;
+  /* --accent-2 as a triple, for the accent-coloured drop shadows. Deliberately
+     NOT redeclared in the night block: the four shadows that use it carried
+     the same hard-coded triple in BOTH themes, so keeping one value here
+     preserves the existing appearance exactly. */
+  --accent-2-rgb:47,85,196;
+  /* The bright, saturated face of the city tone: tab, hairline, route glow.
+     NEVER behind text — it does not clear 4.5:1 against white. Anything with
+     type on it uses --accent. See citiesplan.md, "City identity". */
+  --city-tint:#5A9BF6;
 
   --s-idle:#8E8E8E;
   --s-active:#3E6AE1;
@@ -67,6 +82,11 @@
   --app-orange:#F2A03D;
   --app-red:#E0453C;
   --app-blue:#3E6AE1;
+  /* Chrome twin of --accent-2. The in-car card is a simulated rider phone app:
+     it does not follow the night theme (see the block header above) and must
+     not follow the city tone either — a rider's app looks the same in Dallas
+     as in Austin. .t-cta used --accent-2 and would have gone bronze. */
+  --app-blue-2:#2F55C4;
 
   --text:#171A20;
   --r-ctl:6px;
@@ -168,6 +188,8 @@ html[data-theme="night"]{
   --accent:#5A82EB;
   --accent-2:#3E6AE1;
   --accent-rgb:90,130,235;
+  --accent-hi:#6E92EF;
+  --city-tint:#7FB0F8;
 
   --s-idle:#6E727A;
   --s-active:#5A82EB;
@@ -234,7 +256,7 @@ body{
 .plat-n small{display:block;font-weight:400;font-size:10px;color:var(--text-3);margin-top:1px}
 .plat button{height:26px;padding:0 10px;font:inherit;font-size:11px;cursor:pointer;
   border:1px solid var(--brd-2);border-radius:var(--r-ctl);background:transparent;color:var(--text)}
-.plat button.on{background:linear-gradient(180deg,#4B77E8,var(--accent));border-color:transparent;color:#fff}
+.plat button.on{background:linear-gradient(180deg,var(--accent-hi),var(--accent));border-color:transparent;color:#fff}
 .plat .ar{font-size:10.5px;color:var(--text-3);flex:0 0 62px;text-align:right}
 /* ---- offer cards ---- */
 .offer{border:1px solid var(--glass-brd);border-radius:9px;padding:9px 10px;margin-bottom:7px;
@@ -247,8 +269,8 @@ body{
 .offer-act{display:flex;gap:5px;align-items:center}
 .offer-act button{flex:1;height:26px;font:inherit;font-size:11px;cursor:pointer;
   border:1px solid var(--brd-2);border-radius:var(--r-ctl);background:transparent;color:var(--text)}
-.offer-act button.acc{background:linear-gradient(180deg,#4B77E8,var(--accent));border-color:transparent;color:#fff;
-  box-shadow:0 4px 12px -6px rgba(47,85,196,.8)}
+.offer-act button.acc{background:linear-gradient(180deg,var(--accent-hi),var(--accent));border-color:transparent;color:#fff;
+  box-shadow:0 4px 12px -6px rgba(var(--accent-2-rgb),.8)}
 .offer-act .cd{flex:0 0 34px;text-align:right;font-size:11px;color:var(--text-3);
   font-variant-numeric:tabular-nums}
 .offer.warn .cd{color:var(--s-attn)}
@@ -286,7 +308,7 @@ body{
   min-width:44px;height:30px;cursor:pointer;transition:background var(--dur-fast),color var(--dur-fast)}
 .seg button+button{border-left:1px solid var(--brd-2)}
 .seg button:hover{background:var(--inset)}
-.seg button[aria-pressed="true"]{background:linear-gradient(180deg,#4B77E8,var(--accent));color:#fff}
+.seg button[aria-pressed="true"]{background:linear-gradient(180deg,var(--accent-hi),var(--accent));color:#fff}
 .ghost{display:flex;align-items:center;gap:7px;background:var(--inset);box-shadow:var(--hi-1);border:1px solid var(--glass-brd);
   border-radius:var(--r-ctl);height:30px;padding:0 12px;font:inherit;font-size:12px;font-weight:500;
   color:var(--text-2);cursor:pointer;transition:background var(--dur-fast),border-color var(--dur-fast)}
@@ -542,7 +564,7 @@ html[data-theme="night"] .console{background:rgba(39,44,51,.4);
   transition:transform .25s linear}
 .carpin svg{display:block;overflow:visible;
   filter:drop-shadow(0 1px 2px rgba(0,0,0,.45))}
-.carpin.on svg{filter:drop-shadow(0 0 6px rgba(62,106,225,.95))
+.carpin.on svg{filter:drop-shadow(0 0 6px rgba(var(--accent-rgb),.95))
   drop-shadow(0 1px 2px rgba(0,0,0,.5))}
 .carpin.on .cp-rot{scale:1.22}
 .chpin{display:grid;place-items:center;border-radius:3px;background:var(--card-txt);color:#fff;font-size:11px}
@@ -642,7 +664,7 @@ html[data-theme="night"] .chg-ring b{color:#F2F2F4}
 
 .t-cta{flex:0 0 auto;position:relative;display:flex;height:52px;margin:10px;border-radius:6px;overflow:hidden;
   box-shadow:0 8px 20px -10px rgba(47,85,196,.7);
-  background:var(--accent-2);cursor:pointer;border:0;font:inherit;
+  background:var(--app-blue-2);cursor:pointer;border:0;font:inherit;
   transition:filter var(--dur-base) var(--ease)}
 .t-cta:hover{filter:brightness(1.08)}
 /* one pass of light across the primary action, on hover only */
@@ -1046,7 +1068,7 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border:0;border-radiu
 .chip{border:1px solid var(--brd-2);background:none;border-radius:var(--r-ctl);padding:3px 8px;
   font:inherit;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-4);
   cursor:pointer;transition:background var(--dur-fast),color var(--dur-fast)}
-.chip.on{background:rgba(62,106,225,.13);border-color:transparent;color:var(--accent)}
+.chip.on{background:rgba(var(--accent-rgb),.13);border-color:transparent;color:var(--accent)}
 .empty{font-size:12px;color:var(--text-4);padding:6px 0}
 .infoline{width:100%;margin-top:9px;height:32px;border:0!important;background:var(--inset);
   border-radius:var(--r-ctl);font:inherit;font-size:11px;font-weight:400;color:var(--text-3);
@@ -1085,8 +1107,8 @@ tr[data-car].on td{background:var(--inset)}
 .rp-sep{height:1px;background:var(--brd);margin:9px 0}
 .pos{color:var(--s-charge)} .neg{color:var(--s-crit)}
 #rp-go{margin-top:20px;width:100%;height:44px;border:0;border-radius:8px;
-  background:linear-gradient(180deg,#4B77E8,var(--accent));color:#fff;font:inherit;font-size:15px;
-  font-weight:500;cursor:pointer;box-shadow:0 10px 24px -10px rgba(47,85,196,.9)}
+  background:linear-gradient(180deg,var(--accent-hi),var(--accent));color:#fff;font:inherit;font-size:15px;
+  font-weight:500;cursor:pointer;box-shadow:0 10px 24px -10px rgba(var(--accent-2-rgb),.9)}
 
 /* ---------------- save manager ---------------- */
 .rep h4{font-size:11px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;
@@ -1167,7 +1189,7 @@ html[data-theme="night"] #ray .bubble{background:#2C2C2E;box-shadow:inset 0 0 0 
 #ray .body{font-size:13px;line-height:1.45;color:#171A20}
 html[data-theme="night"] #ray .body{color:#F2F2F4}
 #ray .foot{display:flex;align-items:center;gap:8px;margin-top:13px}
-#ray-go{flex:1;height:34px;border:0;border-radius:17px;background:linear-gradient(180deg,#4B77E8,var(--accent));box-shadow:0 6px 16px -8px rgba(47,85,196,.9);
+#ray-go{flex:1;height:34px;border:0;border-radius:17px;background:linear-gradient(180deg,var(--accent-hi),var(--accent));box-shadow:0 6px 16px -8px rgba(var(--accent-2-rgb),.9);
   color:#fff;font:inherit;font-size:12.5px;font-weight:500;cursor:pointer;display:flex;
   align-items:center;justify-content:center;gap:8px;transition:filter var(--dur-fast)}
 #ray-go:hover{filter:brightness(1.06)}
@@ -1483,8 +1505,8 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
 .card-acts button small{color:var(--text-3);font-size:11px}
 .card-acts button:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
 .card-acts button:hover:not(:disabled) small{color:var(--accent)}
-.card-acts button.pri{background:linear-gradient(180deg,#4B77E8,var(--accent));border-color:transparent;color:#fff;
-  box-shadow:0 6px 16px -8px rgba(47,85,196,.9)}
+.card-acts button.pri{background:linear-gradient(180deg,var(--accent-hi),var(--accent));border-color:transparent;color:#fff;
+  box-shadow:0 6px 16px -8px rgba(var(--accent-2-rgb),.9)}
 .card-acts button.pri small{color:rgba(255,255,255,.8)}
 .card-acts button:disabled{opacity:.38;cursor:default}
 .card-acts .why{font-size:10.5px;color:var(--text-4);text-align:center}
@@ -2092,9 +2114,54 @@ const CLS={idle:'idle',dispatched:'active',onTrip:'active',toCharge:'charge',
    this is where a second city gets added later — nothing that reads from
    currentCity() below needs to change, only this table grows a row. */
 const CITIES={
-  austin:{name:'Austin', lat:30.2672, lon:-97.7431, tz:'America/Chicago'}
+  austin:{name:'Austin', lat:30.2672, lon:-97.7431, tz:'America/Chicago',
+    /* THE CITY TONE. Two faces per theme, and the split is not cosmetic:
+       `accent` is used as a solid fill under white text in five rules, so it
+       must clear 4.5:1 against #fff (this blue manages 4.82:1 and is the
+       lightest that may ever appear here). `tint` is the bright, saturated
+       face — tab, hairline, route glow — and must never sit behind type.
+       `hi` is the top stop of the primary-action gradient, `a2` the shadow.
+       Austin's values are byte-identical to what :root and the night block
+       already declared, so applying this tone changes nothing on screen.
+       See citiesplan.md, "City identity". */
+    tone:{
+      day:  {accent:'#3E6AE1', hi:'#4B77E8', a2:'#2F55C4', tint:'#5A9BF6'},
+      night:{accent:'#5A82EB', hi:'#6E92EF', a2:'#3E6AE1', tint:'#7FB0F8'}
+    }}
 };
 function currentCity(){ return CITIES[S.city]||CITIES.austin }
+
+/* The live tone, for the handful of places that paint from JS rather than CSS
+   (a Leaflet polyline colour, a canvas shadow). CSS reads the custom
+   properties; these two cannot, so they read this instead of a literal. */
+let TONE={accent:'#3E6AE1', tint:'#5A9BF6', rgb:'62,106,225'};
+function hexRgb(h){
+  const n=parseInt(h.slice(1),16);
+  return ((n>>16)&255)+','+((n>>8)&255)+','+(n&255);
+}
+/* Writes the current city's tone onto the root element as inline custom
+   properties. Inline style beats both :root and html[data-theme="night"], so
+   this is also why it must re-run on every theme toggle — otherwise a night
+   switch would keep the day tone.
+
+   --accent-2-rgb is deliberately taken from the DAY variant in both themes.
+   The four accent-coloured shadows that consume it were a single hard-coded
+   triple before tokenisation, identical in day and night, and keeping one
+   value preserves that exactly. */
+function applyCityTone(){
+  const c=currentCity();
+  if(!c.tone) return;                       /* a city may ship without a tone */
+  const night=document.documentElement.getAttribute('data-theme')==='night';
+  const t=night?c.tone.night:c.tone.day, d=c.tone.day;
+  const st=document.documentElement.style;
+  st.setProperty('--accent',t.accent);
+  st.setProperty('--accent-hi',t.hi);
+  st.setProperty('--accent-2',t.a2);
+  st.setProperty('--accent-rgb',hexRgb(t.accent));
+  st.setProperty('--accent-2-rgb',hexRgb(d.a2));
+  st.setProperty('--city-tint',t.tint);
+  TONE={accent:t.accent, tint:t.tint, rgb:hexRgb(t.accent)};
+}
 
 /* Live weather + the city's real local clock — deliberately NOT part of
    S/snapshot()/restore(). This is real-world data looked up for whichever
@@ -4437,7 +4504,7 @@ function drawMap(){
     } else {
       pts=[[sel.lat,sel.lng]].concat(sel.route);   /* no baked route: as before */
     }
-    tripLine=L.polyline(pts,{color:'#3E6AE1',weight:3,opacity:.85}).addTo(map);
+    tripLine=L.polyline(pts,{color:TONE.accent,weight:3,opacity:.85}).addTo(map);
   }
 }
 
@@ -5089,6 +5156,9 @@ tbtn.addEventListener('click',function(){
   tbtn.innerHTML='<svg class="ms"><use href="#i-'+(night?'moon':'sun')+'"/></svg>'+
     '<span>'+(night?'Night':'Day')+'</span>';
   tbtn.setAttribute('aria-label',night?'Night':'Day');
+  /* The tone is written inline, which outranks html[data-theme="night"], so
+     the day/night variant has to be re-picked here or night keeps day's tone. */
+  applyCityTone();
 });
 
 /* ============================================================
@@ -5733,7 +5803,7 @@ function dodgeCar(ctx,cx,cy,w,h,paint,flip,glow){
   dodgeRR(ctx,w*0.90,h*0.255,w*0.16,h*0.042,w*0.05); ctx.fill();
 
   /* body */
-  if(glow){ ctx.shadowColor='rgba(62,106,225,.9)'; ctx.shadowBlur=w*0.6 }
+  if(glow){ ctx.shadowColor='rgba('+TONE.rgb+',.9)'; ctx.shadowBlur=w*0.6 }
   const g=ctx.createLinearGradient(0,0,w,0);
   g.addColorStop(0,paint.hi); g.addColorStop(0.38,paint.body);
   g.addColorStop(0.80,paint.body); g.addColorStop(1,paint.lo);
@@ -6221,6 +6291,9 @@ function newFleet(){
 /* ---------------- boot ---------------- */
 $('ver').textContent='v'+VERSION;
 if(S.units!=='imperial'&&S.units!=='metric') S.units=defaultUnits();
+/* Before the first render, so nothing paints in the previous city's tone for
+   a frame. For Austin this writes exactly the values :root already declares. */
+applyCityTone();
 paintUnits();
 syncSoundBtn();
 /* The markup carries `hidden`, but assert it here too so a refactor that
