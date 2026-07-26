@@ -1,0 +1,252 @@
+/* Multi-city tests — the scenario tables, the city tone, and the save shape.
+ *
+ * These cover the four things that were most likely to break silently when
+ * Austin stopped being the only city, all of which had already bitten this
+ * codebase once in another form:
+ *
+ *   1. A data table that is also player state (ZONES[].on is the geofence).
+ *      newFleet() used to reset the fence by setting every zone's `on` to
+ *      TRUE, which is not what any city's defaults say — it handed a
+ *      first-time player the airport and all three breweries.
+ *   2. Positional indices into a list whose shape can change. Charger indices
+ *      (chIdx) already caused this and were converted to names; the geofence
+ *      was still saved as a positional boolean array.
+ *   3. Colour used as a fill under white text. --accent is a solid background
+ *      with color:#fff in five rules, so every city's accent has to clear
+ *      WCAG AA 4.5:1 or a scenario ships illegible buttons.
+ *   4. Austin regressing. Steps 1-5 of citiesplan.md were meant to land with
+ *      Austin looking and playing identically, so the tone assertions below
+ *      pin its computed values to the literals :root already declared.
+ *
+ * Run: node test/city.test.js   (or npm test, which runs this after the smoke test)
+ */
+
+const fs = require('fs');
+const path = require('path');
+const { JSDOM } = require('jsdom');
+
+const TARGETS = [
+  path.join(__dirname, '..', '..', 'deadhead.html'),
+  path.join(__dirname, '..', 'public', 'index.html'),
+];
+
+let failures = 0;
+
+/* --- WCAG relative luminance / contrast, so rule 2 of citiesplan.md's
+   "City identity" section is enforced by a test rather than by good
+   intentions. Formula: WCAG 2.1 definition of relative luminance. --- */
+function luminance(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  const ch = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => {
+    const c = v / 255;
+    return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  });
+  return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2];
+}
+function contrastWithWhite(hex) {
+  return 1.05 / (luminance(hex) + 0.05);
+}
+
+function strip(html) {
+  return html
+    .replace(/<script[^>]+src=["']https:\/\/cdnjs\.cloudflare\.com[^>]*><\/script>/i, '')
+    .replace(/<script[^>]+src=["']cloud\.js["'][^>]*><\/script>/i, '');
+}
+
+async function boot(file) {
+  const dom = new JSDOM(strip(fs.readFileSync(file, 'utf8')), {
+    url: 'http://localhost/',
+    runScripts: 'dangerously',
+    pretendToBeVisual: true,
+    beforeParse(window) {
+      window.matchMedia = window.matchMedia || ((q) => ({
+        matches: false, media: q,
+        addEventListener() {}, removeEventListener() {},
+        addListener() {}, removeListener() {},
+      }));
+      // switchCity() asks for confirmation; a headless run must not hang.
+      window.confirm = () => true;
+    },
+  });
+  await new Promise((r) => setTimeout(r, 90));
+  return dom;
+}
+
+async function run(file) {
+  const label = path.relative(process.cwd(), file);
+  const dom = await boot(file);
+  const w = dom.window;
+  const A = w.DH_ACT1, SV = w.DH_SAVE, S = w.DH;
+  let ok = true;
+  const check = (name, fn) => {
+    let pass = false;
+    try { pass = !!fn(); } catch (e) { pass = false; }
+    if (!pass) { console.error(`FAIL ${label}: ${name}`); ok = false; failures++; }
+  };
+
+  // ---- 1. zone tables are per-run copies -------------------------------
+  check('ZONES is a copy, not the master table',
+    () => A.zones()[0] !== A.ZONES_BY_CITY.austin[0]);
+  check('mutating live ZONES cannot reach ZONES_BY_CITY', () => {
+    const last = A.zones().length - 1;
+    A.zones()[last].on = true;
+    return A.ZONES_BY_CITY.austin[A.ZONES_BY_CITY.austin.length - 1].on === false;
+  });
+
+  // Every city authors exactly three live zones — the convention, and the
+  // thing newFleet() used to trample by turning all of them on.
+  for (const id of Object.keys(A.ZONES_BY_CITY)) {
+    check(`${id} authors 3 live zones by default`,
+      () => A.ZONES_BY_CITY[id].filter((z) => z.on !== false).length === 3);
+    check(`${id} has exactly one airport zone`,
+      () => A.ZONES_BY_CITY[id].filter((z) => z.p === 'airport').length === 1);
+    check(`${id} zone names are unique`, () => {
+      const n = A.ZONES_BY_CITY[id].map((z) => z.n);
+      return new Set(n).size === n.length;
+    });
+    // A zone and a charger ARE allowed to share a name — Austin's 'South
+    // Congress' is deliberately both a district and a Supercharger, and the
+    // 'CH:' prefix in the ROADS key namespace is what keeps the two apart.
+    // What must never happen is a ZONE whose own name starts with 'CH:',
+    // because that would collide inside the namespace rather than outside it.
+    check(`${id} no zone name intrudes on the CH: namespace`,
+      () => A.ZONES_BY_CITY[id].every((z) => z.n.slice(0, 3) !== 'CH:'));
+  }
+
+  check('newFleet() restores authored defaults, not all-on', () => {
+    A.newFleet();
+    return A.zones().filter((z) => z.on !== false).length === 3;
+  });
+  check('airportZone() resolves by profile, not an Austin name',
+    () => A.airportZone() && A.airportZone().p === 'airport');
+  check('roadsFor(unknown) is an empty object, not a throw',
+    () => Object.keys(A.roadsFor('nope')).length === 0);
+
+  // ---- 2. the geofence is saved by name -------------------------------
+  check('snapshot() writes a name-keyed geofence', () => {
+    const snap = SV.snapshot();
+    return !Array.isArray(snap.s.zones) && ('Downtown core' in snap.s.zones);
+  });
+  check('a geofence flag survives snapshot -> restore by name', () => {
+    const air = A.airportZone().n;
+    A.zones().forEach((z) => { if (z.n === air) z.on = true; });
+    const snap = SV.snapshot();
+    A.zones().forEach((z) => { if (z.n === air) z.on = false; });
+    SV.restore(snap);
+    return A.zones().filter((z) => z.n === air)[0].on === true;
+  });
+  check('SAVE_V is 7', () => SV.V === 7);
+  check('migrate() converts a v6 positional geofence to names', () => {
+    const v6 = { v: 6, s: JSON.parse(JSON.stringify(SV.snapshot().s)) };
+    // index 7 in Austin's authored order is the airport, and only it is on
+    v6.s.zones = A.ZONES_BY_CITY.austin.map((z, i) => i === 7);
+    delete v6.s.city;
+    const m = SV.migrate(v6);
+    return !Array.isArray(m.s.zones) &&
+           m.s.zones[A.ZONES_BY_CITY.austin[7].n] === true &&
+           m.s.zones['Downtown core'] === false &&
+           m.s.city === 'austin';
+  });
+
+  // ---- 3. every city's accent is legible under white text -------------
+  for (const id of Object.keys(A.CITIES)) {
+    const t = A.CITIES[id].tone;
+    check(`${id} declares a tone for both themes`,
+      () => t && t.day && t.night);
+    // Day: the full WCAG AA floor for normal text, 4.5:1. The accent is a
+    // solid fill with color:#fff (.slot-act button.pri, .rs-btns button.pri),
+    // so this is a text-on-background ratio and 4.5 is the real requirement.
+    const dayRatio = contrastWithWhite(t.day.accent);
+    check(`${id} day accent ${t.day.accent} clears AA 4.5:1 vs white (${dayRatio.toFixed(2)}:1)`,
+      () => dayRatio >= 4.5);
+
+    // Night: 3.0:1, and this is a DOCUMENTED DEVIATION rather than a laxer
+    // rule. Night mode deliberately lightens the accent so it reads against a
+    // dark surface, and Austin's existing #5A82EB has measured 3.60:1 against
+    // white since long before cities were a thing — the shortfall is inherited
+    // from the current design, not introduced by a new scenario. Darkening it
+    // to pass 4.5 would change how Austin looks at night, which is a product
+    // decision, not a test's to make. 3.0 is WCAG's floor for UI components
+    // and large text, so this still fails loudly on a genuinely illegible
+    // accent while not silently blessing 4.5 as met.
+    const nightRatio = contrastWithWhite(t.night.accent);
+    check(`${id} night accent ${t.night.accent} clears 3:1 vs white (${nightRatio.toFixed(2)}:1)`,
+      () => nightRatio >= 3.0);
+    // The bright tint is explicitly allowed to fail contrast — it must never
+    // be used as a fill. This asserts the two are actually different, i.e.
+    // that a city hasn't quietly collapsed them into one colour and lost the
+    // distinction the rule depends on.
+    check(`${id} tint is distinct from accent`,
+      () => t.day.tint.toLowerCase() !== t.day.accent.toLowerCase());
+  }
+
+  // ---- 4. Austin renders exactly as it did before tokenisation --------
+  const want = {
+    '--accent': '#3e6ae1', '--accent-hi': '#4b77e8', '--accent-2': '#2f55c4',
+    '--accent-rgb': '62,106,225', '--accent-2-rgb': '47,85,196',
+    '--city-tint': '#5a9bf6',
+  };
+  check('Austin day tone matches the :root literals exactly', () => {
+    const st = w.document.documentElement.style;
+    return Object.keys(want).every((k) =>
+      st.getPropertyValue(k).trim().toLowerCase() === want[k]);
+  });
+
+  // ---- 5. scenario config actually reaches the economy ----------------
+  check('tariff() follows the city power table', () => {
+    const p = A.CITIES[S.city].power;
+    return A.tariff(p.peakFrom) === p.peak && A.tariff(0) === p.off;
+  });
+  check('Dallas is unsupervised and Austin is not',
+    () => A.CITIES.dallas.permit === 'Unsupervised' &&
+          A.CITIES.austin.permit === 'Supervised');
+  check('Dallas wears cars harder and Austin is the 1.0 baseline',
+    () => A.CITIES.dallas.depK > 1 && A.CITIES.austin.depK === 1 &&
+          A.CITIES.austin.fareK === 1 && A.CITIES.austin.insK === 1);
+  check('every city declares a fleet cap and a goal',
+    () => Object.keys(A.CITIES).every((id) =>
+      typeof A.CITIES[id].fleetCap === 'number' &&
+      A.CITIES[id].goal && typeof A.CITIES[id].goal.cash === 'number'));
+
+  // ---- 6. the gate ----------------------------------------------------
+  check('Austin is never locked', () => A.cityUnlocked('austin'));
+  check('Dallas is locked before guided day 1 finishes', () => {
+    S.ray.day1Done = false;
+    A.PROG().unlocked.dallas = false;
+    return A.cityUnlocked('dallas') === false;
+  });
+  check('finishing guided day 1 unlocks Dallas', () => {
+    S.ray.day1Done = true;
+    return A.cityUnlocked('dallas') === true;
+  });
+  check('cityList() is ordered by CITIES[].order',
+    () => A.cityList().join(',') === 'austin,dallas');
+
+  // ---- 7. per-city save keys -----------------------------------------
+  check('the autosave key carries the city', () => {
+    const before = S.city;
+    S.city = 'austin';
+    const a = A.physKey('auto');
+    S.city = 'dallas';
+    const d = A.physKey('auto');
+    S.city = before;
+    return a === 'auto:austin' && d === 'auto:dallas' && a !== d;
+  });
+  check('manual slots are NOT rewritten per city',
+    () => A.physKey('slot1') === 'slot1');
+
+  if (ok) console.log(`PASS ${label}`);
+  dom.window.close();
+}
+
+(async () => {
+  for (const f of TARGETS) {
+    if (!fs.existsSync(f)) { console.error(`FAIL: ${f} not found`); failures++; continue; }
+    await run(f);
+  }
+  if (failures > 0) {
+    console.error(`\n${failures} check(s) failed.`);
+    process.exit(1);
+  }
+  console.log('\nAll multi-city checks passed.');
+})();

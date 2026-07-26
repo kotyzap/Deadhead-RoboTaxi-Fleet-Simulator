@@ -309,6 +309,54 @@ body{
 .seg button+button{border-left:1px solid var(--brd-2)}
 .seg button:hover{background:var(--inset)}
 .seg button[aria-pressed="true"]{background:linear-gradient(180deg,var(--accent-hi),var(--accent));color:#fff}
+/* ============================================================
+   CITY TABS
+
+   Skewed, overlapping scenario tabs. The skew is a transform on a wrapper so
+   the LABEL stays upright — skewing the button itself would slant the text.
+
+   The active tab is filled with --city-tint (the bright face of the tone) and
+   carries its label in #fff, which is the one place the tint would fail
+   contrast — so the fill is --accent and the tint is only the top edge and the
+   glow. See citiesplan.md, "City identity", rule 2.
+
+   Below 1199px the skew is dropped entirely and these become a plain
+   segmented control. Four overlapping parallelograms in a fixed 32:9 cockpit
+   is exactly the shape that has already produced a hairline Platforms panel
+   and an invisible "Take control" on this layout.
+   ============================================================ */
+.citytabs{display:flex;align-items:flex-end;gap:0;margin-right:4px}
+.citytab{position:relative;border:0;background:none;padding:0;font:inherit;cursor:pointer;
+  margin-right:-9px}
+.citytab:last-child{margin-right:0}
+.citytab .sk{display:block;height:30px;padding:0 20px 0 14px;
+  transform:skewX(-14deg);transform-origin:bottom left;
+  background:var(--inset);box-shadow:var(--hi-1);
+  border:1px solid var(--glass-brd);border-bottom:0;
+  border-radius:var(--r-ctl) var(--r-ctl) 0 0;
+  transition:background var(--dur-fast),border-color var(--dur-fast)}
+.citytab .lb{display:flex;align-items:center;gap:6px;height:30px;
+  transform:skewX(14deg);   /* cancels the parent skew so the text stays upright */
+  font-size:12px;font-weight:500;color:var(--text-3);white-space:nowrap}
+.citytab:hover:not(:disabled) .sk{background:var(--glass)}
+.citytab:hover:not(:disabled) .lb{color:var(--text-1)}
+.citytab[aria-pressed="true"]{z-index:2}
+.citytab[aria-pressed="true"] .sk{background:var(--accent);border-color:transparent;
+  box-shadow:0 -2px 0 0 var(--city-tint) inset, 0 6px 16px -8px rgba(var(--accent-2-rgb),.9)}
+.citytab[aria-pressed="true"] .lb{color:#fff}
+.citytab:disabled{cursor:default}
+.citytab:disabled .lb{color:var(--text-4)}
+.citytab .lk{font-size:11px;opacity:.8}
+@media (max-width:1199px){
+  .citytabs{gap:0}
+  .citytab{margin-right:0}
+  .citytab+.citytab .sk{border-left:1px solid var(--brd-2)}
+  .citytab .sk{transform:none;border-radius:0;border-bottom:1px solid var(--glass-brd);
+    padding:0 12px}
+  .citytab:first-child .sk{border-radius:var(--r-ctl) 0 0 var(--r-ctl)}
+  .citytab:last-child .sk{border-radius:0 var(--r-ctl) var(--r-ctl) 0}
+  .citytab .lb{transform:none}
+}
 .ghost{display:flex;align-items:center;gap:7px;background:var(--inset);box-shadow:var(--hi-1);border:1px solid var(--glass-brd);
   border-radius:var(--r-ctl);height:30px;padding:0 12px;font:inherit;font-size:12px;font-weight:500;
   color:var(--text-2);cursor:pointer;transition:background var(--dur-fast),border-color var(--dur-fast)}
@@ -1546,6 +1594,7 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
   <!-- ============ management top bar ============ -->
   <header class="topbar">
     <div class="brand"><b>Deadhead</b><span>robotaxi fleet ops</span><i class="ver" id="ver"></i></div>
+    <div class="citytabs" id="citytabs" role="group" aria-label="Scenario city"></div>
     <div class="tb-item"><label>City</label><b id="tb-city">Austin</b><span class="tb-sub" id="tb-city-time" title="Real local time in the city"></span></div>
     <div class="tb-item"><label>Day</label><b id="tb-day">1</b></div>
     <div class="tb-item"><label>Clock</label><b id="tb-clock">06:00</b></div>
@@ -2113,8 +2162,30 @@ const CLS={idle:'idle',dispatched:'active',onTrip:'active',toCharge:'charge',
    real local clock both need actual coordinates and an IANA timezone, so
    this is where a second city gets added later — nothing that reads from
    currentCity() below needs to change, only this table grows a row. */
+/* ============================================================
+   THE SCENARIOS
+
+   A city is not a skin. Each entry below is a complete scenario: geography
+   (ZONES_BY_CITY), charging (CHARGERS_BY_CITY), road geometry
+   (ROADS_BY_CITY), power price, permit regime, the economic multipliers, a
+   goal, and a colour tone. Austin's numbers are all 1.0 / unchanged, so it
+   plays exactly as it did before this table grew.
+
+   Cities are SEQUENTIAL, not parallel: one runs at a time, each with its own
+   run and its own $7,500. Cash does not travel — arriving in Dallas with a
+   mature bankroll would mean the Act 1 lesson (you cannot buy any of the nine
+   outright) never lands a second time, and that lesson is the game. What
+   travels is `unlocked` in the progress record. See citiesplan.md.
+   ============================================================ */
 const CITIES={
-  austin:{name:'Austin', lat:30.2672, lon:-97.7431, tz:'America/Chicago',
+  austin:{name:'Austin', short:'Austin', lat:30.2672, lon:-97.7431, tz:'America/Chicago',
+    /* Tutorial city. Permissive regulation, cheap power, short hops, and a
+       real fleet that peaked near 17 cars — so the scenario caps there too. */
+    permit:'Supervised', fleetCap:17,
+    fareK:1.0, depK:1.0, insK:1.0,
+    power:{peak:0.34, mid:0.19, off:0.11, peakFrom:16, peakTo:21, offFrom:23, offTo:7},
+    goal:{cash:40000, text:'Clear $40,000 in the bank without losing your permit.'},
+    order:0,
     /* THE CITY TONE. Two faces per theme, and the split is not cosmetic:
        `accent` is used as a solid fill under white text in five rules, so it
        must clear 4.5:1 against #fff (this blue manages 4.82:1 and is the
@@ -2127,8 +2198,58 @@ const CITIES={
     tone:{
       day:  {accent:'#3E6AE1', hi:'#4B77E8', a2:'#2F55C4', tint:'#5A9BF6'},
       night:{accent:'#5A82EB', hi:'#6E92EF', a2:'#3E6AE1', tint:'#7FB0F8'}
+    }},
+
+  /* ---- DALLAS ----------------------------------------------------------
+     Tesla switched Dallas on for real on 18 April 2026, and unlike Austin it
+     launched with NO safety monitor at all — so `permit:'Unsupervised'` is
+     reportage, not a difficulty knob. The real service area is a compact
+     geofence over downtown, Uptown, the Park Cities and Highland Park.
+
+     Which is worth saying plainly, because it contradicts DESIGN.md §5: that
+     table guessed "enormous geography", and the actual launch geofence is
+     TIGHTER than Austin's. Rather than invent sprawl to match the old note,
+     Dallas earns its difficulty from three things that are true:
+
+       1. depK 1.22 — highway-speed miles wear a car harder than Austin's
+          stop-start core, and Dallas trips run at road speed.
+       2. insK 1.18 — an unsupervised permit with nobody in the seat is a
+          more expensive policy, not a cheaper one.
+       3. permit 'Unsupervised' from hour one — there is no supervised
+          grace period to hide behind when safety slips.
+
+     And it is genuinely EASIER in one respect, which the real data forced:
+     S Riverfront is 34 stalls at 325 kW, better than anything Austin has.
+     Charging is not the Dallas problem. Wear is. */
+  dallas:{name:'Dallas', short:'Dallas', lat:32.7767, lon:-96.7970, tz:'America/Chicago',
+    permit:'Unsupervised', fleetCap:24,
+    fareK:1.08, depK:1.22, insK:1.18,
+    /* Deregulated retail power (Oncor delivery + a competitive retailer) runs
+       a little under Austin Energy's municipal tariff. Cheaper electricity
+       against harsher depreciation is the trade the whole city is built on. */
+    power:{peak:0.31, mid:0.17, off:0.09, peakFrom:16, peakTo:21, offFrom:23, offTo:7},
+    goal:{cash:60000, text:'Clear $60,000 unsupervised — and keep safety above 70.'},
+    order:1,
+    /* Gated: the Dallas tab is visible from the first boot but padlocked
+       until guided day 1 is finished in Austin. A lock the player can see is
+       a goal; a tab that appears from nowhere is a surprise. */
+    needs:'day1',
+    /* Burnt bronze. Highway dust, and far enough from --s-attn amber that a
+       low-charge warning still reads as a warning — the one collision in this
+       palette worth checking on screen rather than trusting. 5.17:1 against
+       white, so it is safe as a fill. */
+    tone:{
+      day:  {accent:'#A15C1E', hi:'#B96D28', a2:'#7E4715', tint:'#E08A2E'},
+      night:{accent:'#C87A33', hi:'#D98B41', a2:'#A15C1E', tint:'#EFA555'}
     }}
 };
+/* Scenario order for the city tabs — by `order`, so the table can grow in any
+   order without the UI shuffling. */
+function cityList(){
+  return Object.keys(CITIES).sort(function(a,b){
+    return (CITIES[a].order||0)-(CITIES[b].order||0);
+  });
+}
 function currentCity(){ return CITIES[S.city]||CITIES.austin }
 
 /* The live tone, for the handful of places that paint from JS rather than CSS
@@ -2161,6 +2282,17 @@ function applyCityTone(){
   st.setProperty('--accent-2-rgb',hexRgb(d.a2));
   st.setProperty('--city-tint',t.tint);
   TONE={accent:t.accent, tint:t.tint, rgb:hexRgb(t.accent)};
+}
+
+/* Everything that is keyed by city, swapped in one place. Called at boot,
+   by newFleet(), by restore() once S.city is known, and by the city switch.
+   ZONES deliberately comes back at the new city's AUTHORED defaults — a
+   geofence belongs to a run, not to the player. */
+function loadCityTables(){
+  ZONES=zonesFor(S.city);
+  CHARGERS=chargersFor(S.city);
+  ROADS=roadsFor(S.city);
+  applyCityTone();
 }
 
 /* Live weather + the city's real local clock — deliberately NOT part of
@@ -2284,38 +2416,107 @@ function cityLocalTime(c){
   }catch(e){ return '' }
 }
 
-/* Austin zones. profile drives the hour-of-day demand curve. */
-const ZONES=[
-  {n:'Downtown core', lat:30.2685,lng:-97.7420, base:14, p:'work',    on:true},
-  {n:'Rainey St',     lat:30.2585,lng:-97.7370, base:9,  p:'night',   on:true},
-  {n:'UT campus',     lat:30.2860,lng:-97.7380, base:8,  p:'work',    on:true},
-  {n:'East Austin',   lat:30.2650,lng:-97.7250, base:6,  p:'night',   on:false},
-  {n:'South Congress',lat:30.2500,lng:-97.7500, base:7,  p:'leisure', on:false},
-  {n:'Zilker',        lat:30.2665,lng:-97.7700, base:4,  p:'leisure', on:false},
-  {n:'Mueller',       lat:30.2985,lng:-97.7055, base:3,  p:'home',    on:false},
-  /* Austin-Bergstrom. 10.7 km out as dist() measures it (~13 km by road),
-     which makes it the only genuinely long trip in the game: about $30 at the
-     real tariff, against a 21-minute drive each way and a car left far from
-     every other zone's demand. OFF by default,
-     like the other four optional zones — an airport run is a strategic choice,
-     not something to hand a first-time player in the middle of day one. */
-  {n:'AUS airport',   lat:30.1975,lng:-97.6664, base:5,  p:'airport', on:false},
-  /* Real East 6th / West 4th breweries — three real taprooms, not invented
-     bars, matching the "real coordinates for real things" rule the Rapid
-     Network already follows (see CHARGERS_BY_CITY above). p:'brewery' peaks
-     hard at happy hour and dies during the work day (see CURVES.brewery),
-     so these compete with UT campus for the "to" slot only once the sun
-     goes down — during the day UT's work curve wins easily. OFF by default,
-     same convention as the other optional leisure/night zones: a brewery
-     crawl is a choice the player opts into via the Geofence panel, not
-     something sprung on a fresh save. Kept name-distinct from the existing
-     'Zilker' zone (the park) since Zilker Brewing Co is actually across
-     town on East 6th, not near Zilker Park — same "stay distinct" rule as
-     the South Congress zone/charger pair. */
-  {n:'Lazarus Brewing',  lat:30.2618,lng:-97.7220, base:5, p:'brewery', on:false},
-  {n:'Zilker Brewing',   lat:30.2621,lng:-97.7246, base:4, p:'brewery', on:false},
-  {n:'Hold Out Brewing', lat:30.2714,lng:-97.7589, base:5, p:'brewery', on:false}
-];
+/* ============================================================
+   ZONES, PER CITY
+
+   `profile` drives the hour-of-day demand curve (see CURVES). Keyed by city
+   for the same reason CHARGERS_BY_CITY is: a scenario's pickup geography IS
+   the scenario.
+
+   `on` is the geofence, and it is PLAYER STATE living on a data table — which
+   is why zonesFor() hands back fresh objects rather than the table's own. The
+   live ZONES array is a per-run copy, so nothing the player toggles can reach
+   the authored defaults, and resetting the geofence is just re-reading the
+   table. Before this, newFleet() reset the fence by setting every zone's
+   `on` to TRUE, which is not what any city's defaults say: it handed a
+   first-time player the airport and all three breweries, the exact opposite
+   of the "not something to spring on a fresh save" note below.
+   ============================================================ */
+const ZONES_BY_CITY={
+  austin:[
+    {n:'Downtown core', lat:30.2685,lng:-97.7420, base:14, p:'work',    on:true},
+    {n:'Rainey St',     lat:30.2585,lng:-97.7370, base:9,  p:'night',   on:true},
+    {n:'UT campus',     lat:30.2860,lng:-97.7380, base:8,  p:'work',    on:true},
+    {n:'East Austin',   lat:30.2650,lng:-97.7250, base:6,  p:'night',   on:false},
+    {n:'South Congress',lat:30.2500,lng:-97.7500, base:7,  p:'leisure', on:false},
+    {n:'Zilker',        lat:30.2665,lng:-97.7700, base:4,  p:'leisure', on:false},
+    {n:'Mueller',       lat:30.2985,lng:-97.7055, base:3,  p:'home',    on:false},
+    /* Austin-Bergstrom. 10.7 km out as dist() measures it (~13 km by road),
+       which makes it the only genuinely long trip in the game: about $30 at the
+       real tariff, against a 21-minute drive each way and a car left far from
+       every other zone's demand. OFF by default,
+       like the other four optional zones — an airport run is a strategic choice,
+       not something to hand a first-time player in the middle of day one. */
+    {n:'AUS airport',   lat:30.1975,lng:-97.6664, base:5,  p:'airport', on:false},
+    /* Real East 6th / West 4th breweries — three real taprooms, not invented
+       bars, matching the "real coordinates for real things" rule the Rapid
+       Network already follows (see CHARGERS_BY_CITY above). p:'brewery' peaks
+       hard at happy hour and dies during the work day (see CURVES.brewery),
+       so these compete with UT campus for the "to" slot only once the sun
+       goes down — during the day UT's work curve wins easily. OFF by default,
+       same convention as the other optional leisure/night zones: a brewery
+       crawl is a choice the player opts into via the Geofence panel, not
+       something sprung on a fresh save. Kept name-distinct from the existing
+       'Zilker' zone (the park) since Zilker Brewing Co is actually across
+       town on East 6th, not near Zilker Park — same "stay distinct" rule as
+       the South Congress zone/charger pair. */
+    {n:'Lazarus Brewing',  lat:30.2618,lng:-97.7220, base:5, p:'brewery', on:false},
+    {n:'Zilker Brewing',   lat:30.2621,lng:-97.7246, base:4, p:'brewery', on:false},
+    {n:'Hold Out Brewing', lat:30.2714,lng:-97.7589, base:5, p:'brewery', on:false}
+  ],
+  /* ---- DALLAS ----------------------------------------------------------
+     These follow the shape of Tesla's actual Dallas geofence as reported at
+     the April 2026 launch: downtown, Uptown, the Park Cities and Highland
+     Park, with Deep Ellum and Bishop Arts on the edges.
+
+     HONESTY NOTE, because this file is careful about the difference elsewhere:
+     the Supercharger coordinates below in CHARGERS_BY_CITY.dallas are
+     TRANSCRIBED from Tesla's own location pages, to the digit. These zone
+     coordinates are NOT — they are neighbourhood centroids placed from street
+     geography, accurate to a block or so, which is all a demand zone needs.
+     Do not treat them as surveyed the way the charger list is.
+
+     Three live by default, matching Austin's convention: the two that carry
+     the work/night curve plus one night district. Love Field, SMU, the Park
+     Cities and all three breweries are opt-in via the geofence — an
+     unsupervised city is not the place to hand a new player nine zones. */
+  dallas:[
+    {n:'Downtown core',  lat:32.7800,lng:-96.7970, base:13, p:'work',    on:true},
+    {n:'Uptown',         lat:32.7960,lng:-96.8020, base:10, p:'night',   on:true},
+    {n:'Deep Ellum',     lat:32.7840,lng:-96.7830, base:8,  p:'night',   on:true},
+    {n:'Victory Park',   lat:32.7905,lng:-96.8105, base:6,  p:'leisure', on:false},
+    {n:'Highland Park',  lat:32.8215,lng:-96.7885, base:6,  p:'leisure', on:false},
+    {n:'SMU campus',     lat:32.8412,lng:-96.7845, base:7,  p:'work',    on:false},
+    {n:'Preston Center', lat:32.8620,lng:-96.8040, base:5,  p:'work',    on:false},
+    {n:'Bishop Arts',    lat:32.7508,lng:-96.8285, base:5,  p:'leisure', on:false},
+    /* Love Field, not DFW. DFW sits well outside the real service area, and
+       inventing a 30 km airport run Tesla does not actually serve would be
+       the one place this city stopped being reportage. Love Field is ~7 km
+       out — a genuine long trip by Austin's standards without being fiction. */
+    {n:'Love Field',     lat:32.8471,lng:-96.8518, base:6,  p:'airport', on:false},
+    /* Real Dallas taprooms, same rule as Austin's three. */
+    {n:'Deep Ellum Brewing', lat:32.7793,lng:-96.7745, base:5, p:'brewery', on:false},
+    {n:'Peticolas Brewing',  lat:32.7930,lng:-96.8210, base:4, p:'brewery', on:false},
+    {n:'Community Beer Co',  lat:32.7885,lng:-96.8290, base:5, p:'brewery', on:false}
+  ]
+};
+/* Fresh objects every call — see the `on` note above. Never return the
+   table's own entries or the player's geofence edits become the defaults. */
+function zonesFor(city){
+  const src=ZONES_BY_CITY[city]||ZONES_BY_CITY.austin;
+  return src.map(function(z){
+    return {n:z.n, lat:z.lat, lng:z.lng, base:z.base, p:z.p, on:z.on};
+  });
+}
+/* `let`, not `const`: switching city reassigns it, exactly like CHARGERS. */
+let ZONES=zonesFor('austin');
+/* The airport zone, by PROFILE rather than by name. This used to be
+   /AUS/.test(z.n), which is an Austin-Bergstrom spelling — it would silently
+   find nothing in Dallas and the policy strip's airport toggle would go dead
+   with no error. Every city's airport zone carries p:'airport'. */
+function airportZone(){
+  return ZONES.filter(function(z){ return z.p==='airport' })[0]||null;
+}
 const CURVES={
   work:   [.1,.1,.1,.1,.2,.5,1.0,1.7,1.8,1.1,.9,1.0,1.2,1.0,1.0,1.2,1.7,1.9,1.5,1.0,.8,.6,.4,.2],
   night:  [.9,.7,.4,.2,.1,.1,.2,.3,.4,.4,.5,.7,.8,.7,.7,.8,1.0,1.3,1.6,1.8,1.9,2.0,1.8,1.4],
@@ -2377,6 +2578,31 @@ const CHARGERS_BY_CITY={
      lat:30.1652537, lng:-97.7928559, stalls:12, kw:250},
     {n:'Research Blvd',  site:'Gateway Shopping Center',
      lat:30.3899916, lng:-97.7399524, stalls:18, kw:72}
+  ],
+  /* ---- DALLAS ----------------------------------------------------------
+     Four real sites, every field transcribed from Tesla's own location pages
+     (name, host site, stall count, peak kW and coordinates), same standard as
+     Austin above and the same reason for the extra decimal places.
+
+     The shape of this list is the interesting part, and it was not designed —
+     it is just what Dallas has. S Riverfront is 34 stalls at 325 kW, which is
+     more stalls AND more power than any Austin site: it never queues and it
+     fills a Cybercab faster than anything in the tutorial city. So Dallas is
+     the harder scenario with the EASIER charging, and the difficulty has to
+     come from wear and the unsupervised permit instead (see CITIES.dallas).
+
+     The Hill is Dallas's Research Blvd — 11 stalls but only 72 kW, close in
+     and still a bad idea. Both cities happen to have exactly one 72 kW trap.
+     Charger names stay distinct from zone names, per the Austin note. */
+  dallas:[
+    {n:'S Riverfront',   site:'Fuel City',
+     lat:32.7669899, lng:-96.8072037, stalls:34, kw:325},
+    {n:'Park Lane',      site:'The Shops at Park Lane',
+     lat:32.8709834, lng:-96.7677647, stalls:16, kw:250},
+    {n:'N Westmoreland', site:'Exxon',
+     lat:32.7703573, lng:-96.8734674, stalls:8,  kw:250},
+    {n:'The Hill',       site:'The Hill Shopping Center',
+     lat:32.8816920, lng:-96.7675450, stalls:11, kw:72}
   ]
 };
 function chargersFor(city){ return CHARGERS_BY_CITY[city]||CHARGERS_BY_CITY.austin }
@@ -2609,8 +2835,18 @@ const SIL_FOR={
 };
 function silhouette(id){ return SILHOUETTE[SIL_FOR[id]||id]||'' }
 
-/* time-of-use electricity, $/kWh */
-function tariff(h){ return (h>=16&&h<21)?0.34:(h>=23||h<7)?0.11:0.19 }
+/* Time-of-use electricity, $/kWh, per city. Austin's three rates and its two
+   boundaries are exactly the numbers this function used to hardcode. */
+function tariff(h){
+  const p=currentCity().power;
+  if(!p) return (h>=16&&h<21)?0.34:(h>=23||h<7)?0.11:0.19;
+  return (h>=p.peakFrom&&h<p.peakTo)?p.peak
+       : (h>=p.offFrom||h<p.offTo)?p.off
+       : p.mid;
+}
+/* The scenario's economic multipliers. One accessor each so a missing city
+   field reads as "no change" instead of NaN-ing the whole economy. */
+function cityK(f){ const v=currentCity()[f]; return typeof v==='number'?v:1 }
 const NAMES=['D. Kowalski','R. Trujillo','S. Okafor','M. Vance'];
 
 /* ---------------- state ---------------- */
@@ -2707,7 +2943,9 @@ function jit(z){ return [z.lat+(Math.random()-.5)*.008, z.lng+(Math.random()-.5)
    small fleet never reached, so the slider did nothing. */
 /* Act 1 has no payroll: you are the operator. Act 2 reinstates this. */
 function staffed(){ return 0 /* Act 1 */ }
-function insPerMile(){ return S.cars.length>=CFG.insFleetAt?CFG.insFleet:CFG.cpm.ins }
+function insPerMile(){
+  return (S.cars.length>=CFG.insFleetAt?CFG.insFleet:CFG.cpm.ins)*cityK('insK');
+}
 /* Owned  -> just the base. Financed -> base + the loan's daily slice.
    Rented -> base + the rental day rate, and you never build equity. */
 function fixedPerCar(c){
@@ -2802,7 +3040,7 @@ function spawnRides(dt){
     if(to===from) to=zs[(zs.indexOf(from)+1)%zs.length];
     const p=jit(from), d=jit(to), km=Math.max(1.1,dist(p[0],p[1],d[0],d[1]));
     const mins=km/effSpeedKmh()*60;
-    const base=CFG.fare.base+km*CFG.fare.perKm+mins*CFG.fare.perMin;
+    const base=(CFG.fare.base+km*CFG.fare.perKm+mins*CFG.fare.perMin)*cityK('fareK');
     const fare=base*S.fareMult*S.surge;
     if(Math.random()>winProb(S.fareMult)){
       S.d.lost++; log('Rider','chose another ride in '+from.n+' — priced out',1); continue;
@@ -3057,9 +3295,10 @@ function drive(c,km){
   c.soc=clamp(c.soc-kwh/sp.kwh*100,0,100);
   const mi=km*MI_PER_KM;   /* the exact constant, shared with the units layer */
   S.d.miles+=mi;
-  S.d.dep+=mi*sp.cpm.dep; S.d.maint+=mi*sp.cpm.maint;
+  const depK=cityK('depK');
+  S.d.dep+=mi*sp.cpm.dep*depK; S.d.maint+=mi*sp.cpm.maint;
   S.d.ins+=mi*insPerMile(); S.d.soft+=mi*sp.cpm.soft;
-  const c4=mi*(sp.cpm.dep+sp.cpm.maint+insPerMile()+sp.cpm.soft);
+  const c4=mi*(sp.cpm.dep*depK+sp.cpm.maint+insPerMile()+sp.cpm.soft);
   S.d.cost+=c4; S.cash-=c4;
 }
 function log(who,what,kind){
@@ -3340,7 +3579,10 @@ function checkSafety(){
     S.permit='Under review';
     log('Platform','safety score below 65 — permit under review, demand throttled',2);
   } else if(S.safety>=70&&S.permit==='Under review'){
-    S.permit='Supervised';
+    /* Back to whatever THIS city licenses you for. Dallas never had a
+       supervised tier to fall back to, so hardcoding 'Supervised' here would
+       have quietly downgraded a Dallas run on its first safety recovery. */
+    S.permit=currentCity().permit||'Supervised';
     log('Platform','permit review cleared',0);
   }
 }
@@ -3475,7 +3717,7 @@ function guideForceOffer(){
   const from=zs[0], to=zs.length>1?zs[1]:zs[0];
   const p=jit(from), d=jit(to), km=Math.max(1.1,dist(p[0],p[1],d[0],d[1]));
   const mins=km/effSpeedKmh()*60;
-  const base=CFG.fare.base+km*CFG.fare.perKm+mins*CFG.fare.perMin;
+  const base=(CFG.fare.base+km*CFG.fare.perKm+mins*CFG.fare.perMin)*cityK('fareK');
   const pick=live[0];
   pick.offered++;
   S.offers.push({id:'r'+Math.random().toString(36).slice(2,7),from:from.n,to:to.n,
@@ -4048,7 +4290,7 @@ $('dp-fence').addEventListener('click',function(){
   flashSection('panel-offers');
 });
 $('dp-air').addEventListener('click',function(){
-  const z=ZONES.filter(function(x){ return /AUS/.test(x.n) })[0];
+  const z=airportZone();
   if(!z) return;
   z.on=z.on===false;
   log('Policy','airport '+(z.on?'on':'off'),0);
@@ -4077,76 +4319,85 @@ $('coffee').addEventListener('click',rayCoffee);
    Charger names carry a 'CH:' prefix so a zone and a Supercharger that share a
    name — South Congress is both — stay distinct.
    ============================================================ */
-const ROADS={
-  'AUS airport|CH:Research Blvd':[30.1943,-97.6693,30.1913,-97.6693,30.1871,-97.6635,30.1731,-97.6705,30.1764,-97.6805,30.1828,-97.6875,30.2016,-97.6835,30.2272,-97.6822,30.2467,-97.6909,30.2535,-97.6791,30.2679,-97.6701,30.3017,-97.6608,30.3157,-97.6628,30.3273,-97.6754,30.3475,-97.7122,30.3689,-97.7191,30.3809,-97.7397,30.3896,-97.7441,30.39,-97.7398],
-  'AUS airport|CH:S IH-35':[30.1943,-97.6693,30.1913,-97.6693,30.1871,-97.6635,30.1731,-97.6705,30.1764,-97.6805,30.2027,-97.7112,30.2134,-97.7331,30.2154,-97.7334,30.217,-97.7518,30.1605,-97.7898,30.1621,-97.7937,30.1652,-97.7925],
-  'AUS airport|CH:South Congress':[30.1943,-97.6693,30.1913,-97.6693,30.1871,-97.6635,30.1731,-97.6705,30.1764,-97.6805,30.2027,-97.7112,30.2137,-97.7335,30.2316,-97.7358,30.2388,-97.7536,30.2473,-97.7498],
-  'AUS airport|CH:South Lamar':[30.1943,-97.6693,30.1913,-97.6693,30.1887,-97.6636,30.1871,-97.6635,30.1731,-97.6705,30.1764,-97.6805,30.2027,-97.7112,30.2134,-97.7331,30.2146,-97.7336,30.2165,-97.7522,30.2268,-97.77,30.2284,-97.785,30.2313,-97.792,30.2324,-97.7912,30.2331,-97.7922],
-  'AUS airport|CH:The Linc':[30.1943,-97.6693,30.1913,-97.6693,30.1887,-97.6636,30.1871,-97.6635,30.1731,-97.6705,30.1764,-97.6805,30.1828,-97.6875,30.2016,-97.6835,30.2272,-97.6822,30.2326,-97.6836,30.242,-97.6897,30.2467,-97.6909,30.2496,-97.6889,30.2513,-97.6825,30.2535,-97.6791,30.2679,-97.6701,30.3017,-97.6608,30.3154,-97.6627,30.3198,-97.6655,30.3273,-97.6754,30.3396,-97.7006,30.325,-97.7074],
-  'AUS airport|Downtown core':[30.1943,-97.6693,30.1913,-97.6693,30.1871,-97.6635,30.1731,-97.6705,30.1764,-97.6805,30.1829,-97.6878,30.2016,-97.6838,30.2289,-97.683,30.2495,-97.6914,30.2601,-97.7095,30.2685,-97.7419],
-  'AUS airport|East Austin':[30.1943,-97.6693,30.1913,-97.6693,30.1871,-97.6635,30.1731,-97.6705,30.1764,-97.6805,30.1829,-97.6878,30.2016,-97.6838,30.2289,-97.683,30.2495,-97.6914,30.2582,-97.7051,30.2636,-97.7251,30.2651,-97.7249],
-  'AUS airport|Mueller':[30.1943,-97.6693,30.1913,-97.6693,30.1871,-97.6635,30.1731,-97.6705,30.1764,-97.6805,30.1829,-97.6878,30.2016,-97.6838,30.2299,-97.6831,30.2429,-97.6905,30.2739,-97.698,30.2875,-97.707,30.2977,-97.709,30.2985,-97.7058],
-  'AUS airport|Rainey St':[30.1943,-97.6693,30.1913,-97.6693,30.1887,-97.6636,30.1871,-97.6635,30.1731,-97.6705,30.1764,-97.6805,30.1829,-97.6878,30.2016,-97.6838,30.2289,-97.683,30.2336,-97.6844,30.2417,-97.69,30.25,-97.6918,30.2599,-97.7091,30.2624,-97.7216,30.2665,-97.7338,30.2585,-97.737],
-  'AUS airport|South Congress':[30.1943,-97.6693,30.1913,-97.6693,30.1871,-97.6635,30.1731,-97.6705,30.1764,-97.6805,30.2027,-97.7112,30.2149,-97.7353,30.2196,-97.7337,30.2315,-97.7357,30.2388,-97.7536,30.2501,-97.7499],
-  'AUS airport|UT campus':[30.1943,-97.6693,30.1913,-97.6693,30.1871,-97.6635,30.1731,-97.6705,30.1764,-97.6805,30.1828,-97.6875,30.2016,-97.6835,30.2272,-97.6822,30.2495,-97.6911,30.2599,-97.7091,30.2666,-97.7339,30.2785,-97.7291,30.2817,-97.7419,30.2877,-97.7416,30.286,-97.738],
-  'AUS airport|Zilker':[30.1943,-97.6693,30.1913,-97.6693,30.1887,-97.6636,30.1871,-97.6635,30.1731,-97.6705,30.1764,-97.6805,30.1829,-97.6878,30.2016,-97.6838,30.2289,-97.683,30.2342,-97.6847,30.2415,-97.6899,30.2503,-97.6922,30.2599,-97.7091,30.2624,-97.7216,30.2674,-97.7368,30.2656,-97.7375,30.2703,-97.7546,30.2609,-97.7585,30.2656,-97.7663,30.2666,-97.7699],
-  'CH:Research Blvd|Downtown core':[30.39,-97.7398,30.3864,-97.7358,30.3835,-97.7363,30.3364,-97.7556,30.2977,-97.7586,30.278,-97.7689,30.2697,-97.7532,30.2668,-97.7418,30.2685,-97.7419],
-  'CH:Research Blvd|East Austin':[30.39,-97.7398,30.3896,-97.7441,30.3819,-97.7406,30.3698,-97.7198,30.3484,-97.7129,30.3389,-97.7003,30.3296,-97.7054,30.3114,-97.7091,30.2753,-97.7312,30.2666,-97.7339,30.2636,-97.7251,30.2651,-97.7249],
-  'CH:Research Blvd|Mueller':[30.39,-97.7398,30.3886,-97.7388,30.3908,-97.7394,30.3893,-97.7458,30.3822,-97.7423,30.3699,-97.7201,30.3482,-97.713,30.3391,-97.7012,30.3129,-97.7087,30.3026,-97.7158,30.2979,-97.7091,30.2985,-97.7058],
-  'CH:Research Blvd|Rainey St':[30.39,-97.7398,30.3896,-97.7441,30.3819,-97.7406,30.3698,-97.7198,30.3484,-97.7129,30.3387,-97.7003,30.3296,-97.7054,30.3127,-97.7085,30.2788,-97.7297,30.2585,-97.737],
-  'CH:Research Blvd|South Congress':[30.39,-97.7398,30.3864,-97.7358,30.3835,-97.7363,30.3364,-97.7556,30.2977,-97.7586,30.278,-97.7689,30.2696,-97.7619,30.2642,-97.7479,30.2597,-97.7493,30.2571,-97.7469,30.2501,-97.7499],
-  'CH:Research Blvd|UT campus':[30.39,-97.7398,30.3898,-97.7339,30.3371,-97.7552,30.2934,-97.7592,30.2891,-97.7558,30.2883,-97.7494,30.2856,-97.7496,30.286,-97.738],
-  'CH:Research Blvd|Zilker':[30.39,-97.7398,30.384,-97.7362,30.3369,-97.7555,30.2929,-97.7599,30.272,-97.7732,30.2662,-97.7825,30.2691,-97.7755,30.2666,-97.7699],
-  'CH:S IH-35|Downtown core':[30.1652,-97.7925,30.1671,-97.791,30.1669,-97.785,30.2081,-97.7563,30.2436,-97.7353,30.258,-97.737,30.2657,-97.7342,30.2685,-97.7419],
-  'CH:S IH-35|East Austin':[30.1652,-97.7925,30.1621,-97.7937,30.1605,-97.7898,30.2089,-97.7561,30.2432,-97.7357,30.258,-97.7373,30.2659,-97.735,30.2636,-97.7251,30.2651,-97.7249],
-  'CH:S IH-35|Mueller':[30.1652,-97.7925,30.1671,-97.791,30.1669,-97.785,30.2081,-97.7563,30.2425,-97.7359,30.2622,-97.7359,30.2788,-97.7297,30.2993,-97.7166,30.3009,-97.7141,30.2985,-97.7058],
-  'CH:S IH-35|Rainey St':[30.1652,-97.7925,30.1621,-97.7937,30.1605,-97.7898,30.1888,-97.7719,30.2065,-97.7578,30.2173,-97.751,30.2441,-97.7352,30.258,-97.7373,30.2659,-97.735,30.2657,-97.7342,30.2585,-97.737],
-  'CH:S IH-35|South Congress':[30.1652,-97.7925,30.1652,-97.7913,30.1671,-97.791,30.1671,-97.7885,30.1714,-97.7858,30.2065,-97.7742,30.234,-97.7575,30.2392,-97.7532,30.2489,-97.7499,30.2492,-97.7511,30.2501,-97.7499],
-  'CH:S IH-35|UT campus':[30.1652,-97.7925,30.1652,-97.7913,30.1673,-97.7909,30.1671,-97.7869,30.1685,-97.7856,30.1878,-97.7727,30.2065,-97.7578,30.2436,-97.7354,30.2589,-97.7372,30.2781,-97.7307,30.2824,-97.7442,30.2852,-97.7439,30.2849,-97.7384,30.286,-97.738],
-  'CH:S IH-35|Zilker':[30.1652,-97.7925,30.1652,-97.7913,30.1671,-97.791,30.1671,-97.7885,30.1714,-97.7858,30.2065,-97.7742,30.2234,-97.7636,30.2276,-97.7717,30.2286,-97.7849,30.2336,-97.7951,30.2365,-97.7981,30.2479,-97.8037,30.2551,-97.8012,30.2577,-97.7987,30.269,-97.7759,30.2666,-97.7699],
-  'CH:South Congress|Downtown core':[30.2473,-97.7498,30.2634,-97.7446,30.2627,-97.7421,30.2683,-97.7401,30.2685,-97.7419],
-  'CH:South Congress|East Austin':[30.2473,-97.7498,30.2634,-97.7446,30.2624,-97.7411,30.268,-97.739,30.2636,-97.7251,30.2651,-97.7249],
-  'CH:South Congress|Mueller':[30.2473,-97.7498,30.2458,-97.7498,30.2446,-97.7443,30.2411,-97.7374,30.2464,-97.7351,30.2594,-97.7371,30.2803,-97.7292,30.3027,-97.7157,30.2979,-97.7089,30.2985,-97.7058],
-  'CH:South Congress|Rainey St':[30.2473,-97.7498,30.2388,-97.7536,30.2336,-97.7405,30.2448,-97.7349,30.2585,-97.737],
-  'CH:South Congress|South Congress':[30.2473,-97.7498,30.2501,-97.7499],
-  'CH:South Congress|UT campus':[30.2473,-97.7498,30.2571,-97.7469,30.2597,-97.7493,30.2681,-97.7466,30.2687,-97.7488,30.2822,-97.7437,30.2852,-97.7439,30.2849,-97.7384,30.286,-97.738],
-  'CH:South Congress|Zilker':[30.2473,-97.7498,30.247,-97.7506,30.2571,-97.7469,30.2587,-97.7485,30.2619,-97.7611,30.2656,-97.7663,30.2666,-97.7699],
-  'CH:South Lamar|Downtown core':[30.2331,-97.7922,30.2285,-97.7837,30.2272,-97.7704,30.2177,-97.7536,30.2178,-97.7512,30.2446,-97.7351,30.258,-97.7373,30.2668,-97.7347,30.2685,-97.7419],
-  'CH:South Lamar|East Austin':[30.2331,-97.7922,30.2285,-97.7837,30.2272,-97.7704,30.2219,-97.7619,30.2176,-97.7515,30.2441,-97.7352,30.258,-97.7373,30.2659,-97.735,30.2655,-97.7336,30.2664,-97.7332,30.2636,-97.7251,30.2651,-97.7249],
-  'CH:South Lamar|Mueller':[30.2331,-97.7922,30.2324,-97.7912,30.2313,-97.792,30.2284,-97.785,30.2271,-97.7707,30.2166,-97.7535,30.217,-97.7506,30.244,-97.7351,30.2585,-97.737,30.2788,-97.7297,30.3004,-97.7156,30.3008,-97.7139,30.2979,-97.709,30.298,-97.707,30.2992,-97.7069,30.2985,-97.7058],
-  'CH:South Lamar|Rainey St':[30.2331,-97.7922,30.2324,-97.7912,30.2313,-97.792,30.2284,-97.785,30.2271,-97.7707,30.2168,-97.7538,30.2166,-97.7513,30.244,-97.7351,30.2585,-97.737],
-  'CH:South Lamar|South Congress':[30.2331,-97.7922,30.2324,-97.7912,30.2313,-97.792,30.2284,-97.785,30.2271,-97.7707,30.2225,-97.7642,30.2392,-97.7532,30.2489,-97.7499,30.2492,-97.7511,30.2501,-97.7499],
-  'CH:South Lamar|UT campus':[30.2331,-97.7922,30.232,-97.7915,30.2365,-97.7979,30.2475,-97.8037,30.2565,-97.8001,30.2709,-97.7739,30.2927,-97.7594,30.2891,-97.7557,30.2875,-97.7395,30.286,-97.738],
-  'CH:South Lamar|Zilker':[30.2331,-97.7922,30.2315,-97.7922,30.2353,-97.7982,30.2453,-97.8028,30.2483,-97.8061,30.2532,-97.8052,30.2644,-97.788,30.2694,-97.7768,30.2666,-97.7699],
-  'CH:The Linc|Downtown core':[30.325,-97.7074,30.3118,-97.7093,30.28,-97.7292,30.2659,-97.735,30.2685,-97.7419],
-  'CH:The Linc|East Austin':[30.325,-97.7074,30.3327,-97.7045,30.3127,-97.7085,30.2788,-97.7297,30.271,-97.7326,30.2666,-97.7339,30.2636,-97.7251,30.2651,-97.7249],
-  'CH:The Linc|Mueller':[30.325,-97.7074,30.3224,-97.7077,30.3209,-97.7131,30.3035,-97.716,30.3013,-97.7146,30.2979,-97.7091,30.298,-97.707,30.2992,-97.7069,30.2985,-97.7058],
-  'CH:The Linc|Rainey St':[30.325,-97.7074,30.3327,-97.7045,30.3127,-97.7085,30.2788,-97.7297,30.2585,-97.737],
-  'CH:The Linc|South Congress':[30.325,-97.7074,30.3118,-97.7093,30.2798,-97.7293,30.2628,-97.7358,30.2612,-97.7368,30.2634,-97.7446,30.2501,-97.7499],
-  'CH:The Linc|UT campus':[30.325,-97.7074,30.3327,-97.7045,30.3127,-97.7085,30.2874,-97.7241,30.2859,-97.7236,30.2892,-97.7307,30.2898,-97.7414,30.285,-97.7418,30.2849,-97.7384,30.286,-97.738],
-  'CH:The Linc|Zilker':[30.325,-97.7074,30.3118,-97.7093,30.2798,-97.7293,30.2612,-97.7368,30.2634,-97.7446,30.2589,-97.7462,30.2584,-97.7501,30.2619,-97.7611,30.2656,-97.7663,30.2666,-97.7699],
-  'Downtown core|East Austin':[30.2685,-97.7419,30.2636,-97.7251,30.2651,-97.7249],
-  'Downtown core|Mueller':[30.2685,-97.7419,30.2659,-97.735,30.2803,-97.7292,30.3027,-97.7157,30.2979,-97.7089,30.2985,-97.7058],
-  'Downtown core|Rainey St':[30.2685,-97.7419,30.2668,-97.7347,30.258,-97.7373,30.2448,-97.7353,30.2342,-97.7415,30.2338,-97.7406,30.2448,-97.7349,30.2585,-97.737],
-  'Downtown core|South Congress':[30.2685,-97.7419,30.2501,-97.7499],
-  'Downtown core|UT campus':[30.2685,-97.7419,30.2679,-97.7421,30.2674,-97.7404,30.2721,-97.7387,30.274,-97.7456,30.2819,-97.7427,30.2824,-97.7442,30.2852,-97.7439,30.285,-97.7416,30.2852,-97.7411,30.2849,-97.7384,30.2852,-97.7381,30.286,-97.738],
-  'Downtown core|Zilker':[30.2685,-97.7419,30.2668,-97.7418,30.2703,-97.7546,30.2609,-97.7585,30.2672,-97.771,30.2666,-97.7699],
-  'East Austin|Mueller':[30.2651,-97.7249,30.2636,-97.7251,30.2666,-97.7339,30.2788,-97.7297,30.3004,-97.7156,30.3008,-97.7139,30.2979,-97.709,30.298,-97.707,30.2992,-97.7069,30.2985,-97.7058],
-  'East Austin|Rainey St':[30.2651,-97.7249,30.2636,-97.7251,30.2659,-97.735,30.258,-97.7373,30.2449,-97.7353,30.2338,-97.7406,30.2448,-97.7349,30.2585,-97.737],
-  'East Austin|South Congress':[30.2651,-97.7249,30.2636,-97.7251,30.268,-97.739,30.2624,-97.7411,30.2634,-97.7446,30.2501,-97.7499],
-  'East Austin|UT campus':[30.2651,-97.7249,30.2636,-97.7251,30.2666,-97.7339,30.2785,-97.7291,30.2817,-97.7419,30.2877,-97.7416,30.286,-97.738],
-  'East Austin|Zilker':[30.2651,-97.7249,30.265,-97.7245,30.2636,-97.7251,30.2674,-97.7368,30.2656,-97.7375,30.2703,-97.7546,30.2609,-97.7585,30.2619,-97.7615,30.2656,-97.7663,30.2661,-97.769,30.2672,-97.771,30.2666,-97.7699],
-  'Mueller|Rainey St':[30.2985,-97.7058,30.2979,-97.7089,30.3027,-97.7157,30.2803,-97.7292,30.2597,-97.7371,30.245,-97.7353,30.2342,-97.7415,30.2338,-97.7406,30.2448,-97.7349,30.2585,-97.737],
-  'Mueller|South Congress':[30.2985,-97.7058,30.2979,-97.7089,30.3026,-97.7158,30.296,-97.7191,30.2803,-97.7292,30.2612,-97.7368,30.2634,-97.7446,30.25,-97.7495,30.2501,-97.7499],
-  'Mueller|UT campus':[30.2985,-97.7058,30.2992,-97.7069,30.298,-97.707,30.2979,-97.709,30.3008,-97.7139,30.3004,-97.7156,30.2827,-97.7273,30.2785,-97.7291,30.2824,-97.7442,30.2852,-97.7439,30.2849,-97.7384,30.286,-97.738],
-  'Mueller|Zilker':[30.2985,-97.7058,30.2982,-97.7057,30.2979,-97.7071,30.2979,-97.709,30.2993,-97.7108,30.3009,-97.7141,30.3006,-97.7154,30.2998,-97.7163,30.2788,-97.7297,30.2757,-97.731,30.2636,-97.7353,30.261,-97.7358,30.2634,-97.7446,30.2589,-97.7462,30.259,-97.7468,30.2584,-97.7503,30.2603,-97.7557,30.2609,-97.7585,30.2619,-97.7614,30.2655,-97.766,30.2662,-97.7692,30.2672,-97.771,30.2674,-97.7708,30.2671,-97.7707,30.2666,-97.7699],
-  'Rainey St|South Congress':[30.2585,-97.737,30.2657,-97.7342,30.2674,-97.7404,30.2627,-97.7421,30.2634,-97.7446,30.2501,-97.7499],
-  'Rainey St|UT campus':[30.2585,-97.737,30.2448,-97.7349,30.2338,-97.7406,30.2342,-97.7415,30.2448,-97.7353,30.2469,-97.7352,30.2589,-97.7372,30.2781,-97.7307,30.2787,-97.731,30.2824,-97.7442,30.2852,-97.7439,30.2849,-97.7384,30.286,-97.738],
-  'Rainey St|Zilker':[30.2585,-97.737,30.2657,-97.7342,30.2674,-97.7404,30.2627,-97.7421,30.2634,-97.7446,30.2589,-97.7462,30.2584,-97.7498,30.2619,-97.7611,30.2656,-97.7663,30.2666,-97.7699],
-  'South Congress|UT campus':[30.2501,-97.7499,30.2514,-97.75,30.2511,-97.7491,30.2571,-97.7469,30.2597,-97.7493,30.2636,-97.7477,30.2642,-97.7469,30.2813,-97.7405,30.282,-97.7421,30.2877,-97.7416,30.2874,-97.7392,30.2866,-97.7393,30.286,-97.738],
-  'South Congress|Zilker':[30.2501,-97.7499,30.25,-97.7495,30.2571,-97.7469,30.2587,-97.7485,30.2584,-97.7501,30.2603,-97.7557,30.2609,-97.7585,30.2623,-97.7618,30.2638,-97.7635,30.2656,-97.7663,30.2659,-97.767,30.2662,-97.7688,30.2666,-97.7699],
-  'UT campus|Zilker':[30.286,-97.738,30.2849,-97.7384,30.2852,-97.7439,30.2824,-97.7442,30.2828,-97.7459,30.2761,-97.7484,30.2769,-97.7514,30.2676,-97.7559,30.2609,-97.7585,30.2623,-97.7618,30.2656,-97.7663,30.2666,-97.7699]
+const ROADS_BY_CITY={
+  austin:{
+    'AUS airport|CH:Research Blvd':[30.1943,-97.6693,30.1913,-97.6693,30.1871,-97.6635,30.1731,-97.6705,30.1764,-97.6805,30.1828,-97.6875,30.2016,-97.6835,30.2272,-97.6822,30.2467,-97.6909,30.2535,-97.6791,30.2679,-97.6701,30.3017,-97.6608,30.3157,-97.6628,30.3273,-97.6754,30.3475,-97.7122,30.3689,-97.7191,30.3809,-97.7397,30.3896,-97.7441,30.39,-97.7398],
+    'AUS airport|CH:S IH-35':[30.1943,-97.6693,30.1913,-97.6693,30.1871,-97.6635,30.1731,-97.6705,30.1764,-97.6805,30.2027,-97.7112,30.2134,-97.7331,30.2154,-97.7334,30.217,-97.7518,30.1605,-97.7898,30.1621,-97.7937,30.1652,-97.7925],
+    'AUS airport|CH:South Congress':[30.1943,-97.6693,30.1913,-97.6693,30.1871,-97.6635,30.1731,-97.6705,30.1764,-97.6805,30.2027,-97.7112,30.2137,-97.7335,30.2316,-97.7358,30.2388,-97.7536,30.2473,-97.7498],
+    'AUS airport|CH:South Lamar':[30.1943,-97.6693,30.1913,-97.6693,30.1887,-97.6636,30.1871,-97.6635,30.1731,-97.6705,30.1764,-97.6805,30.2027,-97.7112,30.2134,-97.7331,30.2146,-97.7336,30.2165,-97.7522,30.2268,-97.77,30.2284,-97.785,30.2313,-97.792,30.2324,-97.7912,30.2331,-97.7922],
+    'AUS airport|CH:The Linc':[30.1943,-97.6693,30.1913,-97.6693,30.1887,-97.6636,30.1871,-97.6635,30.1731,-97.6705,30.1764,-97.6805,30.1828,-97.6875,30.2016,-97.6835,30.2272,-97.6822,30.2326,-97.6836,30.242,-97.6897,30.2467,-97.6909,30.2496,-97.6889,30.2513,-97.6825,30.2535,-97.6791,30.2679,-97.6701,30.3017,-97.6608,30.3154,-97.6627,30.3198,-97.6655,30.3273,-97.6754,30.3396,-97.7006,30.325,-97.7074],
+    'AUS airport|Downtown core':[30.1943,-97.6693,30.1913,-97.6693,30.1871,-97.6635,30.1731,-97.6705,30.1764,-97.6805,30.1829,-97.6878,30.2016,-97.6838,30.2289,-97.683,30.2495,-97.6914,30.2601,-97.7095,30.2685,-97.7419],
+    'AUS airport|East Austin':[30.1943,-97.6693,30.1913,-97.6693,30.1871,-97.6635,30.1731,-97.6705,30.1764,-97.6805,30.1829,-97.6878,30.2016,-97.6838,30.2289,-97.683,30.2495,-97.6914,30.2582,-97.7051,30.2636,-97.7251,30.2651,-97.7249],
+    'AUS airport|Mueller':[30.1943,-97.6693,30.1913,-97.6693,30.1871,-97.6635,30.1731,-97.6705,30.1764,-97.6805,30.1829,-97.6878,30.2016,-97.6838,30.2299,-97.6831,30.2429,-97.6905,30.2739,-97.698,30.2875,-97.707,30.2977,-97.709,30.2985,-97.7058],
+    'AUS airport|Rainey St':[30.1943,-97.6693,30.1913,-97.6693,30.1887,-97.6636,30.1871,-97.6635,30.1731,-97.6705,30.1764,-97.6805,30.1829,-97.6878,30.2016,-97.6838,30.2289,-97.683,30.2336,-97.6844,30.2417,-97.69,30.25,-97.6918,30.2599,-97.7091,30.2624,-97.7216,30.2665,-97.7338,30.2585,-97.737],
+    'AUS airport|South Congress':[30.1943,-97.6693,30.1913,-97.6693,30.1871,-97.6635,30.1731,-97.6705,30.1764,-97.6805,30.2027,-97.7112,30.2149,-97.7353,30.2196,-97.7337,30.2315,-97.7357,30.2388,-97.7536,30.2501,-97.7499],
+    'AUS airport|UT campus':[30.1943,-97.6693,30.1913,-97.6693,30.1871,-97.6635,30.1731,-97.6705,30.1764,-97.6805,30.1828,-97.6875,30.2016,-97.6835,30.2272,-97.6822,30.2495,-97.6911,30.2599,-97.7091,30.2666,-97.7339,30.2785,-97.7291,30.2817,-97.7419,30.2877,-97.7416,30.286,-97.738],
+    'AUS airport|Zilker':[30.1943,-97.6693,30.1913,-97.6693,30.1887,-97.6636,30.1871,-97.6635,30.1731,-97.6705,30.1764,-97.6805,30.1829,-97.6878,30.2016,-97.6838,30.2289,-97.683,30.2342,-97.6847,30.2415,-97.6899,30.2503,-97.6922,30.2599,-97.7091,30.2624,-97.7216,30.2674,-97.7368,30.2656,-97.7375,30.2703,-97.7546,30.2609,-97.7585,30.2656,-97.7663,30.2666,-97.7699],
+    'CH:Research Blvd|Downtown core':[30.39,-97.7398,30.3864,-97.7358,30.3835,-97.7363,30.3364,-97.7556,30.2977,-97.7586,30.278,-97.7689,30.2697,-97.7532,30.2668,-97.7418,30.2685,-97.7419],
+    'CH:Research Blvd|East Austin':[30.39,-97.7398,30.3896,-97.7441,30.3819,-97.7406,30.3698,-97.7198,30.3484,-97.7129,30.3389,-97.7003,30.3296,-97.7054,30.3114,-97.7091,30.2753,-97.7312,30.2666,-97.7339,30.2636,-97.7251,30.2651,-97.7249],
+    'CH:Research Blvd|Mueller':[30.39,-97.7398,30.3886,-97.7388,30.3908,-97.7394,30.3893,-97.7458,30.3822,-97.7423,30.3699,-97.7201,30.3482,-97.713,30.3391,-97.7012,30.3129,-97.7087,30.3026,-97.7158,30.2979,-97.7091,30.2985,-97.7058],
+    'CH:Research Blvd|Rainey St':[30.39,-97.7398,30.3896,-97.7441,30.3819,-97.7406,30.3698,-97.7198,30.3484,-97.7129,30.3387,-97.7003,30.3296,-97.7054,30.3127,-97.7085,30.2788,-97.7297,30.2585,-97.737],
+    'CH:Research Blvd|South Congress':[30.39,-97.7398,30.3864,-97.7358,30.3835,-97.7363,30.3364,-97.7556,30.2977,-97.7586,30.278,-97.7689,30.2696,-97.7619,30.2642,-97.7479,30.2597,-97.7493,30.2571,-97.7469,30.2501,-97.7499],
+    'CH:Research Blvd|UT campus':[30.39,-97.7398,30.3898,-97.7339,30.3371,-97.7552,30.2934,-97.7592,30.2891,-97.7558,30.2883,-97.7494,30.2856,-97.7496,30.286,-97.738],
+    'CH:Research Blvd|Zilker':[30.39,-97.7398,30.384,-97.7362,30.3369,-97.7555,30.2929,-97.7599,30.272,-97.7732,30.2662,-97.7825,30.2691,-97.7755,30.2666,-97.7699],
+    'CH:S IH-35|Downtown core':[30.1652,-97.7925,30.1671,-97.791,30.1669,-97.785,30.2081,-97.7563,30.2436,-97.7353,30.258,-97.737,30.2657,-97.7342,30.2685,-97.7419],
+    'CH:S IH-35|East Austin':[30.1652,-97.7925,30.1621,-97.7937,30.1605,-97.7898,30.2089,-97.7561,30.2432,-97.7357,30.258,-97.7373,30.2659,-97.735,30.2636,-97.7251,30.2651,-97.7249],
+    'CH:S IH-35|Mueller':[30.1652,-97.7925,30.1671,-97.791,30.1669,-97.785,30.2081,-97.7563,30.2425,-97.7359,30.2622,-97.7359,30.2788,-97.7297,30.2993,-97.7166,30.3009,-97.7141,30.2985,-97.7058],
+    'CH:S IH-35|Rainey St':[30.1652,-97.7925,30.1621,-97.7937,30.1605,-97.7898,30.1888,-97.7719,30.2065,-97.7578,30.2173,-97.751,30.2441,-97.7352,30.258,-97.7373,30.2659,-97.735,30.2657,-97.7342,30.2585,-97.737],
+    'CH:S IH-35|South Congress':[30.1652,-97.7925,30.1652,-97.7913,30.1671,-97.791,30.1671,-97.7885,30.1714,-97.7858,30.2065,-97.7742,30.234,-97.7575,30.2392,-97.7532,30.2489,-97.7499,30.2492,-97.7511,30.2501,-97.7499],
+    'CH:S IH-35|UT campus':[30.1652,-97.7925,30.1652,-97.7913,30.1673,-97.7909,30.1671,-97.7869,30.1685,-97.7856,30.1878,-97.7727,30.2065,-97.7578,30.2436,-97.7354,30.2589,-97.7372,30.2781,-97.7307,30.2824,-97.7442,30.2852,-97.7439,30.2849,-97.7384,30.286,-97.738],
+    'CH:S IH-35|Zilker':[30.1652,-97.7925,30.1652,-97.7913,30.1671,-97.791,30.1671,-97.7885,30.1714,-97.7858,30.2065,-97.7742,30.2234,-97.7636,30.2276,-97.7717,30.2286,-97.7849,30.2336,-97.7951,30.2365,-97.7981,30.2479,-97.8037,30.2551,-97.8012,30.2577,-97.7987,30.269,-97.7759,30.2666,-97.7699],
+    'CH:South Congress|Downtown core':[30.2473,-97.7498,30.2634,-97.7446,30.2627,-97.7421,30.2683,-97.7401,30.2685,-97.7419],
+    'CH:South Congress|East Austin':[30.2473,-97.7498,30.2634,-97.7446,30.2624,-97.7411,30.268,-97.739,30.2636,-97.7251,30.2651,-97.7249],
+    'CH:South Congress|Mueller':[30.2473,-97.7498,30.2458,-97.7498,30.2446,-97.7443,30.2411,-97.7374,30.2464,-97.7351,30.2594,-97.7371,30.2803,-97.7292,30.3027,-97.7157,30.2979,-97.7089,30.2985,-97.7058],
+    'CH:South Congress|Rainey St':[30.2473,-97.7498,30.2388,-97.7536,30.2336,-97.7405,30.2448,-97.7349,30.2585,-97.737],
+    'CH:South Congress|South Congress':[30.2473,-97.7498,30.2501,-97.7499],
+    'CH:South Congress|UT campus':[30.2473,-97.7498,30.2571,-97.7469,30.2597,-97.7493,30.2681,-97.7466,30.2687,-97.7488,30.2822,-97.7437,30.2852,-97.7439,30.2849,-97.7384,30.286,-97.738],
+    'CH:South Congress|Zilker':[30.2473,-97.7498,30.247,-97.7506,30.2571,-97.7469,30.2587,-97.7485,30.2619,-97.7611,30.2656,-97.7663,30.2666,-97.7699],
+    'CH:South Lamar|Downtown core':[30.2331,-97.7922,30.2285,-97.7837,30.2272,-97.7704,30.2177,-97.7536,30.2178,-97.7512,30.2446,-97.7351,30.258,-97.7373,30.2668,-97.7347,30.2685,-97.7419],
+    'CH:South Lamar|East Austin':[30.2331,-97.7922,30.2285,-97.7837,30.2272,-97.7704,30.2219,-97.7619,30.2176,-97.7515,30.2441,-97.7352,30.258,-97.7373,30.2659,-97.735,30.2655,-97.7336,30.2664,-97.7332,30.2636,-97.7251,30.2651,-97.7249],
+    'CH:South Lamar|Mueller':[30.2331,-97.7922,30.2324,-97.7912,30.2313,-97.792,30.2284,-97.785,30.2271,-97.7707,30.2166,-97.7535,30.217,-97.7506,30.244,-97.7351,30.2585,-97.737,30.2788,-97.7297,30.3004,-97.7156,30.3008,-97.7139,30.2979,-97.709,30.298,-97.707,30.2992,-97.7069,30.2985,-97.7058],
+    'CH:South Lamar|Rainey St':[30.2331,-97.7922,30.2324,-97.7912,30.2313,-97.792,30.2284,-97.785,30.2271,-97.7707,30.2168,-97.7538,30.2166,-97.7513,30.244,-97.7351,30.2585,-97.737],
+    'CH:South Lamar|South Congress':[30.2331,-97.7922,30.2324,-97.7912,30.2313,-97.792,30.2284,-97.785,30.2271,-97.7707,30.2225,-97.7642,30.2392,-97.7532,30.2489,-97.7499,30.2492,-97.7511,30.2501,-97.7499],
+    'CH:South Lamar|UT campus':[30.2331,-97.7922,30.232,-97.7915,30.2365,-97.7979,30.2475,-97.8037,30.2565,-97.8001,30.2709,-97.7739,30.2927,-97.7594,30.2891,-97.7557,30.2875,-97.7395,30.286,-97.738],
+    'CH:South Lamar|Zilker':[30.2331,-97.7922,30.2315,-97.7922,30.2353,-97.7982,30.2453,-97.8028,30.2483,-97.8061,30.2532,-97.8052,30.2644,-97.788,30.2694,-97.7768,30.2666,-97.7699],
+    'CH:The Linc|Downtown core':[30.325,-97.7074,30.3118,-97.7093,30.28,-97.7292,30.2659,-97.735,30.2685,-97.7419],
+    'CH:The Linc|East Austin':[30.325,-97.7074,30.3327,-97.7045,30.3127,-97.7085,30.2788,-97.7297,30.271,-97.7326,30.2666,-97.7339,30.2636,-97.7251,30.2651,-97.7249],
+    'CH:The Linc|Mueller':[30.325,-97.7074,30.3224,-97.7077,30.3209,-97.7131,30.3035,-97.716,30.3013,-97.7146,30.2979,-97.7091,30.298,-97.707,30.2992,-97.7069,30.2985,-97.7058],
+    'CH:The Linc|Rainey St':[30.325,-97.7074,30.3327,-97.7045,30.3127,-97.7085,30.2788,-97.7297,30.2585,-97.737],
+    'CH:The Linc|South Congress':[30.325,-97.7074,30.3118,-97.7093,30.2798,-97.7293,30.2628,-97.7358,30.2612,-97.7368,30.2634,-97.7446,30.2501,-97.7499],
+    'CH:The Linc|UT campus':[30.325,-97.7074,30.3327,-97.7045,30.3127,-97.7085,30.2874,-97.7241,30.2859,-97.7236,30.2892,-97.7307,30.2898,-97.7414,30.285,-97.7418,30.2849,-97.7384,30.286,-97.738],
+    'CH:The Linc|Zilker':[30.325,-97.7074,30.3118,-97.7093,30.2798,-97.7293,30.2612,-97.7368,30.2634,-97.7446,30.2589,-97.7462,30.2584,-97.7501,30.2619,-97.7611,30.2656,-97.7663,30.2666,-97.7699],
+    'Downtown core|East Austin':[30.2685,-97.7419,30.2636,-97.7251,30.2651,-97.7249],
+    'Downtown core|Mueller':[30.2685,-97.7419,30.2659,-97.735,30.2803,-97.7292,30.3027,-97.7157,30.2979,-97.7089,30.2985,-97.7058],
+    'Downtown core|Rainey St':[30.2685,-97.7419,30.2668,-97.7347,30.258,-97.7373,30.2448,-97.7353,30.2342,-97.7415,30.2338,-97.7406,30.2448,-97.7349,30.2585,-97.737],
+    'Downtown core|South Congress':[30.2685,-97.7419,30.2501,-97.7499],
+    'Downtown core|UT campus':[30.2685,-97.7419,30.2679,-97.7421,30.2674,-97.7404,30.2721,-97.7387,30.274,-97.7456,30.2819,-97.7427,30.2824,-97.7442,30.2852,-97.7439,30.285,-97.7416,30.2852,-97.7411,30.2849,-97.7384,30.2852,-97.7381,30.286,-97.738],
+    'Downtown core|Zilker':[30.2685,-97.7419,30.2668,-97.7418,30.2703,-97.7546,30.2609,-97.7585,30.2672,-97.771,30.2666,-97.7699],
+    'East Austin|Mueller':[30.2651,-97.7249,30.2636,-97.7251,30.2666,-97.7339,30.2788,-97.7297,30.3004,-97.7156,30.3008,-97.7139,30.2979,-97.709,30.298,-97.707,30.2992,-97.7069,30.2985,-97.7058],
+    'East Austin|Rainey St':[30.2651,-97.7249,30.2636,-97.7251,30.2659,-97.735,30.258,-97.7373,30.2449,-97.7353,30.2338,-97.7406,30.2448,-97.7349,30.2585,-97.737],
+    'East Austin|South Congress':[30.2651,-97.7249,30.2636,-97.7251,30.268,-97.739,30.2624,-97.7411,30.2634,-97.7446,30.2501,-97.7499],
+    'East Austin|UT campus':[30.2651,-97.7249,30.2636,-97.7251,30.2666,-97.7339,30.2785,-97.7291,30.2817,-97.7419,30.2877,-97.7416,30.286,-97.738],
+    'East Austin|Zilker':[30.2651,-97.7249,30.265,-97.7245,30.2636,-97.7251,30.2674,-97.7368,30.2656,-97.7375,30.2703,-97.7546,30.2609,-97.7585,30.2619,-97.7615,30.2656,-97.7663,30.2661,-97.769,30.2672,-97.771,30.2666,-97.7699],
+    'Mueller|Rainey St':[30.2985,-97.7058,30.2979,-97.7089,30.3027,-97.7157,30.2803,-97.7292,30.2597,-97.7371,30.245,-97.7353,30.2342,-97.7415,30.2338,-97.7406,30.2448,-97.7349,30.2585,-97.737],
+    'Mueller|South Congress':[30.2985,-97.7058,30.2979,-97.7089,30.3026,-97.7158,30.296,-97.7191,30.2803,-97.7292,30.2612,-97.7368,30.2634,-97.7446,30.25,-97.7495,30.2501,-97.7499],
+    'Mueller|UT campus':[30.2985,-97.7058,30.2992,-97.7069,30.298,-97.707,30.2979,-97.709,30.3008,-97.7139,30.3004,-97.7156,30.2827,-97.7273,30.2785,-97.7291,30.2824,-97.7442,30.2852,-97.7439,30.2849,-97.7384,30.286,-97.738],
+    'Mueller|Zilker':[30.2985,-97.7058,30.2982,-97.7057,30.2979,-97.7071,30.2979,-97.709,30.2993,-97.7108,30.3009,-97.7141,30.3006,-97.7154,30.2998,-97.7163,30.2788,-97.7297,30.2757,-97.731,30.2636,-97.7353,30.261,-97.7358,30.2634,-97.7446,30.2589,-97.7462,30.259,-97.7468,30.2584,-97.7503,30.2603,-97.7557,30.2609,-97.7585,30.2619,-97.7614,30.2655,-97.766,30.2662,-97.7692,30.2672,-97.771,30.2674,-97.7708,30.2671,-97.7707,30.2666,-97.7699],
+    'Rainey St|South Congress':[30.2585,-97.737,30.2657,-97.7342,30.2674,-97.7404,30.2627,-97.7421,30.2634,-97.7446,30.2501,-97.7499],
+    'Rainey St|UT campus':[30.2585,-97.737,30.2448,-97.7349,30.2338,-97.7406,30.2342,-97.7415,30.2448,-97.7353,30.2469,-97.7352,30.2589,-97.7372,30.2781,-97.7307,30.2787,-97.731,30.2824,-97.7442,30.2852,-97.7439,30.2849,-97.7384,30.286,-97.738],
+    'Rainey St|Zilker':[30.2585,-97.737,30.2657,-97.7342,30.2674,-97.7404,30.2627,-97.7421,30.2634,-97.7446,30.2589,-97.7462,30.2584,-97.7498,30.2619,-97.7611,30.2656,-97.7663,30.2666,-97.7699],
+    'South Congress|UT campus':[30.2501,-97.7499,30.2514,-97.75,30.2511,-97.7491,30.2571,-97.7469,30.2597,-97.7493,30.2636,-97.7477,30.2642,-97.7469,30.2813,-97.7405,30.282,-97.7421,30.2877,-97.7416,30.2874,-97.7392,30.2866,-97.7393,30.286,-97.738],
+    'South Congress|Zilker':[30.2501,-97.7499,30.25,-97.7495,30.2571,-97.7469,30.2587,-97.7485,30.2584,-97.7501,30.2603,-97.7557,30.2609,-97.7585,30.2623,-97.7618,30.2638,-97.7635,30.2656,-97.7663,30.2659,-97.767,30.2662,-97.7688,30.2666,-97.7699],
+    'UT campus|Zilker':[30.286,-97.738,30.2849,-97.7384,30.2852,-97.7439,30.2824,-97.7442,30.2828,-97.7459,30.2761,-97.7484,30.2769,-97.7514,30.2676,-97.7559,30.2609,-97.7585,30.2623,-97.7618,30.2656,-97.7663,30.2666,-97.7699]
+  }
 };
+/* A city with no baked geometry is a supported state, not an error: roadPath()
+   returns null for an unknown pair and every caller falls back to the straight
+   line that shipped before any of this existed. So a new city can ship with
+   {} here and get real geometry later, one bake at a time.
+   Generate with: node deploy/scripts/bake-roads.js <city> */
+function roadsFor(city){ return ROADS_BY_CITY[city]||{} }
+let ROADS=roadsFor('austin');
 function roadKey(a,b){ return a<b?a+'|'+b:b+'|'+a }
 /* The stored line runs from the alphabetically smaller endpoint to the larger,
    so half of all lookups come back reversed. */
@@ -4508,6 +4759,79 @@ function drawMap(){
   }
 }
 
+/* ============================================================
+   CITY TABS — render and switch
+
+   The pressed state is DERIVED from S.city on every call and never stored on
+   the element. A previous version of the policy strip kept its own
+   aria-pressed and fought render() for it, so the light and the state
+   disagreed; this is the same shape of control and gets the same rule.
+   ============================================================ */
+let cityTabSig='';
+function renderCityTabs(){
+  const el=$('citytabs');
+  if(!el) return;
+  /* render() calls this every frame, so bail unless something a tab actually
+     shows has changed. Rebuilding innerHTML 5x a second would also throw away
+     keyboard focus mid-tab, which is the reason this guard is correctness and
+     not just the render-churn note in improvementplan.md item #7. */
+  const sig=S.city+'|'+cityList().map(function(id){
+    return id+(cityUnlocked(id)?'1':'0');
+  }).join(',');
+  if(sig===cityTabSig) return;
+  cityTabSig=sig;
+  el.innerHTML=cityList().map(function(id){
+    const c=CITIES[id], open=cityUnlocked(id), live=(id===S.city);
+    const tip=open?(live?c.name+' — current run':'Switch to '+c.name)
+                  :c.name+' — finish your first day in '+CITIES.austin.name+' to unlock';
+    return '<button class="citytab" data-city="'+id+'"'+
+      ' aria-pressed="'+(live?'true':'false')+'"'+
+      (open?'':' disabled')+' title="'+escapeHtml(tip)+'">'+
+      '<span class="sk"><span class="lb">'+
+      (open?'':'<span class="lk" aria-hidden="true">&#128274;</span>')+
+      escapeHtml(c.short||c.name)+'</span></span></button>';
+  }).join('');
+}
+/* Parks the current run and opens the other city. Sequential by design: only
+   one city is ever simulated, so this saves, swaps every per-city table, and
+   starts (or resumes) that city's own run. Cash does not travel. */
+function switchCity(id){
+  if(!CITIES[id]||id===S.city||!cityUnlocked(id)) return;
+  const from=CITIES[S.city].name, to=CITIES[id].name;
+  if(!window.confirm('Park your '+from+' run and open '+to+'?\n\n'+
+      from+' is saved and you can come back to it. '+to+' starts as its own '+
+      'business with its own money — nothing transfers.')) return;
+  /* Flush the outgoing run under the OLD city key before S.city moves. */
+  autosave('city-switch').then(function(){
+    S.city=id; PROG.last=id; progSave();
+    loadCityTables();
+    /* Real weather belongs to the real city, so drop it and look it up again
+       rather than showing Austin's temperature over a Dallas map. */
+    WX={temp:null,cond:'',ok:false,byHour:null};
+    if(typeof fetchWeather==='function') fetchWeather();
+    return Store.get('auto');
+  }).then(function(sv){
+    setSpeed(0);
+    if(sv&&sv.s){
+      try{
+        restore(sv);
+        log('System','resumed '+to+' — day '+S.day,0);
+      }catch(err){
+        console.warn('city resume failed — starting fresh',err); newFleet();
+      }
+    } else {
+      newFleet();
+    }
+    const c=currentCity();
+    if(map&&typeof map.setView==='function') map.setView([c.lat,c.lon],12);
+    renderCityTabs(); render(); drawMap(); paintUnits();
+  }).catch(function(err){ toast('Could not open '+to+' — '+err.message,true) });
+}
+document.addEventListener('click',function(e){
+  const b=e.target.closest?e.target.closest('.citytab'):null;
+  if(b&&b.dataset.city&&!b.disabled) switchCity(b.dataset.city);
+});
+
 /* ---------------- render ---------------- */
 function stateCell(c){
   return '<span class="dot d-'+CLS[c.state]+'"></span><span class="st t-'+CLS[c.state]+'">'+
@@ -4521,8 +4845,13 @@ function stateCell(c){
 let lastMsgSeenCount=-1;
 function render(){
   const h=hour();
+  /* Both are no-ops in the common case — see progGates(). */
+  progGates(); progTrack();
   const city=currentCity();
   $('tb-city').textContent=city.name;
+  /* Cheap and idempotent: the strip is four buttons, and deriving the pressed
+     state here is what stops it drifting from S.city. */
+  renderCityTabs();
   $('tb-city-time').textContent=cityLocalTime(city);
   $('tb-day').textContent=S.day;
   $('tb-clock').textContent=hhmm(S.t);
@@ -4847,7 +5176,7 @@ function render(){
   $('cpo-val').textContent=S.carsPerOp;
   /* The policy strip shows the truth rather than a decorative default. */
   $('dp-charge').setAttribute('aria-pressed',S.autoCharge!==false?'true':'false');
-  const airZ=ZONES.filter(function(z){ return /AUS/.test(z.n) })[0];
+  const airZ=airportZone();
   $('dp-air').setAttribute('aria-pressed',airZ&&airZ.on!==false?'true':'false');
   const liveZ=activeZones().length;
   $('dp-fence').setAttribute('aria-pressed',liveZ>0?'true':'false');
@@ -5181,14 +5510,14 @@ tbtn.addEventListener('click',function(){
    ZONES[i].on and spawnAcc are player/sim state living outside S,
    so they ride along explicitly.
    ============================================================ */
-const SAVE_V=6;
+const SAVE_V=7;
 const SLOTS=['slot1','slot2','slot3'];
 
 /* Build version, shown in the top bar and stamped into every save.
    SAVE_V above is the STATE SHAPE version and moves only when the
    snapshot format changes — the two are deliberately independent, so
    shipping 0.9.0 does not invalidate 0.8.0 saves. */
-const VERSION='0.22.0';
+const VERSION='0.23.0';
 
 function snapshot(){
   return {
@@ -5220,7 +5549,12 @@ function snapshot(){
         return o;
       }),
       rides:S.rides, ops:S.ops, log:S.log,
-      zones:ZONES.map(function(z){ return z.on!==false }),
+      /* By NAME, not by index. An index into ZONES is only meaningful while
+         the zone list keeps its exact shape and order — the same trap that
+         made charger indices (chIdx) point at the wrong Supercharger, fixed
+         the same way. Now that zones are per-city and a city's list can grow
+         a brewery, indices would quietly shift the whole geofence by one. */
+      zones:ZONES.reduce(function(m,z){ m[z.n]=z.on!==false; return m },{}),
       spawnAcc:spawnAcc
     }
   };
@@ -5233,7 +5567,7 @@ function migrate(save){
   if(save.v>SAVE_V) throw new Error('save is from a newer version of the game');
   let s=save.s;
   if(save.v<2){                       /* v1 had no geofence or spawn carry */
-    if(!s.zones) s.zones=ZONES.map(function(z){ return z.on!==false });
+    if(!s.zones) s.zones=ZONES_BY_CITY.austin.map(function(z){ return z.on!==false });
     if(typeof s.spawnAcc!=='number') s.spawnAcc=0;
     save.v=2;
   }
@@ -5321,6 +5655,25 @@ function migrate(save){
        rewritten into figures the player never actually saw. */
     save.v=6;
   }
+  if(save.v<7){
+    /* v6 stored the geofence as an array of booleans positionally indexed into
+       ZONES, and ZONES was a single Austin-only table. Both facts changed at
+       once: zones are now per-city and saved by name. Every v6 save is by
+       definition an Austin save (city #2 did not exist), so the old array can
+       be read against Austin's authored order with confidence — which is
+       exactly why this conversion is possible at all and would not have been
+       a year from now. Zones the save has no opinion about keep the city
+       default rather than being forced off. */
+    if(Array.isArray(s.zones)){
+      const named={};
+      ZONES_BY_CITY.austin.forEach(function(z,i){
+        if(i<s.zones.length) named[z.n]=s.zones[i]!==false;
+      });
+      s.zones=named;
+    }
+    if(!s.city) s.city='austin';
+    save.v=7;
+  }
   save.v=SAVE_V;
   return save;
 }
@@ -5358,6 +5711,10 @@ function restore(save){
   S.permit=s.permit; S.over=!!s.over; S.d=s.d;
   /* A save from before multi-city support has no city field. */
   S.city=(s.city&&CITIES[s.city])?s.city:'austin';
+  /* Before anything reads ZONES/CHARGERS/ROADS below — notably the geofence
+     restore, which would otherwise write flags onto the outgoing city's
+     zone list and then have them replaced. */
+  loadCityTables();
   S.ops=s.ops||[];
   /* Raw, un-escaped — see the note by sanitizeRide() above. Escaping happens
      at render time (the .t-ev block in render()). */
@@ -5448,7 +5805,16 @@ function restore(save){
   S.rides=S.rides.filter(function(r){ return !r.car||live[r.car] });
 
   /* state that lives outside S */
-  if(s.zones) ZONES.forEach(function(z,i){ z.on=s.zones[i]!==false });
+  /* Name-keyed (v7+). migrate() converts the old index array, so the
+     Array.isArray branch should be unreachable — it is kept because restore()
+     is also called directly on a fresh snapshot() by the test harness, and a
+     silent geofence wipe is a bad failure mode for a defensive one-liner. */
+  if(s.zones){
+    if(Array.isArray(s.zones)) ZONES.forEach(function(z,i){ z.on=s.zones[i]!==false });
+    else ZONES.forEach(function(z){
+      if(Object.prototype.hasOwnProperty.call(s.zones,z.n)) z.on=s.zones[z.n]!==false;
+    });
+  }
   spawnAcc=typeof s.spawnAcc==='number'?s.spawnAcc:0;
 
   /* selection must name a real car */
@@ -5516,6 +5882,69 @@ function setSpeed(v){
    Any backend implementing get/put/del/list swaps in unchanged.
    cloud.js sets window.DH_REMOTE after a successful login; until then
    (and whenever the network is down) everything stays local.          */
+/* ============================================================
+   TWO KINDS OF SAVED THING
+
+   A RUN is one city's game: cash, cars, clock, geofence. Runs are per city and
+   must not overwrite each other, so the autosave key carries the city —
+   'auto:austin', 'auto:dallas'. Nothing above this line knows that: callers
+   keep asking for the logical key 'auto' and physKey() rewrites it. Doing the
+   split at the Store boundary rather than at every call site is why
+   bootResume(), the 30-second autosave and the save manager all stayed as they
+   were.
+
+   PROGRESS is what survives starting a new city: which cities are unlocked,
+   the result of each finished one, and which city to reopen on next boot. It
+   is deliberately NOT part of S — S is a run, and a run is exactly the thing
+   progress has to outlive. Cash is never in here. See citiesplan.md.
+   ============================================================ */
+function physKey(k){ return k==='auto'?('auto:'+S.city):k }
+
+const PROG_V=1;
+let PROG={unlocked:{austin:true}, results:{}, last:'austin'};
+function progSave(){
+  return Store.put('progress',{v:PROG_V, unlocked:PROG.unlocked,
+    results:PROG.results, last:PROG.last}).catch(function(){});
+}
+function progLoad(){
+  return Store.get('progress').then(function(r){
+    if(!r||typeof r!=='object') return;
+    if(r.unlocked&&typeof r.unlocked==='object') PROG.unlocked=r.unlocked;
+    if(r.results&&typeof r.results==='object') PROG.results=r.results;
+    if(r.last&&CITIES[r.last]) PROG.last=r.last;
+    PROG.unlocked.austin=true;      /* the tutorial city is never locked */
+  }).catch(function(){});
+}
+/* A city is open if it asks for nothing, if progress remembers it being
+   earned, or if the current run has just earned it. The third clause is what
+   makes the Dallas tab light up the moment guided day 1 ends, without waiting
+   for the progress write to land. */
+function cityUnlocked(id){
+  const c=CITIES[id];
+  if(!c) return false;
+  if(!c.needs) return true;
+  if(PROG.unlocked[id]) return true;
+  if(c.needs==='day1') return !!(S.ray&&S.ray.day1Done);
+  return false;
+}
+/* Promote anything the run has now earned into the permanent record. Called
+   from render(), so it must stay free when there is nothing to do: the only
+   work in the common case is one boolean test per city. */
+function progGates(){
+  if(!S.ray||!S.ray.day1Done) return;
+  let gained=null;
+  cityList().forEach(function(id){
+    if(CITIES[id].needs==='day1'&&!PROG.unlocked[id]){
+      PROG.unlocked[id]=true; gained=id;
+    }
+  });
+  if(gained){
+    progSave();
+    log('System',CITIES[gained].name+' unlocked',0);
+    renderCityTabs();
+  }
+}
+
 const LocalStore=(function(){
   const DB='deadhead', ST='saves';
   let dbp=null;
@@ -5545,9 +5974,13 @@ const LocalStore=(function(){
     put:function(k,v){ return tx('readwrite',function(st){ return st.put(v,k) }) },
     del:function(k){ return tx('readwrite',function(st){ return st.delete(k) }) },
     list:function(){
-      const out={}; const keys=['auto'].concat(SLOTS);
+      /* Looks up 'auto:<city>' but reports it as 'auto', so the save manager
+         keeps rendering one autosave row without knowing about cities. */
+      const out={}, auto=physKey('auto'), keys=[auto].concat(SLOTS);
       return Promise.all(keys.map(function(k){
-        return self.get(k).then(function(v){ out[k]=v||null }).catch(function(){ out[k]=null });
+        const label=(k===auto)?'auto':k;
+        return self.get(k).then(function(v){ out[label]=v||null })
+                          .catch(function(){ out[label]=null });
       })).then(function(){ return out });
     }
   };
@@ -5558,17 +5991,37 @@ const LocalStore=(function(){
    in swaps the backend with no other code change. */
 function backend(){ return window.DH_REMOTE||LocalStore }
 const Store={
-  get:function(k){ return backend().get(k) },
-  put:function(k,v){ return backend().put(k,v) },
-  del:function(k){ return backend().del(k) },
+  get:function(k){ return backend().get(physKey(k)) },
+  put:function(k,v){ return backend().put(physKey(k),v) },
+  del:function(k){ return backend().del(physKey(k)) },
   list:function(){ return backend().list() }
 };
+/* One-time move of the pre-multi-city autosave. Every bare 'auto' record was
+   written before city #2 existed, so it is an Austin run by definition and
+   belongs at 'auto:austin'. Copy first, delete second: a failed delete leaves
+   a harmless duplicate, whereas a failed copy after a delete loses the save. */
+function migrateAutoKey(){
+  return backend().get('auto').then(function(sv){
+    if(!sv) return;
+    return backend().get('auto:austin').then(function(exists){
+      if(exists) return backend().del('auto');
+      return backend().put('auto:austin',sv).then(function(){
+        return backend().del('auto');
+      });
+    });
+  }).catch(function(){});
+}
 
 /* ---------------- garage ----------------
    One card per vehicle. Each shows what it is, what it does, what it costs
    to get, and what it costs to keep — and which of those you can actually
    afford right now. */
 function canAfford(v,how){
+  /* The scenario's ceiling. Austin's 17 is the real Austin fleet's peak (see
+     DESIGN.md §5); it is a cap on cars, not on ambition, and Act 1 never gets
+     near it — it exists so a city cannot be brute-forced by volume. */
+  const cap=currentCity().fleetCap;
+  if(typeof cap==='number'&&S.cars.length>=cap) return false;
   if(how==='buy')     return S.cash>=v.price;
   if(how==='finance') return S.cash>=v.down+CFG.financeReserve;
   /* Two days of runway against what midnight actually bills — fixed PLUS
@@ -5580,6 +6033,13 @@ function canAfford(v,how){
 }
 function affordWhy(v,how){
   if(canAfford(v,how)) return '';
+  /* The cap is checked FIRST, because canAfford() refuses on it before it ever
+     looks at cash — without this the garage would tell a player at the ceiling
+     to go and earn money that would not help. */
+  const cap=currentCity().fleetCap;
+  if(typeof cap==='number'&&S.cars.length>=cap){
+    return currentCity().name+' is capped at '+cap+' cars';
+  }
   if(how==='buy')     return 'Needs '+money(v.price);
   if(how==='finance') return 'Needs '+money(v.down+CFG.financeReserve)+
                              ' (deposit plus reserve)';
@@ -6219,9 +6679,20 @@ $('sv-file').addEventListener('change',function(){
 
 /* ---------------- autosave ---------------- */
 let saving=false;
+/* The run's high-water mark, kept in memory by render() and flushed here.
+   Deliberately piggybacked on the autosave cadence: progress is written to the
+   same IndexedDB and there is no reason to open a second transaction every
+   200 ms just to remember a number that changes slowly. */
+function progTrack(){
+  const g=currentCity().goal, r=PROG.results[S.city]||{};
+  const best=Math.max(r.bestCash||0,S.cash);
+  PROG.results[S.city]={bestCash:best, day:Math.max(r.day||0,S.day),
+    goalMet:!!(r.goalMet||(g&&typeof g.cash==='number'&&S.cash>=g.cash))};
+}
 function autosave(reason){
   if(saving) return Promise.resolve();
   saving=true;
+  progTrack(); progSave();
   return Store.put('auto',snapshot())
     .catch(function(err){ console.warn('autosave failed ('+reason+')',err) })
     .then(function(){ saving=false });
@@ -6279,7 +6750,10 @@ function newFleet(){
      previous fleet's geofence or ride-spawn accumulator, or guided day 1's
      forced offers (which draw from activeZones()[0]/[1]) can end up
      targeting zones a new game never enabled. */
-  ZONES.forEach(function(z){ z.on=true });
+  /* Re-reading the table restores THIS city's authored geofence (four zones
+     live in Austin, not eleven). The previous `z.on=true` sweep turned the
+     airport and every brewery on for a brand-new player. */
+  loadCityTables();
   spawnAcc=0;
   newDay();
   if(map){ for(const id in carLayer){ map.removeLayer(carLayer[id]); delete carLayer[id] } }
@@ -6294,6 +6768,7 @@ if(S.units!=='imperial'&&S.units!=='metric') S.units=defaultUnits();
 /* Before the first render, so nothing paints in the previous city's tone for
    a frame. For Austin this writes exactly the values :root already declares. */
 applyCityTone();
+renderCityTabs();
 paintUnits();
 syncSoundBtn();
 /* The markup carries `hidden`, but assert it here too so a refactor that
@@ -6323,7 +6798,17 @@ setInterval(function(){
    fleet. Start paused so a resume never eats simulated minutes. */
 (function bootResume(){
   setSpeed(0);
-  Store.get('auto').then(function(sv){
+  /* Order matters. The legacy 'auto' record has to be relocated before
+     anything reads 'auto:<city>', and PROG.last has to be known before S.city
+     is chosen, or a player whose last run was Dallas gets reopened in Austin
+     and the Dallas autosave sits there looking lost. */
+  migrateAutoKey().then(progLoad).then(function(){
+    if(PROG.last&&CITIES[PROG.last]&&cityUnlocked(PROG.last)){
+      S.city=PROG.last; loadCityTables();
+    }
+    renderCityTabs();
+    return Store.get('auto');
+  }).then(function(sv){
     if(!sv||!sv.meta){ newFleet(); return }
     const m=sv.meta;
     $('rs-body').innerHTML=
@@ -6349,7 +6834,12 @@ setInterval(function(){
 window.DH=S;
 /* Act 1 internals, exposed for the headless test harness and for poking at
    the economy from the console. Read-only by convention. */
-window.DH_ACT1={ROADS:ROADS,roadPath:roadPath,roadFix:roadFix,
+window.DH_ACT1={
+  /* Functions, not captured references: ZONES/ROADS/CHARGERS are `let` and get
+     reassigned on a city switch, so exporting the array itself would hand the
+     console and the test harness the previous city's data forever. */
+  roads:function(){ return ROADS },
+  roadPath:roadPath,roadFix:roadFix,
   dodgeGeom:dodgeGeom,dodgeCar:dodgeCar,dodgeDraw:dodgeDraw,dodgeLaneX:dodgeLaneX,
   CAR_OUTLINE:CAR_OUTLINE,carPathD:carPathD,carPinHtml:carPinHtml,
   carBearing:carBearing,carHeading:carHeading,PIN_W:PIN_W,PIN_H:PIN_H,
@@ -6363,7 +6853,15 @@ window.DH_ACT1={ROADS:ROADS,roadPath:roadPath,roadFix:roadFix,
   CATALOG:CATALOG,catalog:catalog,spec:spec,acquire:acquire,canAfford:canAfford,
   STAGES:STAGES,unlocked:unlocked,checkUnlocks:checkUnlocks,newFleet:newFleet,
   openGarage:openGarage,renderGarage:renderGarage,fixedPerCar:fixedPerCar,
-  ZONES:ZONES,CURVES:CURVES,tariff:tariff,
+  zones:function(){ return ZONES },
+  ZONES_BY_CITY:ZONES_BY_CITY,zonesFor:zonesFor,airportZone:airportZone,
+  ROADS_BY_CITY:ROADS_BY_CITY,roadsFor:roadsFor,
+  CITIES:CITIES,loadCityTables:loadCityTables,applyCityTone:applyCityTone,
+  cityList:cityList,cityUnlocked:cityUnlocked,switchCity:switchCity,
+  physKey:physKey,PROG:function(){ return PROG },cityK:cityK,
+  renderCityTabs:renderCityTabs,
+  tone:function(){ return TONE },
+  CURVES:CURVES,tariff:tariff,
   CHARGERS_BY_CITY:CHARGERS_BY_CITY,chargersFor:chargersFor,
   chargerByName:chargerByName,sendToCharge:sendToCharge,chargeEta:chargeEta,
   nearestCharger:nearestCharger,stepCar:stepCar,assign:assign,dist:dist,
