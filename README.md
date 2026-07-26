@@ -1,197 +1,144 @@
-# Deadhead — robotaxi fleet simulator
+# Deadhead
 
-**Version 0.13.0**
+**A robotaxi fleet simulator where you never touch a steering wheel.**
 
-A future-job simulator played entirely through a car's centre console screen. You never
-drive. You own and operate a small robotaxi fleet, and your job is the one that *replaces*
-driving: capital allocation, geofence design, charging strategy, pricing, and staffing a
-room of remote human operators who supervise the cars.
+You are not the driver. You are the person the driver got replaced by — and the job turns
+out to be harder. Nine real Teslas, an Austin you can recognise, and a spreadsheet that
+bites. All of it happens on one screen: the car's own centre console.
 
-*Deadhead* is the trade term for driving empty with no fare aboard — the exact thing that
-kills a robotaxi fleet's margin.
+> *Deadhead* — the trade word for driving with no fare aboard. It is the thing that quietly
+> kills a robotaxi fleet's margin, and the reason this game is named after it.
 
----
+## ▶ [Play it now — game.deadhead.workers.dev](https://game.deadhead.workers.dev/)
 
-## Versioning
+No install. No account. No download. It runs in the browser you already have.
 
-`MAJOR.MINOR.PATCH`, driven by features rather than dates.
-
-- **PATCH** — bug fixes and balance tweaks that change no mechanic.
-- **MINOR** — a new mechanic or system, or a rebalance a player would notice.
-- **MAJOR** — reserved for 1.0.0, the first build worth handing to a stranger.
-
-The version appears in three places and they must agree: `const VERSION` in
-`deadhead.html`, the heading at the top of this file, and the git tag.
-
-Note the two independent numbers. `VERSION` is the build. `SAVE_V` is the *state shape*,
-and only moves when the snapshot format changes — so shipping 0.9.0 does not invalidate
-0.8.0 saves. Every save also records the `app` version that wrote it, which is what makes
-a bug report from a stranger diagnosable.
-
-### History
-
-| Version | What landed |
-|---|---|
-| 0.13.0 | **Take control.** A blocked car's incident alert is now clickable: it switches the console's own centre display over to a camera view — a canvas mini-game (dodge oncoming obstacles across three lanes for eight seconds, arrow keys or on-screen arrows) that plays right inside the "Main fleet view" card instead of a popup, framing the remote-operator premise as literally as this game gets. Winning clears the block immediately; ignoring the alert, or losing, changes nothing — the existing operator-ETA timer (`stepCar`'s `blocked` branch, unaffected) still clears it on its own, and the rider-cancel threshold at 150s still applies exactly as before. Opening it pauses the sim speed for the duration and restores it on close; the map itself is never torn down, just covered. The tutorial's spotlight ring now also wraps whole panels (Platforms, Offers, Books, Rapid network, Incidents, the topbar Cash box) instead of just an inner field. The console's "Nova" clock now shows real local city time instead of the simulated shift clock. |
-| 0.12.0 | **Tinted-glass restyle and a guided day one.** Management surfaces redone in the "1b" glassmorphism direction (`GLASS-STYLE.md`): thinner, deeper glass, section headers carry a semantic tone band instead of a divider, the console sits inside its own glass bezel while the screen inside stays flat and opaque. Ray's tutorial card is now an iMessage-style thread — avatar, contact line, a received bubble — and the control it's pointing at pulses instead of holding a static ring. A brand-new fleet now gets a **guided day one**: the same 14 beats, re-sequenced into one fixed path, with the offer/incident/low-charge events forced the moment their prerequisites are met rather than left to chance. Fixed: the tutorial card could ring a target hidden behind an open modal, and could balloon to nearly full viewport height when repositioning itself next to a control. Fixed: the console's chevron-split Accept button had an inconsistent clickable area around its diagonal seam. The tutorial character is renamed Ray Salcido → **Paolo Cortez**. |
-| 0.11.0 | **The garage and progressive disclosure.** Three real Teslas — Cybercab (48 kWh, 163 kW, 300 mi, two seats, per its EPA filing), Model 3, Model Y — each a card with a hand-drawn SVG side profile, technical specs, running costs, and three ways to acquire it: buy, finance, rent. You now start with **$3,000 and no car**, which buys none of them outright, so the opening decision is how you hold the asset. Pack size and efficiency are wired into charging, range and energy cost, so the choice is mechanical rather than cosmetic. Console panels stay greyed until earned, each showing what unlocks it; locks never revoke. A new fleet always restarts the tutorial from beat 1, now 14 beats with the opening rewritten for the garage. Save shape v5. |
-| 0.10.1 | Fixes "Latency NaNs" in the incidents panel, found on the live deployment. `avgFatigue()` divided by `S.ops.length`, which is zero in Act 1 because the player is the only operator. With no staff the panel now says so instead of quoting a computed response time it has no basis for. |
-| 0.10.0 | **Ray, the Act 1 tutorial** (`GameMechanics.md` §9). Thirteen beats, every one triggered by game state rather than a timer, so the script follows the player. Spotlight primitive — a ring on the referenced control, console dimmed 25%. Messages card bottom-left; never modal, never pauses the clock except beat 1. All beats stay readable in a Messages panel afterwards. Skippable from the first card and never re-offered. Adds the demand-driven surge model (0.8–2.0×) that beat 7 needs to fire at all. Save shape v4. |
-| 0.9.0 | **Act 1 rebuild** (`GameMechanics.md`). Real-time clock — 1× is the wall clock, speeds pause/1/4/20. Clock on/off shift model: cars earn only while you are supervising, and the car still owes $42 at midnight. Manual accept/decline of offers on a 45-second countdown. Two platforms, Hitchr (25%) and Zipp (15%), with acceptance rate driving offer volume. Start position $1,000 and one owned car. Fixed cost decomposed to $42 base. Insurance tiers at 3 cars. Two prototype bugs fixed: the offer cap never fired, and neutral pricing shed 44% of demand. Save shape v3 with a v2 migration. |
-| 0.8.0 | Save/load: versioned snapshot with reference rehydration, IndexedDB autosave, three manual slots, JSON export/import. Cloudflare Worker + D1 backend for accounts and cloud saves. Version badge in the top bar. |
-
-### Recovering an old version
-
-Versions live as git tags, not as duplicated folders — one working copy, full history:
-
-```bash
-git tag                        # list versions
-git show v0.8.0:deadhead.html > /tmp/old.html   # read one file from a past version
-git checkout v0.8.0            # visit a past version (detached HEAD)
-git checkout main              # come back
-```
-
-Duplicated per-version folders were considered and rejected: two copies of an 85 KB file
-is how an edit lands in the wrong one, which already happened once in this project with
-two divergent copies of the Cloudflare backend.
+<a href='https://ko-fi.com/K3K6RR4LY' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://storage.ko-fi.com/cdn/kofi6.png?v=6' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>
 
 ---
 
-## Layout
+## The first decision is the whole game
 
-```
-deadhead.html          the whole game — one file, no build step
-Inside_The_Brutal_New_Robotaxi_Simulator_Deadhead.mp4
-                       Paolo's opening video message (beat 1 of the tutorial)
-paolo-intro-poster.jpg poster frame for that video, generated with ffmpeg
-shell.html             earlier console shell prototype
-DESIGN.md              premise, pillars, the trilemma
-GameMechanics.md       Act 1 redesign: real-time clock, gig phase, platforms
-UI-SPEC.md             console interface spec
-TeslaDesignSystem.md   brand reference
-deploy/                Cloudflare Workers deployment
-  wrangler.jsonc         Worker + static assets + D1 binding
-  schema.sql             D1 tables
-  src/index.js           accounts and cloud saves API
-  public/index.html      copy of deadhead.html, served at the edge
-  public/cloud.js        sign-in UI and cloud save client
-```
+You start with **$7,500** and no car. Every vehicle in the catalogue costs more than that.
 
-`deadhead.html` is the source of truth. `deploy/public/index.html` is a copy — refresh it
-before deploying:
+That is not a difficulty spike, it is the lesson. You cannot buy your way in, so you have to
+choose *how you hold the asset* — and each way of holding it is wrong in a different way.
 
-```bash
-cp deadhead.html deploy/public/index.html
-```
+| | up front | per day | what it really costs |
+|---|---|---|---|
+| **Buy outright** | $30,000+ | least | impossible on day one, and that's the point |
+| **Finance** | 15% down | middling | a debt you cannot hand back |
+| **Rent** | nothing | most | the meter never stops. Ever. |
+
+Renting costs nothing today and the most every day after. Financing is cheaper for exactly
+as long as you keep working, and a mistake the moment you stop. **Neither is wrong.**
+
+Four of the nine are financeable on day one. The other five you can only look at.
 
 ---
 
-## Running it
+## Nine real cars, and the specs actually bite
 
-Open `deadhead.html` in a browser. That is all — no build, no server, no dependencies.
-Leaflet and OpenStreetMap tiles load from a CDN; without network the map degrades to a
-notice and the simulation still runs.
+Every vehicle is real and every technical figure is the published one — the Cybercab's
+numbers come straight off its EPA filing. None of it is flavour text; each spec feeds a
+system that is already running.
 
-Saves go to IndexedDB in that browser. Clearing site data erases them, which is what the
-**Export file** button in the save manager is for.
+| | pack | range | seats | what it means for you |
+|---|---|---|---|---|
+| **Cybercab** | 48 kWh | 300 mi | 2 | no wheel, no pedals, cheapest to own — and on a charger constantly |
+| **Model 3** | 62 kWh | 321 mi | 5 | the entry trim: cheap to hold, short on legs |
+| **Model Y** | 70 kWh | 321 mi | 5 | more pack, more frontal area — same distance for more money |
+| **Model 3 Premium** | 82 kWh | 363 mi | 5 | longest range here, and the last car you can finance on day one |
+| **Model Y Premium** | 82 kWh | 357 mi | 5 | nearly that range, in a crossover body |
+| **Model Y L** | 85 kWh | 330 mi | 6 | biggest pack short of the truck, spent carrying a third row |
+| **Model 3 Performance** | 82 kWh | 309 mi | 5 | 54 fewer miles from the same pack. Nothing here pays for acceleration |
+| **Model Y Performance** | 82 kWh | 306 mi | 5 | buy it because you want it. The arithmetic says no |
+| **Cybertruck** | 123 kWh | 320 mi | 5 | worst cost per mile by a mile, 38 minutes to fill, $152 every midnight |
 
----
-
-## Deploying to Cloudflare
-
-The game is static, so the Worker exists only for accounts. Requests that match a file in
-`public/` are served from the edge and never invoke the Worker — only `/api/*` runs code.
-
-### 1. Create the D1 database first
-
-`wrangler deploy` fails if `database_id` names a database that does not exist, so do this
-before the first deploy.
-
-Dashboard → **Storage & Databases** → **D1** → **Create database**, name it `deadhead-db`.
-Copy the **Database ID** from the database page into `deploy/wrangler.jsonc`, replacing
-`PASTE_YOUR_DATABASE_ID_HERE`.
-
-> Want the game online right now with no accounts? Delete the whole `d1_databases` block.
-> Local browser saves keep working and `/api/*` returns a clear 503.
-
-### 2. Apply the schema
-
-Dashboard → D1 → `deadhead-db` → **Console**, paste the contents of `schema.sql`. Or:
-
-```bash
-cd deploy && npx wrangler d1 execute deadhead-db --remote --file=./schema.sql
-```
-
-Skipping this step produces a 503 that names the fix rather than a bare 500.
-
-### 3. Connect the repo (Workers Builds)
-
-Cloudflare's **Create a Worker → Import a repository** flow. Values:
-
-| Field | Value |
-|---|---|
-| Project name | `deadhead-robotaxi-fleet-simulator` |
-| Build command | *leave empty* — dependencies install automatically |
-| Deploy command | `npx wrangler deploy` |
-| Root directory (Advanced) | `deploy` — **only if** `deploy/` is a subfolder of the repo root |
-
-The deployed Worker's name comes from `name` in `wrangler.jsonc`, not from the project
-name field. Worker names must be lowercase.
-
-No runtime secrets are needed. Session tokens are generated per login and stored as
-SHA-256 hashes; there is no signing key to configure.
+Pack size decides how often a car is *earning nothing*. Energy per km decides what every
+mile costs. Price decides whether you own a business or a debt. Choose badly and you won't
+notice for two days.
 
 ---
 
-## Why the password KDF runs in the browser
+## What you actually do
 
-The Workers **free plan caps CPU at 10 ms per request**. PBKDF2 at OWASP's recommended
-210,000 iterations measures **18.7 ms**, so hashing server-side fails every register and
-login with Error 1102 — which surfaces as an opaque error, not as anything pointing at the
-cause. Measured on this project:
+**Clock on.** Cars only earn while you are watching them — you are the remote operator.
+Clock off and they park, and still owe their fixed cost at midnight. A four-hour shift owns
+a car that sits idle for twenty hours and gets billed for all of them. That is the most
+accurate thing this game says about gig work, and it arrives as arithmetic rather than a
+speech.
 
-| Approach | CPU | Verdict |
-|---|---|---|
-| PBKDF2 210,000 iterations | 18.7 ms | over budget |
-| PBKDF2 100,000 iterations | 8.9 ms | no headroom |
-| PBKDF2 50,000 iterations | 4.5 ms | fits, weaker than advised |
-| **single salted SHA-256** | **0.16 ms** | what ships |
+**Read the offers.** Three numbers on every one: what the meter says, what you actually keep
+after commission, and how far you drive empty to reach the passenger. The third decides
+whether you made money.
 
-So the browser derives a key and the Worker stores one salted SHA-256 of it:
+**Play the tariff.** Power is $0.11/kWh before 07:00 and $0.34 through the evening peak —
+real Austin time-of-use pricing. Send a car to charge at four in the morning and you buy the
+same kWh for a third of the price. Five real Austin Superchargers, each a genuine trade:
+South Congress is 2.5 km away; Research Boulevard never queues because it has 18 stalls, but
+it's 27 minutes out and charges at only 72 kW.
 
-```
-browser:  authKey = PBKDF2-SHA256(password, "deadhead|" + email, 250,000) -> 32 bytes
-server:   stored  = SHA-256(authKey + per-user salt)
-```
+**Draw the map.** Seven Austin zones plus Austin-Bergstrom, each with its own demand curve
+by hour. Rainey Street pays at 2am. UT campus pays at 8am. The airport pays $30 a run and
+leaves your car 21 minutes from everything else.
 
-**Preserved:** the server never sees the password, and a stolen database still forces an
-attacker through 250,000 PBKDF2 iterations per guess.
-
-**Given up:** in transit the derived key *is* the credential, so this rests entirely on
-TLS, and the minimum-length rule is enforced in the browser where a determined user could
-bypass it — weakening only their own account. Fine for a game; not for a bank.
-
-Measured worst case across all endpoints: **1.00 ms**, against the 10 ms ceiling.
-
-## Free-tier headroom
-
-| Limit | Free plan | This game |
-|---|---|---|
-| Worker requests | 100,000/day | static files don't count; only `/api/*` |
-| CPU per request | 10 ms | 1.00 ms worst case |
-| D1 storage | 5 GB | a save is 1–15 KB |
-
-Cloud autosave is coalesced to once per 2 minutes while local IndexedDB still saves every
-30 seconds — an unthrottled tab left open all day would spend 2,880 requests, versus 720.
-Nothing is lost in between: every write lands locally first.
+**Take control.** When a car gets wedged, the console switches to its camera feed and you
+drive it out yourself. Entirely optional — the incident clears on its own eventually.
+Whether "eventually" is soon enough is your problem.
 
 ---
 
-## Known limitations
+## Real data, not set dressing
 
-- No password reset. There is no email sending, so a forgotten password means a new
-  account. Export your save first.
-- Leaderboards would be claims, not facts. The simulation runs client-side, so any score
-  a browser reports is unverifiable. A trustworthy leaderboard needs the input log
-  replayed server-side — deliberately not attempted.
-- IndexedDB dies with cleared site data. Use **Export file**, or sign in.
+- **Live weather** for your city, and its real local clock
+- **Real Superchargers** with actual coordinates, stall counts and peak kW — a 72 kW site charges slower because it genuinely does
+- **Real fares** calibrated against observed Austin prices: about $18 for a downtown hop, $29–32 from the airport
+- **Real MSRP** on all nine cars, with a cost side scaled to match
+- **Real time-of-use electricity**, which is why charging at 4am is a strategy and not a chore
+
+Everything *around* the hardware — Hitchr, Zipp, Meridian, Halo — is invented. The cars and
+the numbers are not. That line is deliberate.
+
+---
+
+## Paolo
+
+Forty-one years in a cab before he got out, while getting out was still his idea. He walks
+you through your first day, then goes quiet — and speaks again only once you've been stuck
+long enough to need it. He isn't a tooltip. He has opinions about what you're doing, and
+he's usually right.
+
+A standing **Now** line always names the single most useful next thing, so you're never
+lost. It never tells you what to *choose*.
+
+---
+
+## Also in the box
+
+- Save anywhere, or sign in for cloud saves synced across devices
+- Light and dark themes
+- Works on a phone, a laptop and an ultrawide — the layout genuinely reworks itself
+- Passwords are never transmitted: key derivation runs in your browser
+- One HTML file, no build step — [download it](deadhead.html) and it runs offline
+
+---
+
+## Buy Paolo a coffee
+
+Deadhead is free and stays free. No ads, nothing behind a paywall, no second version that
+costs money. If it turned out to be worth something to you, there's a tip jar — and if it
+didn't, that's completely fine.
+
+<a href='https://ko-fi.com/K3K6RR4LY' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://storage.ko-fi.com/cdn/kofi6.png?v=6' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>
+
+There's a **Coffee** button in the top right of the game, too. Paolo will ask you himself.
+
+---
+
+**[▶ Play Deadhead](https://game.deadhead.workers.dev/)** · Building or deploying it? See
+**[DEVELOPING.md](DEVELOPING.md)**.
+
+<sub>Deadhead is an independent fan project, not affiliated with, endorsed by or connected to
+Tesla, Inc. Vehicle names and specifications are referenced for realism; every company,
+platform and commercial term in the game is fictional.</sub>

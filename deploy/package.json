@@ -4,11 +4,15 @@
   "version": "1.0.0",
   "scripts": {
     "dev": "wrangler dev",
+    "test": "node test/boot-smoke.test.js",
+    "check-parity": "node scripts/check-parity.js",
+    "predeploy": "npm run check-parity && npm test",
     "deploy": "wrangler deploy",
     "db:local": "wrangler d1 execute deadhead-db --local --file=./schema.sql",
     "db:remote": "wrangler d1 execute deadhead-db --remote --file=./schema.sql"
   },
   "devDependencies": {
-    "wrangler": "^4"
+    "wrangler": "^4",
+    "jsdom": "^24"
   }
 }
