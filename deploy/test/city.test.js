@@ -288,6 +288,49 @@ async function run(file) {
     return a === S.cash && a === A.CFG.startCash;
   });
 
+  // ---- 6c. the map has to follow the city -----------------------------
+  // Reported: "Dallas is accessible but map is Austin". initMap() hardcoded
+  // Austin's coordinates, and the zone circles and charger pins were built
+  // once at boot and never rebuilt — so a Dallas run drew Austin's overlays on
+  // a map of Austin while its tables, tone and economy had all switched.
+  //
+  // Leaflet is absent in this harness (initMap bails into the "Map unavailable"
+  // placeholder), so these cover the pure maths and the no-map safety. The
+  // layer rebuild itself is exercised against a Leaflet stub separately.
+  check('bgTileUrl reproduces the tile Austin shipped with', () => {
+    // The wallpaper used to be the literal .../8/58/105.png. Deriving it must
+    // land on exactly that tile, or Austin's background silently moved.
+    const c = A.CITIES.austin;
+    return A.bgTileUrl(30.27, -97.74, 8).endsWith('/8/58/105.png') &&
+           A.bgTileUrl(c.lat, c.lon, 8).endsWith('/8/58/105.png');
+  });
+  check('bgTileUrl puts Dallas on a different tile', () => {
+    const a = A.CITIES.austin, d = A.CITIES.dallas;
+    return A.bgTileUrl(a.lat, a.lon, 8) !== A.bgTileUrl(d.lat, d.lon, 8);
+  });
+  check('every city resolves to a real OSM tile path', () =>
+    Object.keys(A.CITIES).every((id) => {
+      const c = A.CITIES[id];
+      return /^https:\/\/a\.tile\.openstreetmap\.org\/8\/\d+\/\d+\.png$/
+        .test(A.bgTileUrl(c.lat, c.lon, 8));
+    }));
+  check('centerCity() repoints the wallpaper at the live city', () => {
+    S.city = 'dallas'; A.centerCity();
+    const d = w.document.getElementById('bgmap').getAttribute('src');
+    S.city = 'austin'; A.centerCity();
+    const a = w.document.getElementById('bgmap').getAttribute('src');
+    return d && a && d !== a &&
+           a === A.bgTileUrl(A.CITIES.austin.lat, A.CITIES.austin.lon, 8);
+  });
+  // Leaflet is an optional dependency by design (UI-SPEC §0c): every map path
+  // must degrade rather than throw when L never loaded.
+  check('centerCity and buildCityLayers are safe with no map', () => {
+    try { A.centerCity(); A.buildCityLayers(); return true; }
+    catch (e) { return false; }
+  });
+  check('no map means no stale overlays either',
+    () => A.zoneLayer().length === 0 && A.chLayer().length === 0);
+
   // ---- 7. per-city save keys -----------------------------------------
   check('the autosave key carries the city', () => {
     const before = S.city;
