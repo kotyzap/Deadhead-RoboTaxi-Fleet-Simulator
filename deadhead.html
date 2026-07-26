@@ -664,7 +664,13 @@ html[data-theme="night"] .console{background:rgba(39,44,51,.4);
 .chg-ring.crit .arc{stroke:var(--s-crit)}
 html[data-theme="night"] .chg-ring .trk{stroke:rgba(255,255,255,.16)}
 html[data-theme="night"] .chg-ring b{color:#F2F2F4}
-.t-chg>button{align-self:stretch;margin:9px 14px 0;height:30px;padding:0 13px;
+/* The detail is allowed to shrink and clip; the label never is. At the
+   narrowest tier the note loses its tail to an ellipsis rather than pushing
+   the action out of the button — the same priority rule the in-car CTA uses
+   for its fare. */
+.t-chg>button{align-self:stretch;margin:8px 14px 0;height:32px;padding:0 13px;
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  text-align:left;
   border-radius:15px;
   /* Tokenised, both halves. `background:#fff` here with a themed colour is
      what produced white-on-white the moment night mode arrived. */
@@ -674,12 +680,16 @@ html[data-theme="night"] .chg-ring b{color:#F2F2F4}
 .t-chg>button:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
 .t-chg>button:disabled{opacity:.4;cursor:default}
 .t-chg>button.on{border-color:var(--s-charge);color:var(--s-charge)}
+.t-chg>button>.lb{flex:0 0 auto}
+.t-chg>button>.bsub{flex:1 1 auto;min-width:0;text-align:right;
+  font-size:11px;color:var(--card-sub);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* The last control needs the bottom breathing room the captions used to give
+   the group. */
+.t-chg>button:last-child{margin-bottom:11px}
 /* Selling is destructive, so its hover state is red rather than the usual
    accent blue — the one visual cue that this button doesn't undo. */
 #sel-sell:hover:not(:disabled){border-color:var(--s-crit);color:var(--s-crit)}
-.t-chg .sub{display:block;font-size:11px;color:var(--card-sub);
-  padding:5px 14px 9px;text-align:center;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* Dispatch buttons inside the Rapid network rows. */
 .chg-go{flex:0 0 auto;height:26px;padding:0 10px;border-radius:13px;
   border:1px solid var(--brd-2);background:transparent;color:var(--text-2);
@@ -1775,10 +1785,14 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
                 <div><span class="lbl" id="chg-l2">Added</span><b id="chg-v2">&mdash;</b></div>
                 <div><span class="lbl" id="chg-l3">Range</span><b id="chg-v3">&mdash;</b></div>
               </div>
-              <button id="sel-charge">Send to charge</button>
-              <span class="sub" id="sel-charge-note"></span>
-              <button id="sel-sell">Sell vehicle</button>
-              <span class="sub" id="sel-sell-note"></span>
+              <!-- Label and detail on ONE row inside the button, not stacked
+                   above and below it. Two buttons each cost 30px of control
+                   plus a 25px caption; folding the caption in saves ~50px of a
+                   panel that has to fit a 32:9 cockpit. The note stays inside
+                   the button on purpose — it describes what the button will do,
+                   so clicking it should press the button. -->
+              <button id="sel-charge"><span class="lb">Send to charge</span><span class="bsub" id="sel-charge-note"></span></button>
+              <button id="sel-sell"><span class="lb">Sell vehicle</span><span class="bsub" id="sel-sell-note"></span></button>
             </div>
 
             <!-- Always visible, unlike .t-live which the narrow layouts
@@ -5370,7 +5384,9 @@ function render(){
   }
   /* The charge control reads back the car's real situation, including the
      tariff it would be buying at, because the price is the decision. */
-  const cb2=$('sel-charge'), cn=$('sel-charge-note');
+  /* cbL is the label span. Writing cb2.textContent would destroy the note
+     span living inside the button — the whole point of the one-line layout. */
+  const cb2=$('sel-charge'), cbL=cb2.querySelector('.lb'), cn=$('sel-charge-note');
   /* The ring always shows state of charge; the two cells beside it change
      meaning with the car's situation, because what is worth knowing changes
      with it. Charging: how much has gone in and how far that buys. Otherwise:
@@ -5406,41 +5422,48 @@ function render(){
     $('chg-v3').textContent=money2(tariff(h))+'/kWh';
   }
   if(!sel){
-    cb2.disabled=true; cb2.textContent='Send to charge';
+    cb2.disabled=true; cbL.textContent='Send to charge';
     cb2.classList.remove('on'); cn.textContent='No vehicle selected.';
   } else if(sel.state==='charging'){
-    cb2.disabled=true; cb2.textContent='Charging';
+    cb2.disabled=true; cbL.textContent='Charging';
     cb2.classList.add('on');
     cn.textContent='At '+sel.ch.n+' · to '+pct(sel.chTo||CFG.chargeTo);
   } else if(sel.state==='toCharge'){
-    cb2.disabled=false; cb2.textContent='Cancel charge';
+    cb2.disabled=false; cbL.textContent='Cancel charge';
     cb2.classList.add('on');
     cn.textContent='En route to '+sel.ch.n+' · '+chargeEta(sel,sel.ch)+' min';
   } else if(sel.chQueue){
-    cb2.disabled=false; cb2.textContent='Cancel charge';
+    cb2.disabled=false; cbL.textContent='Cancel charge';
     cb2.classList.add('on');
     cn.textContent='Queued for '+sel.chQueue+' after drop-off.';
   } else {
     const nr=nearestCharger(sel);
-    cb2.disabled=!nr; cb2.textContent='Send to charge';
+    cb2.disabled=!nr; cbL.textContent='Send to charge';
     cb2.classList.remove('on');
+    /* 'Nearest' is dropped: on one line, immediately right of "Send to
+       charge", the site named can only be the destination. */
     cn.textContent=nr
-      ? 'Nearest '+nr.n+' · '+uKm(dist(sel.lat,sel.lng,nr.lat,nr.lng),1)+
+      ? nr.n+' · '+uKm(dist(sel.lat,sel.lng,nr.lat,nr.lng),1)+
         ' · '+chargeEta(sel,nr)+' min'
       : 'No charger available.';
   }
-  const sb=$('sel-sell'), sn=$('sel-sell-note');
+  const sb=$('sel-sell'), sbL=sb.querySelector('.lb'), sn=$('sel-sell-note');
   if(!sel){
-    sb.disabled=true; sb.textContent='Sell vehicle'; sn.textContent='';
+    sb.disabled=true; sbL.textContent='Sell vehicle'; sn.textContent='';
   } else if(sel.hold==='rent'){
     const chk=canReturn(sel);
     sb.disabled=!chk.ok;
-    sb.textContent='Return vehicle';
-    sn.textContent=chk.ok?uKm(sel.odo,0)+' on the odometer · ends the daily rent':chk.why;
+    sbL.textContent='Return vehicle';
+    sn.textContent=chk.ok?uKm(sel.odo,0)+' on the odometer · ends the rent':chk.why;
   } else {
     const chk=canSell(sel);
     sb.disabled=!chk.ok;
-    sb.textContent='Sell for '+money2(sellValue(sel));
+    /* money(), not money2(). money2 is the two-decimal form for per-unit
+       prices — a kilowatt-hour, a mile — and rendering a car's sale price
+       through it produced '$27000.00': cents nobody can pay and no thousands
+       separator. money() gives '$27,000', which is also shorter, and shorter
+       matters now that the odometer shares the line. */
+    sbL.textContent='Sell for '+money(sellValue(sel));
     sn.textContent=chk.ok?uKm(sel.odo,0)+' on the odometer':chk.why;
   }
   /* Recomputed every frame from live state — see nextTask(). */
@@ -5837,7 +5860,7 @@ const SLOTS=['slot1','slot2','slot3'];
    SAVE_V above is the STATE SHAPE version and moves only when the
    snapshot format changes — the two are deliberately independent, so
    shipping 0.9.0 does not invalidate 0.8.0 saves. */
-const VERSION='0.23.5';
+const VERSION='0.23.6';
 
 function snapshot(){
   return {
