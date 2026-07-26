@@ -78,9 +78,15 @@ async function run(file) {
   const w = dom.window;
   const A = w.DH_ACT1, SV = w.DH_SAVE, S = w.DH;
   let ok = true;
+  // DEBUG=1 prints the exception behind a failure. A swallowed throw and a
+  // returned false look identical in the output otherwise, which cost real time
+  // when a check started failing only in sequence with its neighbours.
   const check = (name, fn) => {
     let pass = false;
-    try { pass = !!fn(); } catch (e) { pass = false; }
+    try { pass = !!fn(); } catch (e) {
+      pass = false;
+      if (process.env.DEBUG) console.error('  threw:', e && e.stack || e);
+    }
     if (!pass) { console.error(`FAIL ${label}: ${name}`); ok = false; failures++; }
   };
 
@@ -461,55 +467,265 @@ async function run(file) {
     });
   });
 
-  // ---- 5x. the tab strip when it does not fit -------------------------
-  // The reported bug at 1449px: the strip was squeezed to a stub and cut the
-  // ACTIVE tab in half with the scrollbar hidden, so it read as broken. jsdom
-  // does no layout, so the geometry is stubbed on the element itself — what is
-  // under test is the decision, not the browser's box model.
-  const stubStrip = (clientWidth, scrollWidth, tabs) => {
-    const el = w.document.getElementById('citytabs');
-    Object.defineProperty(el, 'clientWidth', { value: clientWidth, configurable: true });
-    Object.defineProperty(el, 'scrollWidth', { value: scrollWidth, configurable: true });
-    el.scrollLeft = 0;
-    [].forEach.call(el.querySelectorAll('.citytab'), (b, i) => {
-      Object.defineProperty(b, 'offsetLeft', { value: tabs.at * i, configurable: true });
-      Object.defineProperty(b, 'offsetWidth', { value: tabs.at, configurable: true });
+  // ---- 5x. the city cards ---------------------------------------------
+  // Two clipping regressions came out of this strip (v0.25.0 squeezed it to a
+  // stub, v0.25.1 scrolled it and still sliced Dallas in half), so the
+  // invariant is now asserted rather than eyeballed: EVERY city renders a whole
+  // card, locked or not, and no scroller is involved.
+  const cards = () => [].slice.call(
+    w.document.getElementById('citytabs').querySelectorAll('.citytab'));
+  check('every city gets a card, locked ones included', () => {
+    A.PROG().unlocked.tampa = false; A.PROG().unlocked.orlando = false;
+    A.PROG().results.miami = {}; A.PROG().results.tampa = {};
+    S.city = 'austin'; S.shiftNo = 0; S.onClock = false;
+    A.renderCityTabs();
+    return cards().length === A.cityList().length;
+  });
+  // aria-disabled, never `disabled`: a locked card has to stay clickable and
+  // focusable so it can explain itself when asked (see the Paolo checks below).
+  // A `disabled` button swallows the click and cannot be tabbed to.
+  check('a locked card is aria-disabled and padlocked, not missing', () => {
+    const locked = cards().filter((b) => b.getAttribute('aria-disabled') === 'true');
+    return locked.length > 0 && locked.every((b) => !!b.querySelector('.lk')) &&
+           cards().every((b) => b.disabled === false);
+  });
+  check('exactly one card is pressed, and it is S.city', () => {
+    const on = cards().filter((b) => b.getAttribute('aria-pressed') === 'true');
+    return on.length === 1 && on[0].getAttribute('data-city') === S.city;
+  });
+  // The tone line: the thing Pavel actually asked for. Every card carries its
+  // own city tint, including the locked ones — that is the point, so it is
+  // checked on all of them and against the CITIES table rather than a literal.
+  check('every card carries a tone line in its own city colour', () => cards().every((b) => {
+    const id = b.getAttribute('data-city');
+    const want = A.CITIES[id].tone.day.tint.toLowerCase();
+    return !!b.querySelector('.tone') &&
+           b.style.getPropertyValue('--ct').trim().toLowerCase() === want;
+  }));
+  check('the tone lines are all different colours', () => {
+    const tints = cards().map((b) => b.style.getPropertyValue('--ct').trim().toLowerCase());
+    return new Set(tints).size === tints.length;
+  });
+  // jsdom applies no stylesheet, so the element and its inline --ct prove
+  // nothing about whether the bar is drawn. The rule that draws it is asserted
+  // against the source — and so is the absence of the scroller, because
+  // reintroducing overflow-x on this strip is how it clipped twice.
+  check('the CSS draws the tone line and does not scroll the strip', () => {
+    const css = fs.readFileSync(file, 'utf8');
+    return /\.citytab \.tone\{position:absolute[^}]*background:var\(--ct/.test(css) &&
+           /\.citytabs\{display:flex[^}]*flex:0 0 auto\}/.test(css) &&
+           !/\.citytabs\{[^}]*overflow-x:auto/.test(css);
+  });
+  // The strip cannot shrink, so the ROW has to be able to wrap — otherwise the
+  // right-hand end of the topbar goes off screen with no scrollbar and no way to
+  // reach Garage/Saves/Night/Sound/Coffee. That was the ~1700px report. Every
+  // .topbar rule must therefore avoid a fixed flex basis or a fixed height.
+  check('the topbar wraps and is never a fixed-height row', () => {
+    const css = fs.readFileSync(file, 'utf8');
+    const base = /\.topbar\{\s*flex:0 0 auto;min-height:48px;[^}]*flex-wrap:wrap/.test(css);
+    const rules = css.match(/\.topbar\{[^}]*\}/g) || [];
+    const noFixedBasis = rules.every((r) =>
+      !/flex:0 0 \d/.test(r) && !/[^-]height:\d+px/.test(r));
+    return base && rules.length >= 3 && noFixedBasis;
+  });
+  // The row has exactly three children, so the wrap can only happen in one
+  // place. A flat list is what put the Coffee button alone on its own line at
+  // 2115px, and the fix is structural — hence a structural assertion.
+  check('the topbar breaks in exactly one place, with Coffee pinned', () => {
+    const kids = [].slice.call(w.document.querySelector('.topbar').children);
+    return kids.length === 3 &&
+           /tb-info/.test(kids[0].className) &&
+           /tb-ctrls/.test(kids[1].className) &&
+           kids[2].id === 'coffee';
+  });
+  check('Coffee sits on the first line whether or not the row wraps', () => {
+    const css = fs.readFileSync(file, 'utf8');
+    // Narrow: info(1) Coffee(2) then the controls forced onto their own line.
+    // Wide (>=2250px): the same three items with the last two swapped.
+    return /#coffee\{order:2\}/.test(css) &&
+           /\.tb-ctrls\{order:3;flex:1 0 100%/.test(css) &&
+           /@media \(min-width:2250px\)\{\s*\.tb-ctrls\{order:2;flex:0 0 auto\}\s*#coffee\{order:3\}/.test(css);
+  });
+  check('the empty spacer div is gone, not just hidden', () => {
+    const css = fs.readFileSync(file, 'utf8');
+    return w.document.querySelector('.spacer') === null &&
+           !/\.spacer\{flex:1\}/.test(css);
+  });
+  check('night mode repaints the cards in the night tints', () => {
+    w.document.documentElement.setAttribute('data-theme', 'night');
+    A.renderCityTabs();
+    const ok = cards().every((b) => {
+      const id = b.getAttribute('data-city');
+      return b.style.getPropertyValue('--ct').trim().toLowerCase() ===
+             A.CITIES[id].tone.night.tint.toLowerCase();
     });
-    return el;
+    w.document.documentElement.removeAttribute('data-theme');
+    A.renderCityTabs();
+    return ok;
+  });
+  // The city name used to be printed twice — on the pressed card and again in a
+  // topbar readout three items to the right. The readout is gone and its slot
+  // now carries the one thing the cards cannot say.
+  check('the topbar no longer duplicates the city name', () => {
+    S.city = 'miami'; A.loadCityTables(); A.render();
+    return w.document.getElementById('tb-city') === null &&
+           !!w.document.getElementById('tb-city-time');
+  });
+
+  // ---- 5p. Paolo answers a locked card --------------------------------
+  // Clicking a padlock used to do nothing at all, because the button was
+  // `disabled` and the only explanation was a title attribute nobody hovers on
+  // a trackpad. The reply has to be anchored to the card, name the city that
+  // unlocks it, and never actually open the city.
+  const lockedCard = (id) => {
+    A.PROG().unlocked = { austin: true };
+    A.PROG().results = {};
+    S.city = 'austin'; S.shiftNo = 0; S.onClock = false;
+    A.loadCityTables(); A.renderCityTabs();
+    return cards().filter((b) => b.getAttribute('data-city') === id)[0];
   };
-  check('a strip that fits is not marked as overflowing', () => {
-    S.city = 'austin'; A.renderCityTabs();
-    const el = stubStrip(400, 400, { at: 80 });
-    A.keepCityTabInView();
-    return el.classList.contains('ovf') === false && el.scrollLeft === 0;
+  check('clicking a locked card asks Paolo instead of switching', () => {
+    // `before` is read AFTER the fixture is built, because lockedCard() sets
+    // S.city itself — reading it first made this check fail on its own setup.
+    const card = lockedCard('tampa');
+    const before = S.city;
+    card.click();
+    const el = w.document.getElementById('lockmsg');
+    return S.city === before && !!el && el.hidden === false;
   });
-  check('an overflowing strip fades its cut edge', () => {
-    const el = stubStrip(200, 400, { at: 80 });
-    A.keepCityTabInView();
-    return el.classList.contains('ovf') === true;
+  check("Paolo names the city that unlocks it, not the one you clicked", () => {
+    lockedCard('tampa').click();
+    const txt = w.document.getElementById('lockmsg').textContent;
+    // Tampa's gate is a Miami shift — the previous city has to be in the reply,
+    // because "one shift in Miami" is a thing the player can go and do.
+    return /Miami/.test(txt) && /Paolo Cortez/.test(txt);
   });
-  check('the active tab is never the one left clipped', () => {
-    // Orlando is last of five: at 200px of strip showing 400px of tabs, its
-    // right edge (400) is off screen, so the strip has to scroll to it.
-    S.city = 'orlando'; A.loadCityTables(); A.renderCityTabs();
-    const el = stubStrip(200, 400, { at: 80 });
-    A.keepCityTabInView();
-    const live = el.querySelector('.citytab[aria-pressed="true"]');
-    return el.scrollLeft > 0 &&
-           live.offsetLeft + live.offsetWidth <= el.scrollLeft + el.clientWidth;
+  check('the reply also states the requirement plainly', () => {
+    lockedCard('orlando').click();
+    const txt = w.document.getElementById('lockmsg').textContent;
+    return txt.indexOf(A.gateHint(A.CITIES.orlando.needs)) >= 0;
   });
-  check('scrolling back for the first city works too', () => {
-    S.city = 'austin'; A.loadCityTables(); A.renderCityTabs();
-    const el = stubStrip(200, 400, { at: 80 });
-    el.scrollLeft = 200;                    // as if the player had scrolled right
-    A.keepCityTabInView();
-    return el.scrollLeft === 0;
+  check('every locked city has something to say', () => A.cityList().every((id) => {
+    const line = A.cityLockLine(id);
+    return typeof line === 'string' && line.length > 40;
+  }));
+  check('a city with no authored line still gets a sentence', () => {
+    // The fallback builds one from the gate, so adding a scenario cannot leave
+    // a card mute. Simulated by asking for an id that has no LOCK_LINES entry.
+    const saved = A.LOCK_LINES.tampa;
+    delete A.LOCK_LINES.tampa;
+    const line = A.cityLockLine('tampa');
+    A.LOCK_LINES.tampa = saved;
+    return /Miami/.test(line);
   });
-  check('no layout at all is survivable, not a throw', () => {
-    const el = w.document.getElementById('citytabs');
-    delete el.clientWidth; delete el.scrollWidth;
-    A.keepCityTabInView();                  // jsdom: every measurement is 0
-    return true;
+  check('clicking anywhere else puts the reply away', () => {
+    lockedCard('tampa').click();
+    w.document.body.click();
+    return w.document.getElementById('lockmsg').hidden === true;
+  });
+  check('rebuilding the strip drops a reply pointing at a dead card', () => {
+    lockedCard('tampa').click();
+    A.PROG().unlocked.dallas = true;      // changes the signature
+    A.renderCityTabs();
+    return w.document.getElementById('lockmsg').hidden === true;
+  });
+  // switchCity() is ASYNC — it flushes an autosave before swapping tables — so
+  // the click has to be given a tick before the result is read. In jsdom there
+  // is no IndexedDB, which means this also exercises the storage-failure branch:
+  // the right end state is a fresh run in the new city, not a half-switch.
+  A.PROG().unlocked = { austin: true, dallas: true, miami: true,
+    tampa: true, orlando: true };
+  S.city = 'austin'; A.loadCityTables(); A.renderCityTabs();
+  cards().filter((b) => b.getAttribute('data-city') === 'miami')[0].click();
+  await new Promise((r) => setTimeout(r, 120));
+  check('an unlocked card still switches city', () => S.city === 'miami');
+  check('the reply is not left on screen after a switch',
+    () => w.document.getElementById('lockmsg').hidden === true);
+
+  // ---- 5e. the auto-charge Easter egg ---------------------------------
+  // Off by default, and the switch is not on the strip until it is found. The
+  // first assertion is the one that matters: a fresh run must not be charging
+  // itself, because deciding when and where to charge is the only Act 1 lever
+  // that spends time as well as money.
+  check('a fresh run does not charge itself', () => {
+    A.newFleet('austin');
+    return S.autoCharge === false;
+  });
+  // newFleet() sets it explicitly (it did not, until this test), so the S
+  // literal is only what a boot sees before any run exists. Asserted against
+  // the source because there is no reachable moment to observe it otherwise —
+  // and flipping that literal back is exactly the kind of "harmless default"
+  // edit that would quietly re-enable automatic charging.
+  check('the state literal defaults it off too', () => {
+    const src = fs.readFileSync(file, 'utf8');
+    return /autoCharge:false, soundOn:true,/.test(src) &&
+           /if\(S\.autoCharge===true&&c\.soc<CFG\.chargeAt\)/.test(src);
+  });
+  check('the switch is hidden until the egg is found', () => {
+    A.PROG().eggs = {};
+    A.newFleet('austin'); A.render();
+    return w.document.getElementById('dp-charge').hidden === true;
+  });
+  // [hidden] alone is not enough here: .t-ctl .icons button sets display:flex,
+  // and an author display beats the attribute's UA style. That is the bug that
+  // made "Take control" look dead for three rounds, so the CSS rule that
+  // undoes it is asserted rather than trusted.
+  check('the CSS actually hides a [hidden] policy icon', () => {
+    const css = fs.readFileSync(file, 'utf8');
+    return /\.t-ctl \.icons button\[hidden\]\{display:none\}/.test(css);
+  });
+  check('finding the egg reveals the switch and turns it on', () => {
+    A.PROG().eggs = {};
+    A.newFleet('austin');
+    const ver = w.document.getElementById('ver');
+    for (let i = 0; i < A.EGGS.autocharge.taps; i++) ver.click();
+    A.render();
+    return A.eggFound('autocharge') === true && S.autoCharge === true &&
+           w.document.getElementById('dp-charge').hidden === false;
+  });
+  check('the egg survives a new run in another city', () => {
+    A.newFleet('dallas'); A.render();
+    // Knowledge outlives a run: the switch stays visible. The POLICY does not
+    // travel — a new run starts off, like every other run.
+    return A.eggFound('autocharge') === true &&
+           w.document.getElementById('dp-charge').hidden === false &&
+           S.autoCharge === false;
+  });
+  check('four taps are not five', () => {
+    A.PROG().eggs = {};
+    A.newFleet('austin');
+    const ver = w.document.getElementById('ver');
+    for (let i = 0; i < A.EGGS.autocharge.taps - 1; i++) ver.click();
+    return A.eggFound('autocharge') === false;
+  });
+  check('an unknown egg id is false, not a throw',
+    () => A.eggFound('no-such-egg') === false && A.findEgg('no-such-egg') === false);
+  // A save that already had automatic charging on keeps it AND counts as having
+  // found the egg — otherwise the run would be visibly charging itself with no
+  // visible control, which is a bug report waiting to happen.
+  check('a save with auto-charging on reveals the switch', () => {
+    A.PROG().eggs = {};
+    const snap = SV.snapshot();
+    snap.s.autoCharge = true;
+    SV.restore(snap);
+    A.render();
+    return S.autoCharge === true && A.eggFound('autocharge') === true;
+  });
+  check('a save with auto-charging off does not reveal it', () => {
+    A.PROG().eggs = {};
+    const snap = SV.snapshot();
+    snap.s.autoCharge = false;
+    SV.restore(snap);
+    A.render();
+    return S.autoCharge === false && A.eggFound('autocharge') === false &&
+           w.document.getElementById('dp-charge').hidden === true;
+  });
+  check('a save from before the field existed defaults to OFF', () => {
+    A.PROG().eggs = {};
+    const snap = SV.snapshot();
+    delete snap.s.autoCharge;
+    SV.restore(snap);
+    return S.autoCharge === false;
   });
 
   // ---- 6a. the gate CHAIN ---------------------------------------------

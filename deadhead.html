@@ -241,12 +241,51 @@ body{
   padding:10px;gap:10px}
 
 /* ============ top bar ============ */
+/* WRAPS AT ONE CHOSEN PLACE (v0.26.3).
+   History, because it took three goes. The items in here refuse to shrink (see
+   the mid-width alignment note below), so a row that does not fit can only
+   overflow or wrap. v0.26.1 switched wrapping on — which fixed the right-hand
+   end disappearing off screen at ~1700px — but the row was a flat list of
+   seventeen items, so the break landed wherever the arithmetic put it: on a
+   2115px screen that was the Coffee button, alone, on a line of its own.
+
+   The row now has exactly THREE children (.tb-info, .tb-ctrls, #coffee), so
+   there is only one seam it can come apart at:
+
+     narrow: [ readouts .......................... Coffee ]
+             [ .................. Clock · speeds · buttons ]
+     wide:   [ readouts .... Clock · speeds · buttons · Coffee ]
+
+   Coffee is pinned top-right in both, which is the whole request: it is a
+   donation button, it should be findable and never look like a stray.
+   The two arrangements are the same three items with `order` swapped — no
+   duplicate markup, and the wide case is the one behind a min-width query
+   because it is the exception now, not the default. */
 .topbar{
-  flex:0 0 48px;display:flex;align-items:center;gap:22px;padding:0 16px;
+  flex:0 0 auto;min-height:48px;display:flex;align-items:center;flex-wrap:wrap;
+  gap:8px 22px;padding:4px 16px;
   background:var(--glass);backdrop-filter:blur(var(--blur)) saturate(var(--sat));
   -webkit-backdrop-filter:blur(var(--blur)) saturate(var(--sat));
   border:1px solid var(--glass-brd);border-radius:var(--r-srf);
   box-shadow:var(--elev),var(--hi);
+}
+/* The three groups. .tb-info grows so Coffee is pushed to the right edge (that
+   is what the old `.spacer` div did, and it is no longer needed); it also wraps
+   internally, so a very narrow window degrades inside the group rather than
+   putting the seam somewhere unplanned. */
+.tb-info{order:1;flex:1 1 auto;min-width:0;display:flex;align-items:center;
+  flex-wrap:wrap;gap:8px 22px}
+#coffee{order:2}
+/* flex:1 0 100% is the forced break: the controls always take a full line of
+   their own, right-aligned so they sit under Coffee rather than drifting left. */
+.tb-ctrls{order:3;flex:1 0 100%;display:flex;align-items:center;flex-wrap:wrap;
+  justify-content:flex-end;gap:8px 12px}
+/* One line, Coffee last. 2250px is measured, not guessed: brand + five city
+   cards + six readouts + Clock + four speeds + five buttons + Coffee and their
+   gaps come to roughly 2200px, which is why a 2115px window wrapped. */
+@media (min-width:2250px){
+  .tb-ctrls{order:2;flex:0 0 auto}
+  #coffee{order:3}
 }
 /* cash is the number the whole game turns on — give it a raised chip */
 .tb-cash{padding:3px 10px;border-radius:6px;background:var(--inset);box-shadow:var(--hi-1)}
@@ -304,13 +343,14 @@ body{
 /* The controls on the right are content, not filler: they must never be
    shrunk into their own labels. .ghost is used outside the topbar too, so
    this is scoped rather than global. */
-.topbar>.ghost,.topbar>.seg{flex:0 0 auto}
+.topbar .ghost,.topbar .seg{flex:0 0 auto}
 /* Two characters wide and tabular, so switching mi<->km does not reflow the
    row it sits in. */
-.topbar>.ghost.units{min-width:44px;justify-content:center;
+.topbar .ghost.units{min-width:44px;justify-content:center;
   font-variant-numeric:tabular-nums}
-.topbar>.ghost{white-space:nowrap}
-.spacer{flex:1}
+.topbar .ghost{white-space:nowrap}
+/* .spacer is gone (v0.26.3): .tb-info grows instead, which does the same job
+   without an empty div that claimed a whole line the moment the row wrapped. */
 .seg{display:flex;border:1px solid var(--glass-brd);border-radius:var(--r-ctl);overflow:hidden;background:var(--inset);box-shadow:var(--hi-1)}
 .seg button{background:none;border:0;font:inherit;font-size:12px;font-weight:500;color:var(--text-3);
   min-width:44px;height:30px;cursor:pointer;transition:background var(--dur-fast),color var(--dur-fast)}
@@ -318,104 +358,102 @@ body{
 .seg button:hover{background:var(--inset)}
 .seg button[aria-pressed="true"]{background:linear-gradient(180deg,var(--accent-hi),var(--accent));color:#fff}
 /* ============================================================
-   CITY TABS
+   CITY CARDS  (v0.26.0)
 
-   Skewed, overlapping scenario tabs. The skew is a transform on a wrapper so
-   the LABEL stays upright — skewing the button itself would slant the text.
+   One card per scenario, all of them always visible, locked or not.
 
-   The active tab is filled with --city-tint (the bright face of the tone) and
-   carries its label in #fff, which is the one place the tint would fail
-   contrast — so the fill is --accent and the tint is only the top edge and the
-   glow. See citiesplan.md, "City identity", rule 2.
+   THE RULE, because two attempts broke it in a row: THIS STRIP MAY NEVER CLIP.
+   A card that is half visible reads as a rendering fault, and a locked city you
+   cannot see is not a goal.
+     - v0.25.0 gave the strip `min-width:0` + `overflow-x:auto`, so flex squeezed
+       it to a stub and hid the overflow.
+     - v0.25.1 added an edge fade and auto-scrolled the active tab into view.
+       Better, still wrong: at 2xxx px it showed "las | Miami | Tampa | Orlando"
+       with Dallas sliced down the middle, because scrolling a strip is clipping
+       it.
+   What works is refusing to compete for the space: the cards are `flex:0 0 auto`
+   inside a `flex:0 0 auto` strip with no scroller, and the topbar wraps to a
+   second line if the total does not fit (see the T4a tier). Room came from the
+   CITY name readout, which printed the active city a second time three items to
+   its right (~110px), and from padding that steps down per tier.
 
-   Below 1199px the skew is dropped entirely and these become a plain
-   segmented control. Four overlapping parallelograms in a fixed 32:9 cockpit
-   is exactly the shape that has already produced a hairline Platforms panel
-   and an invisible "Take control" on this layout.
+   THE SKEW IS GONE, and that is the other half of the fix. Overlapping
+   parallelograms (`margin-right:-9px` plus `skewX(-14deg)`) are why a clipped
+   strip looked so broken — a sliced parallelogram does not read as a cut-off
+   tab, it reads as a glitch — and they were the widest possible form for the
+   same label. A rounded card is the same control minus two regressions, and it
+   degrades to a phone without needing a second design.
 
-   FIVE CITIES (v0.25.0). The strip has to hold a growing list without ever
-   pushing the clock and the speed control off the topbar, and the fix is
-   deliberately the boring one: `min-width:0` + `overflow-x:auto` so the strip
-   is the thing that gives, plus tighter padding at each breakpoint. Considered
-   and rejected: collapsing to a dropdown past three cities, which scales
-   forever but throws away the padlocked tab — a lock you can SEE is a goal, and
-   that visibility is most of why the Dallas gate worked.
+   THE TONE LINE. Every card carries a 3px bar of its own city tint along the
+   bottom, including the locked ones at reduced opacity. It is the cheapest
+   possible answer to "which run am I in" — pre-attentive, readable without
+   reading — and it turns the locked cities into a palette of places you have
+   not been yet rather than a row of grey rectangles. `--ct` is set inline per
+   card from CITIES[id].tone (see renderCityTabs), so a new scenario needs no
+   CSS. The pressed card is filled with --accent and labelled in #fff: the tint
+   is bright by design and must never sit behind type (citiesplan.md, "City
+   identity", rule 2).
    ============================================================ */
-/* v0.25.1 — WHAT WENT WRONG AT 1449px, because the first attempt at this was
-   worse than no scrolling at all.
-   `min-width:0` + `overflow-x:auto` did stop the strip pushing the clock off the
-   topbar, but it let flex squeeze the strip to a stub and then cut the ACTIVE
-   tab in half, with the scrollbar hidden and no edge treatment. The result read
-   as a rendering bug — "Austin | Dallas | Mia" and then nothing — which is
-   exactly what Pavel reported. Three things were missing, and all three are
-   about the same idea: if content is going to overflow, the overflow has to be
-   legible and it must never hide the thing you are looking at.
-
-   1. `min-width` floor, so the strip cannot collapse below two tabs' worth.
-   2. The pressed tab is scrolled into view on every rebuild (see
-      keepCityTabInView) — the active city is the one thing that may never be
-      the clipped one.
-   3. `.ovf` (set from JS when scrollWidth exceeds clientWidth) fades the right
-      edge, so a half-tab reads as "there is more, scroll" rather than broken.
-
-   The skew now also gives up at 1499px instead of 1199px. Five overlapping
-   parallelograms need the most horizontal room of any form this control can
-   take, and 1499 is already a tier boundary in this file (T4). */
-.citytabs{display:flex;align-items:flex-end;gap:0;margin-right:4px;
-  min-width:132px;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none;
-  padding-bottom:0;scroll-behavior:smooth}
-.citytabs::-webkit-scrollbar{display:none}
-/* Only applied while the strip actually overflows, so a comfortable layout
-   keeps a hard edge. 22px is wide enough to read as a fade rather than as a
-   dimmed tab. */
-.citytabs.ovf{
-  -webkit-mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 22px),transparent 100%);
-  mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 22px),transparent 100%)}
-.citytab{position:relative;border:0;background:none;padding:0;font:inherit;cursor:pointer;
-  margin-right:-9px;flex:0 0 auto}
-.citytab:last-child{margin-right:0}
-.citytab .sk{display:block;height:30px;padding:0 20px 0 14px;
-  transform:skewX(-14deg);transform-origin:bottom left;
+.citytabs{display:flex;align-items:center;gap:4px;margin-right:4px;flex:0 0 auto}
+.citytab{position:relative;border:0;background:none;padding:0;font:inherit;
+  cursor:pointer;flex:0 0 auto;border-radius:var(--r-ctl);overflow:hidden}
+.citytab .sk{display:block;height:30px;padding:0 12px 3px;
   background:var(--inset);box-shadow:var(--hi-1);
-  border:1px solid var(--glass-brd);border-bottom:0;
-  border-radius:var(--r-ctl) var(--r-ctl) 0 0;
+  border:1px solid var(--glass-brd);border-radius:var(--r-ctl);
   transition:background var(--dur-fast),border-color var(--dur-fast)}
-.citytab .lb{display:flex;align-items:center;gap:6px;height:30px;
-  transform:skewX(14deg);   /* cancels the parent skew so the text stays upright */
+.citytab .lb{display:flex;align-items:center;gap:5px;height:100%;
   font-size:12px;font-weight:500;color:var(--text-3);white-space:nowrap}
+/* The tone line. 3px along the bottom inside the card's own border radius, in
+   the city's tint — the one token that is allowed to be bright because nothing
+   sits on top of it (citiesplan.md, "City identity", rule 2). */
+.citytab .tone{position:absolute;left:1px;right:1px;bottom:1px;height:3px;
+  border-radius:0 0 2px 2px;background:var(--ct,var(--city-tint));
+  transition:opacity var(--dur-fast)}
 .citytab:hover:not(:disabled) .sk{background:var(--glass)}
 .citytab:hover:not(:disabled) .lb{color:var(--text-1)}
-.citytab[aria-pressed="true"]{z-index:2}
 .citytab[aria-pressed="true"] .sk{background:var(--accent);border-color:transparent;
-  box-shadow:0 -2px 0 0 var(--city-tint) inset, 0 6px 16px -8px rgba(var(--accent-2-rgb),.9)}
+  box-shadow:0 6px 16px -8px rgba(var(--accent-2-rgb),.9)}
 .citytab[aria-pressed="true"] .lb{color:#fff}
-.citytab:disabled{cursor:default}
-.citytab:disabled .lb{color:var(--text-4)}
-.citytab .lk{font-size:11px;opacity:.8}
+/* Locked: the card and its colour both stay, dimmed. A city you have not
+   reached should look like somewhere you have not been, not like a disabled
+   form field — which is why the tone survives at 45% instead of going grey. */
+/* aria-disabled, NOT disabled. A locked card has something to say — Paolo
+   answers it (see cityLockMsg) — and a `disabled` button receives no clicks and
+   takes no focus, so it could never be asked. switchCity() refuses an unearned
+   city anyway, so the click is safe; the attribute carries the state to
+   assistive tech without taking the affordance away. */
+.citytab[aria-disabled="true"]{cursor:help}
+.citytab[aria-disabled="true"] .sk{background:transparent;border-style:dashed;
+  box-shadow:none}
+.citytab[aria-disabled="true"] .lb{color:var(--text-4)}
+.citytab[aria-disabled="true"]:hover .lb{color:var(--text-3)}
+.citytab[aria-disabled="true"] .tone{opacity:.45}
+.citytab[aria-disabled="true"]:hover .tone{opacity:.8}
+.citytab .lk{font-size:10px;opacity:.75}
+/* Each tier gives up padding, then label size — never a whole card. The widths
+   these produce for five cities: ~350px at T3, ~320px at T4, ~285px at ≤900px,
+   ~250px on a phone. */
 @media (max-width:1499px){
-  .citytabs{gap:0}
-  .citytab{margin-right:0}
-  .citytab+.citytab .sk{border-left:1px solid var(--brd-2)}
-  /* Tighter padding once the skew is gone: 20px+14px bought nothing without a
-     parallelogram to fill, and 10px is what makes five labels fit a 1449px
-     window — the width the clipped-tab report came from. */
-  .citytab .sk{transform:none;border-radius:0;border-bottom:1px solid var(--glass-brd);
-    padding:0 10px}
-  .citytab:first-child .sk{border-radius:var(--r-ctl) 0 0 var(--r-ctl)}
-  .citytab:last-child .sk{border-radius:0 var(--r-ctl) var(--r-ctl) 0}
-  .citytab .lb{transform:none;font-size:11.5px}
+  .citytabs{gap:3px}
+  .citytab .sk{padding:0 10px 3px}
+  .citytab .lb{font-size:11.5px}
 }
-/* Below T4 the topbar already wraps, so the strip gets a whole row and the
-   labels can stay legible; what has to give is the padding. */
 @media (max-width:1199px){
-  .citytab .sk{padding:0 9px}
+  .citytab .sk{padding:0 9px 3px}
 }
-/* Phone tier: the label is what has to give. A five-city strip cannot fit a
-   32:9 cockpit's topbar at 760px, and the padlock glyph plus a short name is
-   still enough to know where you are and what is locked. */
-@media (max-width:760px){
-  .citytab .sk{padding:0 8px}
+/* Tablet portrait (iPad is 768-834 CSS px) sits in the same tier as a laptop,
+   so it gets its own step rather than inheriting a desktop's padding. */
+@media (max-width:900px){
+  .citytabs{gap:2px}
+  .citytab .sk{padding:0 7px 3px;height:28px}
   .citytab .lb{font-size:11px;gap:4px}
+  .citytab .tone{height:2px}
+}
+/* Phone: the strip gets its own line because the topbar wraps here anyway, so
+   there is room for the labels to stay legible. */
+@media (max-width:760px){
+  .citytabs{flex:1 0 100%;justify-content:flex-start;margin-right:0}
+  .citytab .sk{padding:0 8px 3px;height:28px}
 }
 .ghost{display:flex;align-items:center;gap:7px;background:var(--inset);box-shadow:var(--hi-1);border:1px solid var(--glass-brd);
   border-radius:var(--r-ctl);height:30px;padding:0 12px;font:inherit;font-size:12px;font-weight:500;
@@ -502,6 +540,38 @@ html[data-theme="night"] .panel[data-tone="amber"]{--tone-rgb:245,185,46;--tone-
   font-size:11.5px;line-height:1.5;pointer-events:none;
   box-shadow:0 12px 30px -12px rgba(0,0,0,.6)}
 #tip[hidden]{display:none}
+/* ---- Paolo, answering a locked city card ----
+   Same message-bubble language as #ray (avatar, name line, flattened corner
+   toward the avatar) but anchored under the card that was clicked rather than
+   parked bottom-left, because the question being answered is about THAT card.
+   Built in JS like #tip: it is transient and has no place in the markup. */
+#lockmsg{position:fixed;z-index:1290;width:290px;display:flex;gap:8px;
+  align-items:flex-end;padding:10px 11px 11px;border-radius:14px;
+  background:var(--panel-solid);border:1px solid var(--glass-brd);
+  box-shadow:0 22px 46px -20px rgba(23,26,32,.44),var(--hi);
+  backdrop-filter:blur(var(--blur)) saturate(var(--sat));
+  -webkit-backdrop-filter:blur(var(--blur)) saturate(var(--sat))}
+#lockmsg[hidden]{display:none}
+#lockmsg .avatar{flex:0 0 26px;width:26px;height:26px;border-radius:50%;
+  background:linear-gradient(160deg,#9AA0AB,#6C7178);color:#fff;
+  font-size:10px;font-weight:600;display:flex;align-items:center;
+  justify-content:center}
+#lockmsg .col{flex:1;min-width:0}
+#lockmsg .who{display:flex;align-items:baseline;gap:6px;margin:0 0 4px 3px}
+#lockmsg .who b{font-size:10.5px;font-weight:500;color:var(--text-3)}
+#lockmsg .who span{font-size:9px;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--text-4)}
+#lockmsg .bubble{background:#E9E9EB;border-radius:16px 16px 16px 5px;
+  padding:8px 12px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.03);
+  font-size:12.5px;line-height:1.45;color:#171A20}
+html[data-theme="night"] #lockmsg .bubble{background:#2C2C2E;color:#F2F2F4;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.05)}
+/* The requirement in plain words, under the flavour — the card has to teach as
+   well as talk. Tinted with the locked city's own tone so the answer and the
+   card it belongs to are visibly the same subject. */
+#lockmsg .need{display:block;margin:7px 0 0 3px;font-size:10.5px;
+  letter-spacing:.02em;color:var(--text-3)}
+#lockmsg .need b{color:var(--ct,var(--city-tint));font-weight:500}
 /* On the dark in-car strip the same button needs the opposite contrast. */
 .t-ctl .ihelp,.t-cardbar .ihelp{border-color:rgba(255,255,255,.25);
   color:rgba(255,255,255,.55)}
@@ -864,6 +934,12 @@ html[data-theme="night"] .chg-ring b{color:#F2F2F4}
 /* Per-icon captions never fit a portrait console. The real climate bar labels
    icon *clusters*, not individual icons — so only the group label below shows. */
 .t-ctl .icons .cap{display:none}
+/* [hidden] has to be spelled out here because the rule above sets display:flex
+   on these buttons, and an author display ALWAYS beats the [hidden] attribute's
+   UA style. That is the exact bug that made "Take control" look dead for three
+   rounds of debugging (see the dodge-overlay notes); hiding the charge-policy
+   Easter egg is the second time it would have bitten. */
+.t-ctl .icons button[hidden]{display:none}
 .t-ctl .icons button[aria-pressed="true"] .ms,
 .t-ctl .icons button[aria-pressed="true"] .cap{color:var(--app-green)}
 .spd{display:flex;align-items:center;gap:9px;min-width:0;max-width:100%}
@@ -948,9 +1024,15 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border:0;border-radiu
   .app{padding:8px;gap:8px}
   .ops,.wing,.stack{gap:8px}
   .ops{grid-template-columns:472px minmax(0,1fr) 472px}
-  .topbar{flex:0 0 44px;gap:16px;padding:0 12px}
+  /* min-height, not a 44px basis — see the wrap note on .topbar. A fixed basis
+     here would clip the second line the moment the row wrapped. */
+  .topbar{flex:0 0 auto;min-height:44px;gap:7px 16px;padding:3px 12px}
   .brand{padding-right:14px}
   .brand b{font-size:14px}
+  /* The tagline is decoration and it is the first thing to go, now at 2199px
+     rather than 1499px: five city cards arrived and this row has to hold them
+     without wrapping on a normal laptop. */
+  .brand span{display:none}
   .tb-item b{font-size:14px}
   .tb-cash b{font-size:17px}
   .metric b{font-size:19px}
@@ -993,12 +1075,13 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border:0;border-radiu
    the tagline is decoration, the button icons are self-explanatory, and
    nothing that carries a number is touched. */
 @media (max-width:1499px){
-  .topbar{gap:11px}
+  /* Wrapping is now the base behaviour at every width (see .topbar), so this
+     tier only buys width back — it no longer has to switch the row's mode. */
+  .topbar{gap:7px 11px;padding:5px 14px}
   .brand{padding-right:10px}
-  .brand span{display:none}          /* "robotaxi fleet ops" — decoration */
-  .topbar>.ghost:not(.units)>span{display:none}  /* Garage/Saves/Night -> icons */
-  .topbar>.ghost{padding:0 9px;gap:0}
-  .topbar>.seg button{min-width:38px}
+  .topbar .ghost:not(.units)>span{display:none}  /* Garage/Saves/Night -> icons */
+  .topbar .ghost{padding:0 9px;gap:0}
+  .topbar .seg button{min-width:38px}
 }
 
 @media (max-width:1499px){
@@ -1029,18 +1112,16 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border:0;border-radiu
    a fixed 44px strip and becomes as many lines as it needs. The brand takes
    a line of its own, which is why the tagline and the button labels come
    BACK here — once there is a whole line to put them on, hiding them buys
-   nothing. .spacer has to go: a flex:1 spacer in a wrapping row claims an
-   entire line to itself. */
+   nothing. */
 @media (max-width:1199px){
   .topbar{flex:0 0 auto;height:auto;flex-wrap:wrap;align-items:center;
     gap:7px 13px;padding:8px 12px}
   .brand{flex:1 0 100%;padding:0 0 7px;border-right:0;
     border-bottom:1px solid var(--brd)}
   .brand span{display:inline}
-  .spacer{display:none}
-  .topbar>.ghost>span{display:inline}
-  .topbar>.ghost{padding:0 12px;gap:7px}
-  .topbar>.seg button{min-width:42px}
+  .topbar .ghost>span{display:inline}
+  .topbar .ghost{padding:0 12px;gap:7px}
+  .topbar .seg button{min-width:42px}
 }
 
 /* ---- vertical compression ---- */
@@ -1081,7 +1162,6 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border:0;border-radiu
   .brand{flex:1 0 100%;padding:0 0 7px;border-right:0;
     border-bottom:1px solid var(--brd);flex-wrap:wrap;gap:7px}
   .brand b{font-size:13.5px}
-  .spacer{display:none}          /* a flex:1 spacer would claim a whole line */
   .tb-item{gap:5px}
   .tb-item label{font-size:9px}
   .tb-item b{font-size:13px}
@@ -1670,16 +1750,32 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
 <div class="app">
 
   <!-- ============ management top bar ============ -->
+  <!-- THREE GROUPS, NOT SEVENTEEN LOOSE ITEMS (v0.26.3).
+       This row used to be a flat flex list, so when it did not fit, the wrap
+       fell wherever the arithmetic landed — which put the Coffee button alone on
+       a second line, looking like a mistake.
+       Now the row has exactly three children: the readouts (.tb-info), the
+       controls from Clock on rightwards (.tb-ctrls), and Coffee. The break can
+       therefore only ever happen in ONE place — before the controls — and
+       Coffee stays pinned to the top-right corner either way. See the .topbar
+       CSS for how the two orders are swapped. -->
   <header class="topbar">
+    <div class="tb-info">
     <div class="brand"><b>Deadhead</b><span>robotaxi fleet ops</span><i class="ver" id="ver"></i></div>
     <div class="citytabs" id="citytabs" role="group" aria-label="Scenario city"></div>
-    <div class="tb-item"><label>City</label><b id="tb-city">Austin</b><span class="tb-sub" id="tb-city-time" title="Real local time in the city"></span></div>
+    <!-- The city NAME lives on the tab strip now (v0.26.0) — it was printed
+         twice, three items apart, and that duplication was costing ~110px of a
+         topbar that has to hold five city cards. What is left is the thing the
+         tabs cannot say: the real local time in that city. -->
+    <div class="tb-item"><label>Local</label><b id="tb-city-time" title="Real local time in the city">&mdash;</b></div>
     <div class="tb-item"><label>Day</label><b id="tb-day">1</b></div>
     <div class="tb-item"><label>Clock</label><b id="tb-clock">06:00</b></div>
     <div class="tb-item tb-cash" id="tb-cash-box"><label>Cash</label><b id="tb-cash">$0</b></div>
     <div class="tb-item tb-opt"><label>Permit</label><b id="tb-permit">Supervised</b></div>
     <div class="tb-item"><label>Shift</label><b id="tb-shift">Off</b></div>
-    <div class="spacer"></div>
+    </div><!-- /.tb-info -->
+
+    <div class="tb-ctrls">
     <button class="ghost clockbtn" id="clock">Clock on</button>
     <div class="seg" id="seg" role="group" aria-label="Time speed">
       <button data-speed="0" aria-pressed="false" aria-label="Pause"><svg class="ms" style="font-size:15px;vertical-align:-3px"><use href="#i-pause"/></svg></button>
@@ -1695,8 +1791,10 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
          reads as part of the console rather than an advert. It opens a Paolo
          message; it never opens itself. -->
     <!-- The label IS the value, so unlike its neighbours this one keeps its
-         text at every width (see .topbar>.ghost.units in the 1500px tier). -->
+         text at every width (see .topbar .ghost.units in the 1500px tier). -->
     <button class="ghost units" id="units" aria-label="Distance units"><span id="units-tag">mi</span></button>
+    </div><!-- /.tb-ctrls -->
+
     <button class="ghost" id="coffee" aria-label="Buy the developer a coffee"><svg class="ms"><use href="#i-coffee"/></svg><span>Coffee</span></button>
   </header>
 
@@ -3431,8 +3529,17 @@ const S={
      name, so a second city is an entry in CITIES plus setting this. */
   city:'austin',
   /* Dispatch policy: automatic top-up below CFG.chargeAt. Off means every
-     charge is a decision you make. */
-  autoCharge:true, soundOn:true,
+     charge is a decision you make — and as of v0.26.0 that is the DEFAULT, with
+     the switch itself hidden until it is found (see EGGS / findEgg).
+
+     Why off: deciding when and where to charge is the only lever in Act 1 that
+     spends time as well as money, and automatic top-up quietly took it away —
+     it charged at 28% wherever was nearest, which is the right answer often
+     enough that the player never learned the wrong one is expensive. Every
+     other thing the fleet does badly is visible; this one was invisible AND
+     free. nextTask() already advises on a low car ('charge'), so the game
+     teaches the manual version without the automation. */
+  autoCharge:false, soundOn:true,
   /* 'imperial' | 'metric'. Display only — see UNITS. */
   units:null,          /* null until defaultUnits() runs at boot */
   /* Act 1 shift model. Cars earn only while you are clocked on, because you
@@ -4023,7 +4130,7 @@ function stepCar(c,dt){
     /* Charge policy, off the Dispatch policy strip. With it off nothing tops
        itself up and every charge is your decision — which is survivable
        precisely because Send to charge exists. */
-    if(S.autoCharge!==false&&c.soc<CFG.chargeAt){
+    if(S.autoCharge===true&&c.soc<CFG.chargeAt){
       const h=nearestCharger(c);
       if(h){ c.ch=h; c.state='toCharge'; c.route=[[h.lat,h.lng]]; c.p0=[c.lat,c.lng] }
     }
@@ -4937,6 +5044,41 @@ $('dp-charge').addEventListener('click',function(){
   log('Policy','automatic charging '+(S.autoCharge?'on':'off'),0);
   render();
 });
+/* ---- the autocharge Easter egg ----
+   Five clicks on the version chip inside three seconds. The counter resets on
+   the window rather than on a rolling gap, so a slow curious click-click-click
+   does not accumulate over a whole shift into an accidental discovery — the
+   gesture has to be deliberate.
+
+   On the find: reveal the control AND turn the policy on. Revealing a switch in
+   its off position would make the reward "here is a button", when the reward is
+   actually the behaviour behind it. The log line says what it costs, because
+   this is a convenience that removes a decision, not an upgrade. */
+let egTaps=0, egFirst=0;
+(function(){
+  const el=$('ver');
+  if(!el) return;
+  el.style.cursor='default';           /* no affordance; it is a secret */
+  el.addEventListener('click',function(){
+    const cfg=EGGS.autocharge, now=Date.now();
+    if(now-egFirst>cfg.within){ egFirst=now; egTaps=0 }
+    egTaps++;
+    if(egTaps<cfg.taps) return;
+    egTaps=0; egFirst=0;
+    if(!findEgg('autocharge')){
+      /* Already found: the gesture still does something honest rather than
+         nothing at all, which is how a player confirms they remembered it. */
+      bringIntoView($('dp-charge')); flashSection('panel-rapid');
+      return;
+    }
+    S.autoCharge=true;
+    log('Policy',cfg.found,0);
+    render();
+    bringIntoView($('dp-charge'));
+    flashSection('panel-rapid');
+    if(typeof sndCharged==='function') sndCharged();
+  });
+})();
 $('dp-fence').addEventListener('click',function(){
   /* The zone chips live in the Offers panel, not Rapid network. */
   flashSection('panel-offers');
@@ -5953,7 +6095,10 @@ function renderCityTabs(){
      shows has changed. Rebuilding innerHTML 5x a second would also throw away
      keyboard focus mid-tab, which is the reason this guard is correctness and
      not just the render-churn note in improvementplan.md item #7. */
-  const sig=S.city+'|'+cityList().map(function(id){
+  /* The theme is in the signature because the tone line reads the day/night
+     face of each city's tint, so a night toggle has to rebuild the strip. */
+  const night=document.documentElement.getAttribute('data-theme')==='night';
+  const sig=S.city+'|'+(night?'n':'d')+'|'+cityList().map(function(id){
     return id+(cityUnlocked(id)?'1':'0');
   }).join(',');
   if(sig===cityTabSig) return;
@@ -5962,44 +6107,102 @@ function renderCityTabs(){
     const c=CITIES[id], open=cityUnlocked(id), live=(id===S.city);
     const tip=open?(live?c.name+' — current run':'Switch to '+c.name)
                   :c.name+' — '+gateHint(c.needs);
-    return '<button class="citytab" data-city="'+id+'"'+
+    /* Every card carries its own colour, locked or not — see the tone-line note
+       in the CSS. A city without a tone falls back to the live --city-tint
+       rather than rendering an invisible bar. */
+    const t=c.tone&&(night?c.tone.night:c.tone.day);
+    const ct=t&&t.tint?' style="--ct:'+t.tint+'"':'';
+    return '<button class="citytab" data-city="'+id+'"'+ct+
       ' aria-pressed="'+(live?'true':'false')+'"'+
-      (open?'':' disabled')+' title="'+escapeHtml(tip)+'">'+
+      (open?'':' aria-disabled="true"')+' title="'+escapeHtml(tip)+'">'+
       '<span class="sk"><span class="lb">'+
       (open?'':'<span class="lk" aria-hidden="true">&#128274;</span>')+
-      escapeHtml(c.short||c.name)+'</span></span></button>';
+      escapeHtml(c.short||c.name)+'</span></span>'+
+      '<i class="tone" aria-hidden="true"></i></button>';
   }).join('');
-  keepCityTabInView();
+  /* The strip was just rebuilt, so any bubble is pointing at a dead element. */
+  cityLockHide();
 }
-/* Two jobs, both about the strip being narrower than its contents:
-   mark the overflow so the cut edge fades instead of looking broken, and make
-   sure the ACTIVE tab is never the one that got cut off.
+/* ---- PAOLO ANSWERS A LOCKED CITY ------------------------------------------
+   Clicking a padlocked card used to do nothing at all: the button was
+   `disabled`, so it swallowed the click and the only explanation lived in a
+   title attribute nobody hovers on a laptop trackpad. Now the man who has been
+   driving for thirty years tells you what the fare is.
 
-   scrollLeft is written directly rather than calling scrollIntoView(), which
-   scrolls every scrollable ancestor — in this cockpit that means it can shove
-   the whole layout sideways or upwards. That lesson is already recorded in
-   bringIntoView(); this is the same trap in a smaller box.
+   One line per city, and each one names the city BEFORE it rather than the
+   requirement in the abstract, because "one shift in Miami" is a thing you can
+   go and do. The voice is the same as everywhere else Paolo speaks: he is not
+   impressed, he is not unkind, and he counts money out loud.
 
-   Called from renderCityTabs (so it follows a city switch and an unlock) and
-   from a resize listener, because whether the strip overflows is a function of
-   window width and nothing else changes when the window is dragged. */
-function keepCityTabInView(){
-  const el=$('citytabs');
-  if(!el) return;
-  const over=el.scrollWidth>el.clientWidth+1;
-  el.classList.toggle('ovf',over);
-  if(!over){ el.scrollLeft=0; return }
-  const live=el.querySelector('.citytab[aria-pressed="true"]');
-  if(!live) return;
-  /* offsetLeft is relative to the strip because .citytabs is the offset parent
-     (position is static, but the tabs are position:relative inside it — so use
-     the geometry difference instead of assuming either). */
-  const l=live.offsetLeft, r=l+live.offsetWidth;
-  const pad=24;                      /* clears the fade mask on the right edge */
-  if(l<el.scrollLeft) el.scrollLeft=Math.max(0,l-4);
-  else if(r>el.scrollLeft+el.clientWidth-pad) el.scrollLeft=r-el.clientWidth+pad;
+   A city with no line falls back to a generic one built from the gate, so
+   adding a scenario cannot leave a card mute — the worst case is plain. */
+const LOCK_LINES={
+  dallas:"Dallas'll pay you better than Austin, and it'll take the car apart "+
+    "doing it. Clock off one shift here first and read the report — that page "+
+    "is where the meter stops flattering you. Then we'll talk about Texas.",
+  miami:"Miami. Small box, old chargers, insurance like a second mortgage. "+
+    "Finish a shift in Dallas without a monitor in the seat first — driverless "+
+    "money teaches faster than I can, and it charges tuition.",
+  tampa:"Tampa doesn't wake up till the sun's going down. Do a shift in Miami "+
+    "first, learn what a morning town feels like, and you'll understand why "+
+    "Ybor Street is worth staying out for.",
+  orlando:"Orlando sits close enough to that airport to hear the planes and "+
+    "not close enough to take the fare. Work a shift in Tampa first. A thin "+
+    "town will empty a man who never learned to count."
+};
+function cityLockLine(id){
+  if(LOCK_LINES[id]) return LOCK_LINES[id];
+  const need=CITIES[id]&&CITIES[id].needs;
+  const prev=(typeof need==='string'&&need.indexOf('shift1@')===0)
+    ? CITIES[need.slice(7)] : null;
+  return prev
+    ? 'One shift in '+prev.name+', clocked off and paid out. That is the fare '+
+      'for this town — same as it was for me.'
+    : 'Not yet. Some doors open on their own time.';
 }
-window.addEventListener('resize',keepCityTabInView);
+let lockEl=null, lockTimer=0;
+function cityLockHide(){
+  if(lockEl) lockEl.hidden=true;
+  if(lockTimer){ clearTimeout(lockTimer); lockTimer=0 }
+}
+/* Anchored UNDER the card that was clicked, and clamped to the viewport the
+   same way tipShow() and rayPosition() are — the topbar wraps now, so a card
+   can sit on a second line and the naive `r.bottom` would put this off screen
+   at the wrong end. */
+function cityLockMsg(btn,id){
+  const c=CITIES[id];
+  if(!c) return;
+  if(!lockEl){
+    lockEl=document.createElement('div');
+    lockEl.id='lockmsg';
+    lockEl.setAttribute('role','status');
+    document.body.appendChild(lockEl);
+  }
+  const night=document.documentElement.getAttribute('data-theme')==='night';
+  const t=c.tone&&(night?c.tone.night:c.tone.day);
+  if(t&&t.tint) lockEl.style.setProperty('--ct',t.tint);
+  lockEl.innerHTML='<span class="avatar" aria-hidden="true">PC</span>'+
+    '<span class="col"><span class="who"><b>Paolo Cortez</b>'+
+    '<span>Messages</span></span>'+
+    '<span class="bubble">'+escapeHtml(cityLockLine(id))+'</span>'+
+    '<span class="need">'+escapeHtml(c.name)+' — <b>'+
+    escapeHtml(gateHint(c.needs))+'</b></span></span>';
+  lockEl.hidden=false;
+  const r=btn.getBoundingClientRect(), m=8;
+  const lw=lockEl.offsetWidth, lh=lockEl.offsetHeight;
+  let top=r.bottom+8, left=r.left+r.width/2-lw/2;
+  if(top+lh+m>window.innerHeight) top=Math.max(m,r.top-lh-8);
+  left=Math.max(m,Math.min(left,window.innerWidth-lw-m));
+  lockEl.style.left=Math.round(left)+'px';
+  lockEl.style.top=Math.round(top)+'px';
+  if(typeof sndOffer==='function') sndOffer();
+  /* Long enough to read three sentences without becoming furniture. */
+  if(lockTimer) clearTimeout(lockTimer);
+  lockTimer=setTimeout(cityLockHide,11000);
+}
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape') cityLockHide();
+});
 /* Parks the current run and opens the other city. Sequential by design: only
    one city is ever simulated, so this saves, swaps every per-city table, and
    starts (or resumes) that city's own run. Cash does not travel. */
@@ -6049,7 +6252,15 @@ function switchCity(id){
 }
 document.addEventListener('click',function(e){
   const b=e.target.closest?e.target.closest('.citytab'):null;
-  if(b&&b.dataset.city&&!b.disabled) switchCity(b.dataset.city);
+  /* Any click that is not on a locked card puts Paolo's answer away. */
+  if(!b||b.getAttribute('aria-disabled')!=='true') cityLockHide();
+  if(!b||!b.dataset.city) return;
+  /* A locked card is clickable on purpose (aria-disabled, not disabled) so it
+     can explain itself. cityUnlocked() is the authority here, not the attribute
+     — the strip is rebuilt from state, but a stale DOM must never be what
+     decides whether a city opens. */
+  if(!cityUnlocked(b.dataset.city)){ cityLockMsg(b,b.dataset.city); return }
+  switchCity(b.dataset.city);
 });
 
 /* ---------------- render ---------------- */
@@ -6068,11 +6279,11 @@ function render(){
   /* Both are no-ops in the common case — see progGates(). */
   progGates(); progTrack();
   const city=currentCity();
-  $('tb-city').textContent=city.name;
-  /* Cheap and idempotent: the strip is four buttons, and deriving the pressed
-     state here is what stops it drifting from S.city. */
+  /* Cheap and idempotent: the strip is five buttons, and deriving the pressed
+     state here is what stops it drifting from S.city. The city NAME is the
+     pressed tab — there is no separate readout for it any more. */
   renderCityTabs();
-  $('tb-city-time').textContent=cityLocalTime(city);
+  $('tb-city-time').textContent=cityLocalTime(city)||'—';
   $('tb-day').textContent=S.day;
   $('tb-clock').textContent=hhmm(S.t);
   $('tb-cash').textContent=money(S.cash);
@@ -6431,7 +6642,11 @@ function render(){
   $('fare-val').textContent=S.fareMult.toFixed(1)+'×';
   $('cpo-val').textContent=S.carsPerOp;
   /* The policy strip shows the truth rather than a decorative default. */
-  $('dp-charge').setAttribute('aria-pressed',S.autoCharge!==false?'true':'false');
+  $('dp-charge').setAttribute('aria-pressed',S.autoCharge===true?'true':'false');
+  /* Hidden until found. `hidden` works here only because .t-ctl .icons
+     button[hidden] is spelled out in the CSS — the display:flex on that rule
+     would otherwise win, which is the dodge-overlay bug all over again. */
+  $('dp-charge').hidden=!eggFound('autocharge');
   const airZ=airportZone();
   $('dp-air').setAttribute('aria-pressed',airZ&&airZ.on!==false?'true':'false');
   /* Miami is the first city with NO airport in its service area — MIA sits
@@ -6503,9 +6718,11 @@ const HELP={
     'choosing someone cheaper, so the extra margin costs you volume — the '+
     'trade is the point.',
   'ctl-dispatch':
-    'Standing policy. Charge policy and Airport are real switches; Geofence '+
-    'jumps to the zone list. Auto dispatch stays on in Act 1 because you have '+
-    'no operators to hand work to yet.',
+    'Standing policy. Airport is a real switch; Geofence jumps to the zone '+
+    'list. Auto dispatch stays on in Act 1 because you have no operators to '+
+    'hand work to yet. Charging is yours to order, one car at a time, from '+
+    'Rapid network — deciding when and where is the only lever here that '+
+    'spends time as well as money.',
   'ctl-cpo':
     'How many cars one remote operator watches. Act 2 — in Act 1 you are the '+
     'only operator, so there is no ratio to set.',
@@ -6751,15 +6968,18 @@ tbtn.addEventListener('click',function(){
   root.setAttribute('data-theme',night?'day':'night');
   $('map').classList.toggle('night',!night);
   /* The label lives in a <span> so the sub-1500px tier can hide it and leave
-     an icon-only button (see .topbar>.ghost>span). Rebuilding innerHTML
+     an icon-only button (see .topbar .ghost>span). Rebuilding innerHTML
      without one would silently undo that on the first toggle. aria-label is
      kept in step because icon-only is exactly when it is load-bearing. */
   tbtn.innerHTML='<svg class="ms"><use href="#i-'+(night?'moon':'sun')+'"/></svg>'+
     '<span>'+(night?'Night':'Day')+'</span>';
   tbtn.setAttribute('aria-label',night?'Night':'Day');
   /* The tone is written inline, which outranks html[data-theme="night"], so
-     the day/night variant has to be re-picked here or night keeps day's tone. */
+     the day/night variant has to be re-picked here or night keeps day's tone.
+     The city cards carry the same tint inline per card, so they rebuild too —
+     renderCityTabs() has the theme in its signature for exactly this. */
   applyCityTone();
+  renderCityTabs();
 });
 
 /* ============================================================
@@ -6789,7 +7009,7 @@ const SLOTS=['slot1','slot2','slot3'];
    SAVE_V above is the STATE SHAPE version and moves only when the
    snapshot format changes — the two are deliberately independent, so
    shipping 0.9.0 does not invalidate 0.8.0 saves. */
-const VERSION='0.25.1';
+const VERSION='0.26.3';
 
 function snapshot(){
   return {
@@ -7034,8 +7254,17 @@ function restore(save){
   if(typeof S.ray.dodgeSeen!=='boolean') S.ray.dodgeSeen=false;
   /* Same fault as units above: this read S.autoCharge instead of s.autoCharge.
      A save predating the policy defaults to ON — nothing may silently stop
-     charging on a version upgrade. */
-  S.autoCharge=typeof s.autoCharge==='boolean'?s.autoCharge:true;
+     charging on a version upgrade.
+
+     v0.26.0: the DEFAULT for a new run is now off and the switch is hidden
+     (see S.autoCharge and EGGS.autocharge), but a save that already has it ON
+     keeps it on and counts as having found the egg. Two reasons: a setting the
+     player chose must not be silently reversed by an update, and a run that is
+     visibly charging itself with no visible control would be a bug report.
+     A save with it explicitly OFF is left alone and does NOT reveal the
+     control — that state is now simply the default. */
+  S.autoCharge=typeof s.autoCharge==='boolean'?s.autoCharge:false;
+  if(S.autoCharge===true) findEgg('autocharge');
   /* Same default pattern: a save from before sound existed gets it ON. */
   S.soundOn=typeof s.soundOn==='boolean'?s.soundOn:true;
   /* A save from before progressive disclosure has seen the whole console,
@@ -7198,11 +7427,44 @@ function setSpeed(v){
    ============================================================ */
 function physKey(k){ return k==='auto'?('auto:'+S.city):k }
 
-const PROG_V=2;
-let PROG={unlocked:{austin:true}, results:{}, last:'austin'};
+const PROG_V=3;
+let PROG={unlocked:{austin:true}, results:{}, last:'austin', eggs:{}};
 function progSave(){
   return Store.put('progress',{v:PROG_V, unlocked:PROG.unlocked,
-    results:PROG.results, last:PROG.last}).catch(function(){});
+    results:PROG.results, last:PROG.last, eggs:PROG.eggs}).catch(function(){});
+}
+/* ---- EASTER EGGS ------------------------------------------------------
+   Things that are IN the game but not ON the strip until somebody goes looking.
+   They live in the progress record rather than the save because finding one is
+   knowledge the player has, and knowledge does not belong to a single run: once
+   you know the charge policy is in there, starting a fresh Miami does not make
+   you forget.
+
+   Deliberately a table rather than one boolean, because the second egg should
+   cost nothing to add.
+
+   'autocharge' — the automatic top-up switch, off and hidden by default (see
+   S.autoCharge). Found by clicking the version chip in the top-left five times
+   inside three seconds, which is the oldest gesture in software (Android's
+   build-number tap) and therefore the one a curious player is most likely to
+   try. It is also the only element on screen that exists in every layout tier
+   and means nothing if you click it. */
+const EGGS={
+  autocharge:{ taps:5, within:3000,
+    found:'Automatic top-up found. The cars will now charge themselves below '+
+          'CFG.chargeAt — which is convenient, and costs you the one decision '+
+          'in this game that spends time as well as money.' }
+};
+function eggFound(id){ return !!(PROG.eggs&&PROG.eggs[id]) }
+/* Records the find and returns true only the FIRST time, so a caller can log,
+   flash and enable without having to remember whether it already did. */
+function findEgg(id){
+  if(!EGGS[id]) return false;              /* unknown id is not an error */
+  if(!PROG.eggs) PROG.eggs={};
+  if(PROG.eggs[id]) return false;
+  PROG.eggs[id]=true;
+  progSave();
+  return true;
 }
 function progLoad(){
   return Store.get('progress').then(function(r){
@@ -7210,6 +7472,7 @@ function progLoad(){
     if(r.unlocked&&typeof r.unlocked==='object') PROG.unlocked=r.unlocked;
     if(r.results&&typeof r.results==='object') PROG.results=r.results;
     if(r.last&&CITIES[r.last]) PROG.last=r.last;
+    if(r.eggs&&typeof r.eggs==='object') PROG.eggs=r.eggs;
     PROG.unlocked.austin=true;      /* the tutorial city is never locked */
     /* v1 -> v2: results records had no `shiftDone`, because the gate that
        needs it ('shift1@<city>') did not exist yet. Reading a missing flag as
@@ -8137,6 +8400,12 @@ function newFleet(cityId){
   S.cash=CFG.startCash; S.t=CFG.dayStart; S.day=1; S.seq=0; S.sel=null;
   S.onClock=false; S.shiftNo=0; S.workedSec=0; S.billedSec=0;
   S.surge=1.0; S.over=false; S.safety=80; S.fareMult=1.0;
+  /* Standing policy belongs to a RUN, not to the player — same rule as the
+     geofence and the permit, and newFleet() had the same hole here that it had
+     for S.permit before v0.23.2: it never reset this at all, so a run started
+     after finding the auto-charge egg inherited automatic charging. Knowing the
+     switch exists survives (that lives in PROG.eggs); having it on does not. */
+  S.autoCharge=false;
   S.city=(cityId&&CITIES[cityId])?cityId:cityList()[0];
   /* The scenario's licence, not the last city's. Dallas is unsupervised from
      hour one; without this it inherited Austin's 'Supervised' and the topbar
@@ -8296,7 +8565,9 @@ window.DH_ACT1={
   volumeMult:volumeMult,nextTask:nextTask,
   zoneLayer:function(){ return zoneLayer },chLayer:function(){ return chLayer },
   physKey:physKey,PROG:function(){ return PROG },cityK:cityK,
-  renderCityTabs:renderCityTabs,keepCityTabInView:keepCityTabInView,
+  EGGS:EGGS,eggFound:eggFound,findEgg:findEgg,
+  renderCityTabs:renderCityTabs,cityLockMsg:cityLockMsg,cityLockHide:cityLockHide,
+  cityLockLine:cityLockLine,LOCK_LINES:LOCK_LINES,
   tone:function(){ return TONE },
   CURVES:CURVES,tariff:tariff,
   CHARGERS_BY_CITY:CHARGERS_BY_CITY,chargersFor:chargersFor,
