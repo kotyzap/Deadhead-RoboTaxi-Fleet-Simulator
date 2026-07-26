@@ -494,6 +494,120 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border:0;border-radiu
   #map{min-height:90px}
 }
 
+/* ============================================================
+   T5: PHONES  <=760px
+   The shell is a fixed 32:9 cockpit; a phone is the opposite shape, so
+   three things have to change or the page is unusable:
+
+   1. NOTHING may be wider than the viewport. Every fixed-width row — top
+      bar, console status strip, the 9-track climate bar, the modals —
+      wraps, shrinks, or scrolls inside itself instead of pushing the page
+      wider. A page wider than its viewport is exactly what lets the whole
+      layout be dragged sideways until content sits off-screen.
+   2. The map gets a hard height in svh. On iOS Safari `vh` is the LARGEST
+      viewport (toolbar hidden), so a vh-sized map is taller than what you
+      can actually see and grows as the toolbar slides away. `svh` is the
+      smallest viewport, so the card never outgrows the screen.
+   3. The map stops swallowing the page scroll — see #map-lock below.
+   ============================================================ */
+@media (max-width:760px){
+  html,body{overflow-x:hidden;overscroll-behavior-x:none}
+  .app{padding:7px;gap:7px;max-width:100%}
+  #bgmap{pointer-events:none}
+
+  /* ---- top bar: wraps onto as many lines as it needs ---- */
+  .topbar{flex:0 0 auto;height:auto;flex-wrap:wrap;align-items:center;
+    gap:7px 13px;padding:8px 11px}
+  .brand{flex:1 0 100%;padding:0 0 7px;border-right:0;
+    border-bottom:1px solid var(--brd);flex-wrap:wrap;gap:7px}
+  .brand b{font-size:13.5px}
+  .spacer{display:none}          /* a flex:1 spacer would claim a whole line */
+  .tb-item{gap:5px}
+  .tb-item label{font-size:9px}
+  .tb-item b{font-size:13px}
+  .tb-cash b{font-size:15px}
+  .topbar .ghost{height:30px;padding:0 9px;font-size:11px;gap:5px}
+  .topbar .seg button{min-width:36px;height:30px;font-size:11px}
+
+  /* ---- console: sized by its contents, never a fixed 920px ---- */
+  .console{order:-1;height:auto}
+
+  .t-status{flex:0 0 auto;height:auto;flex-wrap:wrap;justify-content:flex-start;
+    gap:3px 10px;padding:5px 10px;font-size:10px}
+  .t-status .mid{gap:8px}
+
+  /* Seven apps on a ~370px strip: they share the width evenly, and on a
+     phone too narrow for that the STRIP scrolls, not the page. */
+  .t-apps{flex:0 0 58px;justify-content:flex-start;gap:2px;padding:0 4px;
+    overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none}
+  .t-apps::-webkit-scrollbar{display:none}
+  .t-app{flex:1 0 auto;min-width:42px;padding:4px 1px;gap:4px}
+  .t-app .ring{width:30px;height:30px}
+  .t-app .ring .ms{font-size:16px}
+  .t-app label{font-size:8px;letter-spacing:.05em}
+
+  .t-card{margin:6px}
+  .t-cardbar{flex:0 0 30px;padding:0 9px;gap:7px}
+  .t-cardbar .sub{display:none}
+
+  /* The map is a panel ON the page, not the page itself. */
+  #map{position:relative;flex:0 0 auto;height:38vh;height:38svh;
+    min-height:170px;max-height:300px}
+
+  .t-split>div{padding:9px 11px}
+  .t-metrics>div{padding:8px 4px}
+  .t-metrics .lbl{font-size:9px;letter-spacing:.05em}
+  .t-metrics b{font-size:14px}
+  .t-cta{height:44px;margin:8px}
+  .t-cta .main{font-size:14px;padding-right:16px}
+  .t-cta .side{flex:0 0 104px}
+
+  /* Climate bar: the fixed nine-track grid cannot fit, so the cells become
+     a wrapping row and the hairline dividers go away with the columns. */
+  .t-ctl{flex:0 0 auto;height:auto;display:flex;flex-wrap:wrap;
+    justify-content:center;gap:2px 12px;padding:4px 6px 8px}
+  .t-ctl .vr{display:none}
+  .t-ctl>.cell:first-child{display:none}   /* decorative console glyph */
+  .t-ctl .cell{flex:0 1 auto;min-width:0;padding:7px 4px;gap:5px}
+  .t-ctl .icons{gap:14px}
+  .t-ctl .ms{font-size:19px}
+  .stepper .val{font-size:19px}
+  .spd{width:100%;justify-content:center}
+  input[type=range]{width:100%;max-width:110px}
+
+  /* ---- management panels ---- */
+  .ops{gap:7px}
+  .wing,.stack{grid-auto-rows:340px}
+  .p-head{padding:8px 11px}
+  .p-body{padding:8px 11px 10px}
+  .metric b{font-size:17px}
+  td{font-size:11.5px;padding:6px 0}
+
+  /* ---- overlays: full-bleed, and never wider than the screen ---- */
+  .modal{padding:10px}
+  .rep{width:100%!important;max-width:none;max-height:calc(100vh - 20px);
+    max-height:calc(100svh - 20px);padding:16px 15px}
+  .rep h3{font-size:16px}
+  .rs-btns button,#rp-go{height:38px;font-size:13.5px}
+  .slot{gap:9px;padding:9px 10px;flex-wrap:wrap}
+  .slot-act{width:100%;justify-content:flex-end}
+  .sv-foot{flex-wrap:wrap}
+  .sv-foot .note{flex:1 0 100%}
+  #ray{left:8px;right:8px;bottom:10px;width:auto;padding:15px 16px 12px}
+
+  /* Cooperative gestures. Leaflet sets touch-action:none on its container,
+     so without this every swipe that starts on the map pans the map and the
+     page cannot move. The lock keeps the map inert (pan-y falls through to
+     the page) until it is tapped. */
+  #map-lock{position:absolute;inset:0;z-index:1100;display:flex;
+    align-items:flex-end;justify-content:center;padding:0 0 12px;
+    border:0;background:transparent;font:inherit;cursor:pointer;
+    touch-action:pan-y;-webkit-tap-highlight-color:transparent}
+  #map-lock span{background:rgba(23,26,32,.82);color:#fff;border-radius:20px;
+    padding:5px 13px;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;
+    box-shadow:0 1px 6px rgba(0,0,0,.28)}
+}
+
 
 /* ============ prototype-only components ============ */
 .wbtn{width:100%;margin-top:9px;height:32px;border:1px solid var(--brd-2);background:none;
@@ -522,7 +636,10 @@ tr[data-car].on td{background:var(--inset)}
 .map-off span{display:block;text-transform:none;letter-spacing:0;font-size:11px;margin-top:7px;max-width:340px}
 .modal{position:fixed;inset:0;z-index:60;background:var(--overlay);display:grid;place-items:center}
 .modal[hidden]{display:none}
-.rep{width:520px;max-height:86vh;overflow:auto;background:var(--panel-solid);
+/* max-width, not just width: three of these carry an inline width (430/560/900)
+   that is wider than a phone, and a modal wider than the viewport is one more
+   thing that lets the whole page be dragged sideways. */
+.rep{width:520px;max-width:calc(100vw - 20px);max-height:86vh;overflow:auto;background:var(--panel-solid);
   border:1px solid var(--glass-brd);border-radius:12px;padding:22px 24px;
   backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
 .rep h3{font-size:18px;font-weight:500;margin-bottom:14px}
@@ -818,13 +935,13 @@ body.dimmed .spotlight{filter:brightness(1.33)}
           <span class="cap">Dispatch policy</span>
         </div>
         <div class="vr"></div>
-        <div class="cell">
+        <div class="cell" title="Act 1 has no operators to ratio against — this stepper is Act 2.">
           <div class="stepper">
-            <button id="cpo-up" aria-label="More cars per operator">+</button>
+            <button id="cpo-up" aria-label="More cars per operator" disabled>+</button>
             <span class="val" id="cpo-val">3</span>
-            <button class="dn" id="cpo-dn" aria-label="Fewer cars per operator">&minus;</button>
+            <button class="dn" id="cpo-dn" aria-label="Fewer cars per operator" disabled>&minus;</button>
           </div>
-          <span class="cap">Cars / op</span>
+          <span class="cap">Cars / op · Act 2</span>
         </div>
         <div class="vr"></div>
         <div class="cell">
@@ -869,6 +986,7 @@ body.dimmed .spotlight{filter:brightness(1.33)}
           <div class="p-head"><svg class="ms"><use href="#i-route"/></svg><h2>Offers</h2><span class="tag" id="rq-tag">0 waiting</span></div>
           <div class="p-body" id="pb-rq">
             <div class="chips" id="zone-chips"></div>
+            <div id="waiting-list"></div>
             <div id="offer-list"></div>
           </div>
         </section>
@@ -1001,7 +1119,16 @@ const CFG={
      against undefined, and the cap never once fired. */
   offerCap:8,
   offerDecideSec:45,       /* countdown on the offer card, real seconds */
-  socAlertAmber:25         /* amber rail warning; red is projected-arrival */
+  socAlertAmber:25,        /* amber rail warning; red is projected-arrival */
+  /* Act 1 has no operators, so intervention time is a constant — how fast
+     the sole operator (you) notices and responds — rather than a function
+     of the cars/op ratio. See latency(). */
+  act1Latency:90,
+  /* How fast the clock runs while parked between shifts (sim-seconds per
+     real second). Fast enough to cross a night in well under a minute,
+     slow enough that the clock and the midnight bill are visibly seen to
+     land rather than teleported past. See startFastForward(). */
+  ffwdSimPerReal:7200
 };
 
 /* Two aggregators sitting ABOVE you as suppliers of demand. Hitchr takes
@@ -1149,6 +1276,9 @@ const S={
      and billed for all of them, which is the most accurate thing this game
      says about gig work, and it arrives as arithmetic, not a speech. */
   onClock:false, shiftStart:0, workedSec:0, billedSec:0, shiftNo:0,
+  /* True while the clock is auto-advancing from clock-off to next 06:00.
+     Not saved — a reload always resumes paused. See startFastForward(). */
+  ffwd:false, ffwdTarget:0,
   surge:1.0,
   /* Tutorial progress. Beats are recorded by number so a save resumes the
      script where it left off rather than replaying it. */
@@ -1210,7 +1340,7 @@ function jit(z){ return [z.lat+(Math.random()-.5)*.008, z.lng+(Math.random()-.5)
    the trade-off. Previously carsPerOp only raised a capacity ceiling that a
    small fleet never reached, so the slider did nothing. */
 /* Act 1 has no payroll: you are the operator. Act 2 reinstates this. */
-function staffed(){ return S.onClock?0:0 }
+function staffed(){ return 0 /* Act 1 */ }
 function insPerMile(){ return S.cars.length>=CFG.insFleetAt?CFG.insFleet:CFG.cpm.ins }
 /* Owned  -> just the base. Financed -> base + the loan's daily slice.
    Rented -> base + the rental day rate, and you never build equity. */
@@ -1236,12 +1366,18 @@ function avgFatigue(){
   if(!S.ops.length) return 0;
   let f=0; S.ops.forEach(function(o){f+=o.fatigue}); return f/S.ops.length;
 }
-/* The core trade-off: raising cars-per-operator cuts payroll but
-   stretches every operator, and latency is superlinear past 1.0 load. */
+/* Act 1 has no operators to spread across cars, so the cars/op stepper
+   below fed latency() for free: lowering it improved incident-clear time
+   with no payroll trade-off, which is the opposite of what the panel is
+   there to teach. The stepper is now frozen (Act 2) and latency uses a
+   flat baseline for "how fast the sole operator notices" instead of a
+   function of a ratio nobody is staffing. Load still adds a real burst —
+   more incidents at once than one person can watch does slow you down,
+   and that's the part of the trade-off that's still true in Act 1. Act 2
+   reinstates the cars/op trade-off in full. */
 function latency(){
-  const spread=1+(S.carsPerOp-1)*0.70;         /* attention split across cars */
-  const surge=1+Math.max(0,loadRatio()-1)*2.4; /* plus a burst on top */
-  return 16*spread*surge*(1+avgFatigue()*0.9);
+  const surge=1+Math.max(0,loadRatio()-1)*2.4;
+  return CFG.act1Latency*surge*(1+avgFatigue()*0.9);
 }
 
 /* ---------------- demand ---------------- */
@@ -1250,9 +1386,19 @@ function latency(){
    offers. The previous curve (1.18-0.62m) shed 44% of demand at NEUTRAL
    pricing, which quietly broke the competition axis of the trilemma — the
    player was punished for a choice they had not made. */
+/* Surge multiplies the same way for every driver, so it doesn't change your
+   price RELATIVE to the market — only your own fareMult does that. But a
+   rider watching an already-surged number climb further is a little more
+   trigger-happy about shopping around than one looking at a calm fare: the
+   sting of your own markup is worse stacked on top of surge than added to
+   a quiet fare. So surge sharpens the curve's sensitivity rather than
+   shifting its center — it makes riders react to the total price without
+   punishing surge itself, which the player doesn't control and shouldn't
+   be penalised for riding. */
 function winProb(m){
-  return m<=1.15 ? clamp(0.97+(1.15-m)*0.06,0.05,0.99)
-                 : clamp(0.97-(m-1.15)*1.5,0.08,0.99);
+  const sens=1+Math.max(0,S.surge-1)*0.4;
+  return m<=1.15 ? clamp(0.97+(1.15-m)*0.06*sens,0.05,0.99)
+                 : clamp(0.97-(m-1.15)*1.5*sens,0.08,0.99);
 }
 let spawnAcc=0;
 function spawnRides(dt){
@@ -1267,6 +1413,9 @@ function spawnRides(dt){
      scaled by what your accept rate has earned you on each. */
   let share=0;
   live.forEach(function(p){ share+=p.share*volumeMult(p) });
+  /* A permit under review is a real consequence, not just a threatening
+     label — the platforms send you less work until the score recovers. */
+  if(S.permit==='Under review') share*=0.5;
   spawnAcc+=rate*share*dt/3600;
   while(spawnAcc>=1){
     spawnAcc-=1;
@@ -1403,7 +1552,7 @@ function drive(c,km){
   S.d.miles+=mi;
   S.d.dep+=mi*sp.cpm.dep; S.d.maint+=mi*sp.cpm.maint;
   S.d.ins+=mi*insPerMile(); S.d.soft+=mi*sp.cpm.soft;
-  const c4=mi*(CFG.cpm.dep+CFG.cpm.maint+CFG.cpm.ins+CFG.cpm.soft);
+  const c4=mi*(sp.cpm.dep+sp.cpm.maint+insPerMile()+sp.cpm.soft);
   S.d.cost+=c4; S.cash-=c4;
 }
 function log(who,what,kind){
@@ -1462,7 +1611,8 @@ function stepCar(c,dt){
     if(c.state==='toCharge'){ c.state='charging'; return }
     if(c.state==='dispatched'){ c.state='onTrip'; c.reached=true; return }
     if(c.state==='onTrip'&&!c.route.length){
-      const f=c.ride.fare, cut=f*CFG.platformCut, take=f-cut;
+      const pf=platform(c.ride.plat);
+      const f=c.ride.fare, cut=f*(pf?pf.cut:0.25), take=f-cut;
       S.cash+=take; S.d.gross+=f; S.d.commission+=cut; S.d.cost+=cut;
       S.d.done++; c.earn+=take;
       log(c.id,'fare '+money2(f)+' less '+money2(cut)+' cut · '+c.ride.to,0);
@@ -1472,11 +1622,21 @@ function stepCar(c,dt){
   }
 }
 let dispatchAcc=0;
+/* dt is sim-seconds for the whole call; realDt is however many wall-clock
+   seconds that represents (always CFG.tickMs/1000 per tick, regardless of
+   sim speed or fast-forward). Substeps get a proportional slice of it, so
+   a UI countdown timed in real seconds — the offer decision clock — stays
+   correct at every speed instead of collapsing to nothing at 20x. */
 function step(dt){
-  const MAX=CFG.maxSubstep;
-  while(dt>0 && !S.over){ const s=Math.min(MAX,dt); stepOnce(s); dt-=s }
+  const MAX=CFG.maxSubstep, totalDt=dt, totalReal=CFG.tickMs/1000;
+  while(dt>0 && !S.over){
+    const s=Math.min(MAX,dt);
+    const r=totalDt>0?s/totalDt*totalReal:0;
+    stepOnce(s,r); dt-=s;
+  }
 }
-function stepOnce(dt){
+function stepOnce(dt,realDt){
+  if(realDt===undefined) realDt=dt;
   const wasDay=Math.floor(S.t/86400);
   S.t+=dt; syncOps();
   if(S.onClock) S.workedSec+=dt;
@@ -1486,9 +1646,11 @@ function stepOnce(dt){
   if(Math.floor(S.t/86400)>wasDay) billMidnight();
   updateSurge(dt);
   spawnRides(dt);
-  /* Offer countdown. An offer you ignore is a decline the platform counts. */
+  /* Offer countdown. offerDecideSec is a real-seconds UI clock, not a world
+     event, so it ticks by wall-clock time rather than sim time — otherwise
+     a 45s decision window collapses to 2.25 real seconds at 20x. */
   if(S.offers.length){
-    S.offers.forEach(function(o){ o.left-=dt });
+    S.offers.forEach(function(o){ o.left-=realDt });
     const gone=S.offers.filter(function(o){return o.left<=0});
     gone.forEach(function(o){ declineOffer(o.id,true) });
   }
@@ -1502,13 +1664,16 @@ function stepOnce(dt){
   /* Beat 8 needs to know how long nothing has been happening. */
   const busy=S.cars.some(function(c){return c.state!=='idle'})||S.offers.length>0;
   S.ray.idleFor=busy?0:S.ray.idleFor+dt;
-  /* Cars only move while you are supervising them. */
-  if(S.onClock) S.cars.forEach(function(c){ stepCar(c,dt) });
+  /* Cars only move while you are supervising them — except a car already on
+     a charger, which keeps charging whether you're clocked on or fast-
+     forwarding to the next shift. */
+  S.cars.forEach(function(c){ if(S.onClock||c.state==='charging') stepCar(c,dt) });
   /* No payroll in Act 1 — you are the operator, and you are unpaid. */
   const l=loadRatio();
   S.ops.forEach(function(o){ o.fatigue=clamp(o.fatigue+dt/3600*0.07*(0.5+l),0,1) });
   if(S.cash<0) bankrupt();
   checkUnlocks();
+  checkSafety();
   rayCheck();
 }
 
@@ -1572,6 +1737,21 @@ function checkUnlocks(){
     render();
   }
   return gained;
+}
+
+/* The incidents panel threatened "permit review at 65" but nothing ever
+   happened at any score — safety only ever went down. It now has a real
+   floor consequence (demand throttled while under review, see spawnRides)
+   and a real ceiling recovery (a clean shift with zero cancellations earns
+   some of it back, see stopFastForward). */
+function checkSafety(){
+  if(S.safety<65&&S.permit!=='Under review'){
+    S.permit='Under review';
+    log('Platform','safety score below 65 — permit under review, demand throttled',2);
+  } else if(S.safety>=70&&S.permit==='Under review'){
+    S.permit='Supervised';
+    log('Platform','permit review cleared',0);
+  }
 }
 
 /* ============================================================
@@ -1700,7 +1880,11 @@ let spotEl=null;
 function raySpot(id){
   raySpotClear();
   const el=id?$(id):null;
-  if(!el) return;
+  /* Beats 12 and 14 spotlight a node inside the report modal. If that beat
+     fires while the modal is closed, the target isn't rendered — offsetParent
+     is null for anything inside a display:none ancestor — and spotlighting
+     it just dims the whole screen around nothing. */
+  if(!el||!el.offsetParent) return;
   el.classList.add('spotlight');
   document.body.classList.add('dimmed');
   spotEl=el;
@@ -1731,7 +1915,7 @@ function raySkip(){
    Clocking on is the only way cars earn. Clocking off gives you the report
    that carries the whole Act 1 thesis: hours worked against hours billed. */
 function clockOn(){
-  if(S.onClock||S.over) return;
+  if(S.onClock||S.over||S.ffwd) return;
   S.onClock=true; S.shiftNo++;
   S.shiftStart=S.t; S.workedSec=0; S.billedSec=0;
   newDay();
@@ -1750,14 +1934,44 @@ function clockOff(quiet){
   });
   S.rides=[];
   log('Shift','clocked off at '+hhmm(S.t),0);
-  setSpeed(0);
-  if(!quiet) shiftReport();
-  render();
-  if(!quiet) rayCheck();
+  if(quiet){ setSpeed(0); render(); return }
+  startFastForward();
+}
+
+/* The next 06:00 strictly after t — today's if t hasn't reached it yet
+   (a shift that ran past midnight), otherwise tomorrow's. */
+function nextDayStart(t){
+  const start=Math.floor(t/86400)*86400+CFG.dayStart;
+  return t<start?start:start+86400;
+}
+/* The car parks, but the calendar keeps moving: fixed costs are owed per
+   calendar day whether you're watching or not, and the only way to make
+   that arithmetic actually land — rather than just being asserted in a
+   report — is to let the clock reach the midnight that bills it. Cars on
+   a charger keep charging (stepCar), nothing else moves, and the whole
+   thing runs fast enough to watch without being tedious. */
+function startFastForward(){
+  S.ffwd=true; S.ffwdTarget=nextDayStart(S.t);
+  setSpeed(0); render();
+}
+function stopFastForward(){
+  S.ffwd=false; setSpeed(0); render();
+  if(S.over) return;             /* bankruptcy has its own end-state UI */
+  /* A shift with no cancellations earns some safety back — the score
+     needed a way up, not just a way down. */
+  if(S.d.cancels===0) S.safety=clamp(S.safety+3,0,100);
+  shiftReport();
+  rayCheck();
 }
 function shiftReport(){
   const d=S.d, net=d.gross-d.cost;
   const workedH=S.workedSec/3600;
+  /* billedSec now runs continuously from clock-on through the fast-forward
+     to the next shift, so this is the real elapsed time the car sat
+     registered and owing fixed costs — not a hardcoded 24.0 asserting a
+     day that, before cars parked earned their keep on the clock too,
+     never actually elapsed. */
+  const billedH=S.billedSec/3600;
   $('rp-day').textContent=S.shiftNo;
   $('rp-next').textContent=S.shiftNo+1;
   $('rp-body').innerHTML=
@@ -1783,36 +1997,7 @@ function shiftReport(){
     row('Cash on hand',money(S.cash))+
     /* The line the whole act is built to deliver. */
     row('Hours worked',workedH.toFixed(1)+' h')+
-    row('Hours billed',(24).toFixed(1)+' h — the car owes '+money2(fixedPerCar(S.cars[0]||{}))+' a day whether you work or not');
-  $('report').hidden=false;
-}
-
-/* ---------------- day boundary (legacy end-of-day path) ---------------- */
-function endDay(){
-  S.running=false; S.over=true;
-  const d=S.d, net=d.gross-d.cost;
-  $('rp-day').textContent=S.day;
-  $('rp-next').textContent=S.day+1;
-  $('rp-body').innerHTML=
-    row('Fares billed',money2(d.gross))+
-    row('Platform commission',money2(-d.commission))+
-    row('Rides completed',d.done)+
-    row('Priced out by Meridian',d.lost)+
-    row('Riders who gave up waiting',d.unserved)+
-    row('Rider cancellations (blocked cars)',d.cancels)+
-    '<div class="rp-sep"></div>'+
-    row('Energy',money2(d.energy))+
-    row('Fixed — lease, permits',money2(d.fixed))+
-    row('Operator payroll',money2(d.payroll))+
-    row('Depreciation',money2(d.dep))+
-    row('Maintenance, insurance, software',money2(d.maint+d.ins+d.soft))+
-    row('Total cost',money2(d.cost))+
-    '<div class="rp-sep"></div>'+
-    row('Miles driven',Math.round(d.miles))+
-    row('Cost per mile',d.miles>1?money2(d.cost/d.miles):'—')+
-    row('<b>Net</b>','<b class="'+(net<0?'neg':'pos')+'">'+money2(net)+'</b>')+
-    row('Cash on hand',money(S.cash))+
-    row('Safety score',Math.round(S.safety)+(S.safety<65?' — permit at risk':''));
+    row('Hours billed',billedH.toFixed(1)+' h — the car owes '+money2(fixedPerCar(S.cars[0]||{}))+' a day whether you work or not');
   $('report').hidden=false;
 }
 function row(a,b){ return '<div class="rp-row"><span>'+a+'</span><span>'+b+'</span></div>' }
@@ -1848,6 +2033,51 @@ function initMap(){
     L.marker([h.lat,h.lng],{icon:L.divIcon({className:'',iconSize:[20,20],iconAnchor:[10,10],
       html:'<div class="chpin"><svg class="ms" style="font-size:13px"><use href="#i-bolt"/></svg></div>'})
     }).addTo(map).bindTooltip('Rapid · '+h.n+' · '+h.stalls+' stalls');
+  });
+
+  initMapGestures();
+}
+
+/* ---- phones: the map must not eat the page scroll ----
+   A phone has one finger and no scrollbar, and Leaflet puts
+   touch-action:none on its container, so any swipe starting inside the map
+   pans the map instead of the page. Cooperative gestures: the map is inert
+   until you tap it, and it re-arms the moment you touch anything else — so
+   the map still works, but it can never trap you. */
+const MOBILE=window.matchMedia('(max-width:760px)');
+let mapLock=null;
+function mapGestures(on){
+  if(!map) return;
+  ['dragging','touchZoom','doubleClickZoom','scrollWheelZoom','boxZoom','keyboard']
+    .forEach(function(h){ if(map[h]) on?map[h].enable():map[h].disable() });
+}
+function lockMap(){
+  if(!map||mapLock||!MOBILE.matches) return;
+  mapGestures(false);
+  mapLock=document.createElement('button');
+  mapLock.id='map-lock'; mapLock.type='button';
+  mapLock.setAttribute('aria-label',
+    'Activate the map. While inactive, swiping over it scrolls the page.');
+  mapLock.innerHTML='<span>Tap to use the map</span>';
+  mapLock.addEventListener('click',unlockMap);
+  $('map').appendChild(mapLock);
+}
+function unlockMap(){
+  if(!mapLock) return;
+  mapLock.remove(); mapLock=null; mapGestures(true);
+}
+function initMapGestures(){
+  if(!map) return;
+  lockMap();
+  /* touching anything outside the map hands the scroll back to the page */
+  document.addEventListener('pointerdown',function(e){
+    if(!MOBILE.matches||mapLock) return;
+    const m=$('map');
+    if(m&&!m.contains(e.target)) lockMap();
+  },true);
+  MOBILE.addEventListener('change',function(e){
+    if(e.matches) lockMap(); else unlockMap();
+    setTimeout(function(){ if(map) map.invalidateSize() },80);
   });
 }
 function drawMap(){
@@ -1932,7 +2162,11 @@ function render(){
   const d=S.d, net=d.gross-d.cost;
   $('bk-gross').textContent=money2(d.gross);
   $('bk-net').innerHTML='<span style="color:'+(net<0?'var(--s-crit)':'inherit')+'">'+money2(net)+'</span>';
-  $('bk-cpm').textContent=d.miles>1?money2(d.cost/d.miles):'—';
+  /* Same operating-only definition the shift report uses (energy, dep,
+     maint, ins, software) — commission and the midnight fixed bill are not
+     a cost of driving a mile, and folding them in made the same label mean
+     two different numbers depending on which panel you read it in. */
+  $('bk-cpm').textContent=d.miles>1?money2((d.energy+d.dep+d.maint+d.ins+d.soft)/d.miles):'—';
   const mi=Math.max(1,d.miles);
   const lines=[['Depreciation',d.dep/mi,0],['Energy',d.energy/mi,0],
     ['Maintenance',d.maint/mi,0],['Insurance',d.ins/mi,0],
@@ -1965,7 +2199,9 @@ function render(){
   if(S.safety<75) inc+='<div class="alert'+(S.safety<65?' crit':'')+'">'+
     '<div class="top"><svg class="ms"><use href="#i-gavel"/></svg><b>Safety score</b>'+
     '<span class="clock">'+Math.round(S.safety)+'</span></div>'+
-    '<p>Unsupervised permit review at 65. '+d.cancels+' cancellations today.</p></div>';
+    '<p>'+(S.permit==='Under review'
+      ?'Permit under review — platforms are sending you less work. A clean shift rebuilds it.'
+      :'Unsupervised permit review at 65. '+d.cancels+' cancellations today.')+'</p></div>';
   /* With no operators on payroll the response time is the player's own, so
      quoting a computed number would be a lie (GameMechanics §3.3). */
   if(!inc) inc='<div class="empty">No open incidents. '+(S.ops.length
@@ -2010,7 +2246,21 @@ function render(){
         '<span class="cd">'+Math.ceil(o.left)+'s</span></div></div>';
   }).join(''):'<div class="sub">'+(S.onClock?(live.length?'Waiting for offers.':'Connect a platform.'):'Clocked off.')+'</div>';
 
-  $('rq-tag').textContent=S.offers.length+' offers';
+  /* Accepting with no free car quietly converts a 45s decision into a
+     hidden 9-minute rideExpire timer with no countdown anywhere — the rider
+     is still out there, still waiting, and still able to give up on you. */
+  const waitingRides=S.rides.filter(function(r){return !r.car});
+  $('waiting-list').innerHTML=waitingRides.map(function(r){
+    const left=Math.max(0,CFG.rideExpire-r.wait);
+    return '<div class="offer'+(left<60?' warn':'')+'">'+
+      '<div class="offer-top"><span class="pn">Accepted</span><b>'+r.from+'</b>'+
+        '<span class="sub">→ '+r.to+'</span>'+
+        '<span class="net">'+money2(offerNet(r))+'</span></div>'+
+      '<div class="offer-rt">no car free · rider gives up in '+Math.round(left)+'s</div></div>';
+  }).join('');
+
+  $('rq-tag').textContent=S.offers.length+' offers'+
+    (waitingRides.length?' · '+waitingRides.length+' waiting':'');
   $('zone-chips').innerHTML=ZONES.map(function(z,i){
     return '<button class="chip'+(z.on!==false?' on':'')+'" data-zone="'+i+'">'+z.n+'</button>';
   }).join('');
@@ -2023,7 +2273,7 @@ function render(){
     $('sel-state').className='pill p-'+CLS[sel.state];
     $('sel-soc').textContent=pct(sel.soc);
     if(sel.ride){
-      const arr=sel.soc-socNeeded(remainKm(sel));
+      const arr=sel.soc-socNeeded(remainKm(sel),sel);
       $('m-arr').textContent=pct(Math.max(0,arr));
       $('m-arr').className=arr<10?'crit':arr<20?'warn':'';
       $('m-fare').textContent=money2(sel.ride.fare);
@@ -2054,12 +2304,22 @@ function render(){
     return '<div class="msg"><b>Ray · '+b.n+' of '+RAY.length+'</b>'+b.t+'</div>';
   }).join(''):'<div class="sub">No messages yet.</div>';
 
-  $('tb-shift').textContent=S.onClock?('On · '+(S.workedSec/3600).toFixed(1)+' h'):'Off';
+  $('tb-shift').textContent=S.ffwd?'Advancing to 06:00…'
+    :(S.onClock?('On · '+(S.workedSec/3600).toFixed(1)+' h'):'Off');
   const cb=$('clock');
-  cb.textContent=S.onClock?'Clock off':'Clock on';
+  cb.textContent=S.ffwd?'Advancing…':(S.onClock?'Clock off':'Clock on');
   cb.className='ghost clockbtn'+(S.onClock?' on':'');
+  cb.disabled=!!S.ffwd;
   $('fare-val').textContent=S.fareMult.toFixed(1)+'×';
   $('cpo-val').textContent=S.carsPerOp;
+
+  /* Speed dots were pure decoration (always "on on hot"); drive them from
+     the actual selected level instead. */
+  const spIdx=CFG.speeds.indexOf(S.speed);
+  document.querySelectorAll('.dots i').forEach(function(dot,i){
+    if(S.speed===0||i>spIdx){ dot.className=''; return }
+    dot.className=(spIdx===CFG.speeds.length-1&&i===spIdx)?'hot':'on';
+  });
 }
 
 /* ---------------- controls ---------------- */
@@ -2191,25 +2451,14 @@ function migrate(save){
     if(typeof s.spawnAcc!=='number') s.spawnAcc=0;
     save.v=2;
   }
-  if(save.v<5&&save.v>=4){
-    /* v4 predates the catalogue and the locks. Its cars have no model the
-       catalogue knows and no holding, so name them owned Cybercabs and open
-       the whole console — the player already learned it. */
-    (s.cars||[]).forEach(function(c){
-      if(!catalog(c.model)) c.model='cybercab';
-      if(!c.hold) c.hold='own';
-    });
-    s.unlocked=STAGES.map(function(x){return x.id});
-    save.v=5;
-  }
-  if(save.v<4&&save.v>=3){
-    /* v3 predates Ray and the surge model. An existing Act 1 run should not
-       suddenly be lectured from beat 1, so treat the script as already
-       delivered rather than replaying it over a game in progress. */
-    if(typeof s.surge!=='number') s.surge=1.0;
-    if(!s.ray) s.ray={seen:[1,2,3,4,5,6,7,8,9,10,11,12,13],cur:null,
-                      skipped:true,idleFor:0};
-  }
+  /* Ascending order, deliberately: each block only assumes the shape left
+     by the ones before it. Previously v4->5 ran before v3->4 ran before
+     v<3, so a v1/v2 save hit the v<5 catalogue-normalisation block while
+     its guard (save.v>=4) was still false and skipped it entirely — it
+     only worked by accident, because the v<3 block below duplicated the
+     same car normalisation. Ascending order means every save, whatever
+     version it starts at, cascades through every later step in the same
+     pass, so a future bump can't silently get skipped the same way. */
   if(save.v<3){
     /* v2 predates Act 1: no shift model, no platforms, and its economy was
        $60k/3 cars. The world is not convertible, so start the shift model
@@ -2218,25 +2467,71 @@ function migrate(save){
     s.offers=[];
     s.platforms=[{id:'hitchr',on:false,offered:0,accepted:0},
                  {id:'zipp',on:false,offered:0,accepted:0}];
-    save.v=3;
     /* A pre-Act-1 save has no tutorial state and no surge either. */
     s.surge=1.0;
     s.ray={seen:[],cur:null,skipped:false,idleFor:0};
     (s.cars||[]).forEach(function(c){ c.model='cybercab'; c.hold='own' });
     s.unlocked=STAGES.map(function(x){return x.id});
+    save.v=3;
+  }
+  if(save.v<4){
+    /* v3 predates Ray and the surge model. An existing Act 1 run should not
+       suddenly be lectured from beat 1, so treat the script as already
+       delivered rather than replaying it over a game in progress. Guarded
+       by typeof/!s.ray so a save that just came from the v<3 block above
+       (which already set fresh, un-skipped tutorial state) is left alone. */
+    if(typeof s.surge!=='number') s.surge=1.0;
+    if(!s.ray) s.ray={seen:[1,2,3,4,5,6,7,8,9,10,11,12,13],cur:null,
+                      skipped:true,idleFor:0};
+    save.v=4;
+  }
+  if(save.v<5){
+    /* v4 predates the catalogue and the locks. Its cars have no model the
+       catalogue knows and no holding, so name them owned Cybercabs and open
+       the whole console — the player already learned it. */
+    (s.cars||[]).forEach(function(c){
+      if(!catalog(c.model)) c.model='cybercab';
+      if(!c.hold) c.hold='own';
+    });
+    if(!s.unlocked) s.unlocked=STAGES.map(function(x){return x.id});
+    save.v=5;
   }
   save.v=SAVE_V;
   return save;
 }
 
+/* All innerHTML in this file is built from internal constants, so it's
+   safe today — but ride/offer/log/car text flows through save-file import,
+   and a hand-edited save can put arbitrary HTML into a from/to/who/what/id
+   field that later lands in innerHTML unescaped. Sanitise on the way in,
+   once, here — cheaper than auditing every render() call site, and a
+   no-op for every legitimate save since none of those fields ever contain
+   markup characters. */
+function escapeHtml(v){
+  return String(v==null?'':v).replace(/[&<>"']/g,function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+function sanitizeRide(r){
+  const o={}; for(const k in r) o[k]=r[k];
+  ['id','from','to','plat','car'].forEach(function(k){
+    if(o[k]!=null) o[k]=escapeHtml(o[k]);
+  });
+  return o;
+}
+
 function restore(save){
   const s=migrate(save).s;
+  S.ffwd=false;                   /* never resume mid fast-forward */
 
   /* scalars */
   S.t=s.t; S.day=s.day; S.cash=s.cash; S.fareMult=s.fareMult;
   S.carsPerOp=s.carsPerOp; S.seq=s.seq; S.safety=s.safety;
   S.permit=s.permit; S.over=!!s.over; S.d=s.d;
-  S.ops=s.ops||[]; S.log=s.log||[];
+  S.ops=s.ops||[];
+  S.log=(s.log||[]).map(function(e){
+    return {t:e.t,who:escapeHtml(e.who),what:escapeHtml(e.what),kind:e.kind};
+  });
   S.surge=typeof s.surge==='number'?s.surge:1.0;
   S.ray=s.ray||{seen:[],cur:null,skipped:false,idleFor:0};
   /* A save from before progressive disclosure has seen the whole console,
@@ -2248,18 +2543,20 @@ function restore(save){
   $('ray').hidden=true; raySpotClear();
   S.onClock=!!s.onClock; S.shiftStart=s.shiftStart||0;
   S.workedSec=s.workedSec||0; S.billedSec=s.billedSec||0; S.shiftNo=s.shiftNo||0;
-  S.offers=s.offers||[];
+  S.offers=(s.offers||[]).map(sanitizeRide);
   if(s.platforms) s.platforms.forEach(function(sp){
     const p=platform(sp.id);
     if(p){ p.on=!!sp.on; p.offered=sp.offered||0; p.accepted=sp.accepted||0 }
   });
-  S.rides=(s.rides||[]).map(function(r){ return r });
+  S.rides=(s.rides||[]).map(sanitizeRide);
 
   /* rebuild cars, then re-point the two reference fields */
   const byId={}; S.rides.forEach(function(r){ byId[r.id]=r });
   S.cars=(s.cars||[]).map(function(o){
     const c={}; for(const k in o){ if(k!=='rideId'&&k!=='chIdx') c[k]=o[k] }
-    c.ride=o.rideId?(byId[o.rideId]||null):null;
+    c.id=escapeHtml(c.id); c.hold=escapeHtml(c.hold);
+    const rideKey=o.rideId!=null?escapeHtml(o.rideId):null;
+    c.ride=rideKey?(byId[rideKey]||null):null;
     c.ch=(o.chIdx>=0)?CHARGERS[o.chIdx]:null;
     /* a car whose ride vanished must not sit in a trip state forever */
     if(!c.ride&&(c.state==='onTrip'||c.state==='dispatched')){
@@ -2399,7 +2696,11 @@ function owns(id){ return S.cars.some(function(c){return c.model===id}) }
 function canAfford(v,how){
   if(how==='buy')     return S.cash>=v.price;
   if(how==='finance') return S.cash>=v.down+CFG.financeReserve;
-  if(how==='rent')    return S.cash>=v.rent*2;   /* two days of runway */
+  /* Two days of runway against what midnight actually bills — fixed PLUS
+     rent, not rent alone. A Model Y bills fixed($52)+rent($44)=$96/day;
+     checking only rent*2=$88 let a car through that couldn't survive its
+     own second midnight. */
+  if(how==='rent')    return S.cash>=(v.fixed+v.rent)*2;
   return false;
 }
 function affordWhy(v,how){
@@ -2407,7 +2708,7 @@ function affordWhy(v,how){
   if(how==='buy')     return 'Needs '+money(v.price);
   if(how==='finance') return 'Needs '+money(v.down+CFG.financeReserve)+
                              ' (deposit plus reserve)';
-  return 'Needs '+money(v.rent*2);
+  return 'Needs '+money((v.fixed+v.rent)*2);
 }
 
 function cardHtml(v){
@@ -2550,7 +2851,14 @@ $('savemgr').addEventListener('click',function(e){
   if(e.target===$('savemgr')) $('savemgr').hidden=true;
 });
 document.addEventListener('keydown',function(e){
-  if(e.key==='Escape'&&!$('savemgr').hidden) $('savemgr').hidden=true;
+  if(e.key!=='Escape') return;
+  if(!$('savemgr').hidden){ $('savemgr').hidden=true; return }
+  if(!$('report').hidden){ $('report').hidden=true; render(); rayCheck(); return }
+  if(!$('resume').hidden){ $('resume').hidden=true; return }
+  /* The garage is a forced, mandatory first decision when the fleet has no
+     car yet — Escape shouldn't let a new player bail out of it by accident.
+     Once a car exists it's just another dismissible panel. */
+  if(!$('garage').hidden&&S.cars.length>0){ $('garage').hidden=true; return }
 });
 
 $('savemgr').addEventListener('click',function(e){
@@ -2609,6 +2917,9 @@ function autosave(reason){
 setInterval(function(){ if(S.running&&!S.over) autosave('interval') },30000);
 /* pagehide is the only event reliably fired on mobile tab kill */
 window.addEventListener('pagehide',function(){ autosave('pagehide') });
+/* Some desktop browsers close a window/tab without ever firing pagehide;
+   beforeunload is the belt to that suspenders. */
+window.addEventListener('beforeunload',function(){ autosave('beforeunload') });
 document.addEventListener('visibilitychange',function(){
   if(document.visibilityState==='hidden') autosave('hidden');
 });
@@ -2641,7 +2952,11 @@ document.title='Deadhead v'+VERSION+' — robotaxi fleet simulator';
 syncOps(); initMap(); render(); drawMap();
 let acc=0;
 setInterval(function(){
-  if(S.running&&S.speed>0){
+  if(S.ffwd){
+    const dt=CFG.ffwdSimPerReal*CFG.tickMs/1000;
+    step(dt);
+    if(S.over||S.t>=S.ffwdTarget) stopFastForward();
+  } else if(S.running&&S.speed>0){
     const dt=CFG.simPerReal*S.speed*CFG.tickMs/1000;
     step(dt); acc+=CFG.tickMs;
   }
@@ -2690,7 +3005,9 @@ window.DH_ACT1={CFG:CFG,PLATFORMS:PLATFORMS,platform:platform,
   winProb:winProb,offerNet:offerNet,deadheadKm:deadheadKm,
   acceptOffer:acceptOffer,declineOffer:declineOffer,
   clockOn:clockOn,clockOff:clockOff,shiftReport:shiftReport,
-  fixedPerCar:fixedPerCar,insPerMile:insPerMile,setSpeed:setSpeed};
+  insPerMile:insPerMile,setSpeed:setSpeed,
+  checkSafety:checkSafety,nextDayStart:nextDayStart,
+  startFastForward:startFastForward,stopFastForward:stopFastForward};
 window.DH_SAVE={snapshot:snapshot,restore:restore,migrate:migrate,VERSION:VERSION,
   Store:Store,LocalStore:LocalStore,V:SAVE_V,SLOTS:SLOTS,
   refresh:renderSaves,toast:toast,autosave:autosave,open:openSaves};
