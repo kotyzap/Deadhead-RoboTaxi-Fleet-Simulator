@@ -296,12 +296,302 @@ Verified across all four states (never clocked on → mid-shift-1 → clocked of
 and the gate assertions were mutation-tested: weakening the expression to `shiftNo > 0` fails
 two checks immediately.
 
+### The tab did nothing but replay the intro — v0.23.2
+
+Reported symptom: clicking Dallas played the intro video and stayed on Austin. One cause for
+both halves. **`newFleet()` hardcoded `S.city='austin'`**, so `switchCity` set the city and
+`newFleet` set it straight back; what remained looked like a brand-new Austin game, which is
+precisely why it played the intro.
+
+- `newFleet(cityId)` takes the city it's starting, defaulting to the first scenario, with an
+  unrecognised id falling back rather than leaving `S.city` undefined. Every caller now names
+  its city, so the resume dialog's "New fleet" and the boot fallback respect `PROG.last`.
+- **Intro video and the scripted `DAY1_ORDER` walkthrough are first-city only.** Someone
+  opening city #2 has already clocked off a shift. Those runs get `day1Done=true` so Paolo goes
+  straight to contextual advice. The garage still opens either way — only the video is
+  conditional.
+- `newFleet()` never reset `S.permit` at all, so a Dallas run inherited Austin's "Supervised"
+  and the topbar lied about the defining fact of the city. Now taken from the scenario.
+
+Two further things found while testing, not hypothesised:
+
+- **`switchCity` could leave the game half-switched.** If `Store.get('auto')` rejects — IndexedDB
+  blocked, e.g. a private window — `S.city`, the per-city tables and the tone had all moved
+  while the cars, cash and permit were still the previous run's. A storage failure now reads as
+  "no save for this city" and opens a clean run; the outer catch starts fresh rather than
+  leaving the chimera on screen.
+- `newFleet()` asserts the intro overlay closed for a non-tutorial city instead of assuming.
+
+Eight regression checks added and mutation-tested: restoring the hardcoded `S.city='austin'`
+fails four of them immediately.
+
+### The map stayed in Austin — v0.23.3
+
+Reported as "Dallas is accessible but map is Austin". Three separate causes, and none of them
+was the `setView` in `switchCity`:
+
+1. **`initMap()` hardcoded `.setView([30.2700,-97.7400],13)`.** `switchCity` did move the view,
+   but any *boot* into a saved Dallas run re-centred on Austin, because the only code choosing a
+   centre had one city's coordinates baked in.
+2. **Zone circles and Supercharger pins were built once inside `initMap()`** from whichever
+   tables were live at that instant, and never rebuilt — so a Dallas run drew Austin's eleven
+   zone circles and Austin's five chargers. The charger markers weren't stored anywhere either,
+   so there was no handle to remove them (hence the new `chLayer`).
+3. **`#bgmap`, the blurred wallpaper, was a hardcoded tile path** — `/8/58/105.png`, which is
+   Austin. Every city sat on a blurred picture of Texas hill country.
+
+`centerCity()` and `buildCityLayers()` are now called from `loadCityTables()`, the single place
+every city change already passed through, so boot, `newFleet()`, `restore()` and the tab all get
+the view and overlays without having to remember. Both no-op while `map` is null (loadCityTables
+runs before initMap at boot), so initMap calls them once the map exists. `switchCity`'s own
+`setView` is gone — it would fight a player who had already panned.
+
+The wallpaper tile is derived with slippy-map maths rather than listed per city, so a new
+scenario needs no extra asset. **There's a test pinning Austin to `/8/58/105.png`** — the exact
+tile that used to be hardcoded — because replacing a constant with a derivation is only safe if
+it lands on the same value. Verified end to end against a Leaflet stub: view Austin → Dallas,
+zones 11 → 12, chargers 5 → 4, tile `/8/58/105.png` → `/8/59/103.png`.
+
+Two of the six new checks cover the Leaflet-never-loaded path, since the map is an optional
+dependency by design (`UI-SPEC.md` §0c): both functions must degrade rather than throw, and
+leave no stale overlays.
+
+### Units and the grey sky — v0.23.4
+
+**Temperature never joined the units layer.** `WX.temp` holds Celsius (that's what Open-Meteo is
+asked for) and nothing converted it, so a player on miles read "35" next to "mi". `uTemp()` is
+now the single conversion point, rounded — 35 °C → 95 °F, 0 °C → 32 °F. A missing reading gives
+a dash in the correct unit rather than `NaN`, the same guard the fetch already applies.
+
+**The cloud overlay greyed a clear sky.** It painted whenever cover exceeded `0.02`, and "Clear"
+falls back to 5% cover while the hourly forecast for a bright day is routinely 30–40%. So the
+map sat under three grey gradients while the strip said Clear.
+
+- Floor raised to **0.45**, above "Partly cloudy" (35%). Clear and partly cloudy now paint
+  nothing; a veil means genuine overcast.
+- **Cloud lightens instead of darkening.** The old colour was a dark slate that read as gloom or
+  a dirty screen. Real overcast over a light map is a bright veil, not a shadow. Storms keep a
+  cooler, deeper tint — there the menace is the point.
+- The ramp starts at the floor, not at zero, so overcast fades in rather than snapping on. Three
+  gradients overlap, so the per-pass ceiling is 0.085.
+
+| cover | before | now |
+|---|---|---|
+| 5% (Clear) | grey gradients | **nothing** |
+| 35% (Partly cloudy) | grey gradients | **nothing** |
+| 60% | grey | 6.8% veil |
+| 85% (Overcast) | grey | 17.4% veil |
+| 100% | grey | 23.4% veil |
+
+Worth knowing: the overlay follows the forecast for the **sim** hour while the strip shows
+**real current** conditions, so the two can legitimately disagree. That's by design, and it's
+also why the old threshold looked so wrong — at 06:00 sim time it painted the small hours' cloud
+under a label reporting a clear afternoon. A subtler veil makes the mismatch stop mattering.
+
+### Dallas opened at a dead hour — v0.23.5
+
+Reported as "in Dallas it is like 4 minutes nothing". Measured, and the offer *rate* was fine —
+the *defaults* weren't.
+
+`CFG.simPerReal` is **1**, so at 1× speed offers per sim-hour are offers per **real** hour. The
+day opens at 06:00 (`CFG.dayStart`), where the work curve is 1.0 and the night curve is 0.2.
+Dallas's three default zones were Downtown (work) + Uptown (**night**) + Deep Ellum (**night**)
+— two thirds of its opening demand asleep. I wrote the comment as "the two that carry the
+work/night curve plus one night district" and then picked two night zones.
+
+| | 06:00, one feed | gap |
+|---|---|---|
+| Dallas, before | 12.8/h | 1 per 4.7 min |
+| Dallas, after (SMU for Deep Ellum) | 16.9/h | 1 per 3.5 min |
+| Austin | 18.3/h | 1 per 3.3 min |
+
+Verified against the simulation rather than the formula it came from: one simulated hour held at
+06:00, accepting every offer, lands within **2–6%** of predicted across five configurations.
+
+Two additions so a quiet shift can't be mistaken for a broken one:
+
+- **`offersPerHour()` is the single definition**, and `spawnRides()` reads it too, so the readout
+  can never disagree with the simulation. The Offers panel states it — *"3 of 12 zones live ·
+  ~17 offers/hour at 06:00 · about one every 3.5 min"* — amber below `THIN_RATE` (18/h), and says
+  plainly when no feed is connected or no zone is live.
+- **Paolo names the geofence.** `nextTask()` already advised a second feed but never mentioned
+  zones, which is the bigger lever: three of twelve live means opening the map roughly *triples*
+  the rate, where a second feed adds ~40%. Fires only below `THIN_RATE`.
+
+The strongest new test asserts the **mix**, not the total — at least two day-profile zones live
+at the opening hour — because a future city could reproduce this bug while still summing to a
+plausible-looking base.
+
+**Time scale left alone deliberately** (1× is real-time by design). But note `DESIGN.md` §6.1
+still claims a game day is 10–15 real minutes and lists speeds 1×/2×/4×, while the code has
+`simPerReal:1` and `0/1/4/20`. An 18-hour day is 18 real hours at 1× and 54 minutes at 20×.
+**§6.1 is stale and should be corrected**, alongside §5's Dallas row.
+
+---
+
+## City #3 — Miami, and the gate becomes a chain — v0.24.0
+
+Miami over Houston and Orlando/Tampa, for the reason Dallas was picked over Miami last time:
+it is the candidate that is *real difficulty* rather than a re-skin and needs the fewest new
+systems. Houston launched the same day as Dallas under the same rules and would have been a
+bronze city with different street names. Orlando/Tampa needs a peaky airport/theme-park demand
+curve that does not exist yet.
+
+### What makes Miami a scenario rather than a skin
+
+Tesla's published Miami geofence (3 July 2026) is 10–14 sq mi of *western* Miami-Dade —
+West Miami out to Doral and Sweetwater, bounded by the Palmetto and US-41. **Everything Miami
+is famous for is outside it:** no downtown, no Brickell, no Miami Beach, no MIA, only a corner
+of Coral Gables. The scenario is defined by that exclusion list:
+
+| | Effect |
+|---|---|
+| **No airport zone** | First city without one. Every previous city had a long, well-paid run to lean on (AUS, Love Field). `airportZone()` returns `null` and the policy strip's airport toggle now **disables itself and says why** — before this it stayed live and did nothing when clicked, exactly the dead-control failure the control-strip audit went looking for. |
+| **No downtown** | No work-curve monster like Austin's Downtown core (base 14). Demand is a business park, a mall, a university and suburbia, so `fareK` is **0.94** — below 1 for the first time. |
+| **Slow charging** | Miami's Supercharger coverage is legacy urban hardware: Dadeland Station 12 stalls at **72 kW**, Brickell 10 at 72 kW. Only Doral (8 × 250 kW) is inside the geofence; measured from the default anchor zone, the others are 9.1 km, 10.9 km and 14.8 km out. Dallas is the harder city with easier charging; Miami is the reverse. |
+| **Nine-hour power peak** | FPL's RTR-1 summer on-peak is **noon–21:00 at 26¢/kWh** against Austin's five-hour 16:00–21:00 window. Expensive power across the entire productive afternoon is the harshest single number in the game, and it is a published tariff. |
+| **Worst insurance in the US** | `insK` **1.35**, the highest in the table by a wide margin. |
+| **Rain and traffic** | `incK` **1.30** plus the new weather term — see the mechanic below. |
+
+Rhythm consequence worth stating: **the money in Miami is the morning.** Austin and Dallas
+both hand you a nightlife district (Rainey, Uptown) that carries the late hours; Miami's
+nightlife is all in the excluded half of the county. The default mix is therefore
+work/work/**home** rather than work/work/night — Fontainebleau and Westchester commuting into
+Doral. A player who learned to run late shifts in Texas is working the wrong end of the clock.
+
+Measured at the 06:00 open, one feed, three live zones: **Miami 20.2/h**, Austin 18.3/h,
+Dallas 16.9/h. Opening the whole map: 36.3/h. Miami is the busiest opener in the game, which
+is the right shape for a tiny box — the pressure is charging and margin, not finding work.
+
+Data provenance, same standard as Dallas: the four Supercharger records are **transcribed**
+from tesla.com location pages (the coordinates come out of the Google static-map URL embedded
+in each page). The twelve zone coordinates are **neighbourhood centroids placed from street
+geography**, not surveyed, and the file says so. The three taprooms are real Miami breweries.
+
+### The one new mechanic: incident risk is a function
+
+Incident risk was the literal `0.00018` sitting inline in `step()`, which could express
+neither "this city is rougher" nor "it is raining". The second was the glaring one: the
+weather layer already slowed every car and surged demand, and then a Florida thunderstorm made
+no difference at all to whether a car got stuck — the thing a camera-only stack is genuinely
+worst at.
+
+```
+incidentRisk() = INC_BASE × cityK('incK') × weatherIncidentMult()
+```
+
+Storm ×2.2, heavy rain ×1.7, light rain ×1.25 — deliberately the harshest weather factors in
+the file, because rain is a safety problem before it is a schedule problem (a storm costs 35%
+of the speed and more than doubles the risk). `incK` is 1.0 everywhere except Miami's 1.30.
+
+**The elevated risk is stated, never merely applied.** `incidentRiskNote()` puts a line in the
+Incidents panel — *"Risk 186% above baseline — storms + Miami traffic."* An invisible
+multiplier is indistinguishable from bad luck, and a player who cannot see the reason learns
+nothing from the consequence.
+
+The test that matters here is not any of the ones asserting the multipliers. It is the one that
+pins `Math.random` between the baseline and the elevated risk and drives a car through
+`stepCar()`, proving **`step()` actually consumes the function** — because every other check
+passes with `incidentRisk()` perfect and the old constant still inline. Mutation-tested: it
+does fail on that mutation, and nothing else did.
+
+### The gate is now a chain
+
+Pavel's ask: one shift in Dallas opens city #3, the same way one shift in Austin opened Dallas.
+The catch was that `gateMet('shift1')` reads the **live run only** and has no idea which city
+the shift happened in — so a second *Austin* shift would have opened Miami without the player
+ever visiting Dallas.
+
+- New gate form **`'shift1@<city>'`**, and Dallas's `needs` moved from `'shift1'` to
+  `'shift1@austin'`. Bare `'shift1'` is kept for back-compatibility and for a scenario that
+  genuinely does not care where you learned the game.
+- Per-city, per-run-outliving record: **`PROG.results[city].shiftDone`**, banked by
+  `progNoteShift()` from `progGates()` — *before* the unlock loop, so the tab lights on the same
+  frame rather than the next one, and only writing when something actually changed (this runs
+  five times a second).
+- **`shiftFinished()`** is now the single spelling of `shiftNo>0 && !onClock`, so the phrase
+  exists once instead of in four places.
+- **`gateMet('shift1@nowhere')` stays locked.** A gate naming a city that does not exist is a
+  typo, and a typo must hide a scenario, not open one.
+- **`progTrack()` had to be taught to carry `shiftDone`.** It *replaces* the results record
+  rather than merging into it, so any field it forgets is destroyed on the next autosave — and
+  this one is the next city's unlock condition. There is a test for exactly that.
+- **`PROG_V` 1 → 2 with a real migration.** A v1 record has no `shiftDone`, and reading a
+  missing flag as false would make a player who has already run several Dallas days clock off
+  one *more* shift to open Miami — a regression dressed as a migration. A run that reached
+  day 2 provably clocked off at least once (the day only advances through the shift report), so
+  the flag is inferred from `results[city].day > 1`. Day-1 records stay false, where it honestly
+  is not recoverable.
+
+Mutation-tested: setting Miami's `needs` back to the bare `'shift1'` fails three checks.
+
+### Night accents now clear AA — and the deviation that was defended
+
+The 3.0:1 night floor was a documented deviation with a comment explaining why it was
+acceptable. The comment was wrong: `--accent` is a solid **fill** under `color:#fff`, so the
+dark surface behind it is irrelevant and 4.5:1 was always the real requirement. Fixed by taking
+each city's night accent to the lightest value **of its own hue** that clears it:
+
+| City | night accent, was | now |
+|---|---|---|
+| Austin | `#5A82EB` 3.60:1 | `#406EE8` **4.55:1** |
+| Dallas | `#C87A33` 3.34:1 | `#A7662B` **4.59:1** |
+| Miami | — | `#D4308D` **4.56:1** |
+
+The `:root` night block was updated in step with `CITIES.austin.tone.night`, since that block is
+what the page looks like before `applyCityTone()` runs and a test asserts the two agree.
+
+The gradient's lighter **top stop** now has a floor too, at 4.0:1 — a real deviation rather than
+a hidden one, because holding `hi` to 4.5 would mean `hi === accent` and no gradient in any city
+or theme. Austin's *day* `hi` has measured 4.12:1 since the gradient existed. Dallas's day `hi`
+went `#B96D28` → `#B86C28` (3.98 → 4.03), a one-digit change nobody will see, in preference to
+loosening the test.
+
+### `nudge-zones.js` — the centroid fix, as a script
+
+Zone centroids sat up to 452 m (Austin) / 311 m (Dallas) from the nearest routable road, so
+some route lines started a block or two from their own pin. `deploy/scripts/nudge-zones.js`
+asks OSRM's `/nearest` service where the closest drivable way actually is, reports the gap per
+zone, and with `--write` replaces the coordinate. Same conventions as `bake-roads.js`: reads the
+real tables out of the booted game rather than duplicating them, one request at a time on a
+donated server, and it refuses to write when every lookup failed so running it offline cannot
+flatten real data.
+
+**Order matters, and the script says so after a write:** nudging a zone moves a route endpoint,
+so the geometry already in the file is anchored to the old coordinate.
+
+```
+node scripts/nudge-zones.js austin --write     # then
+node scripts/bake-roads.js  austin --write
+```
+
+`nudge-splice.test.js` covers the splice with no network at all: it edits the zone it was asked
+for and no other, stays inside the named city's block even where two cities share a zone name
+(Austin and Dallas both have a 'Downtown core'), leaves `base`/`p`/`on` alone, throws on a name
+that is not there, and the result is booted in jsdom to prove `ZONES_BY_CITY` still parses.
+
+### Still to run on Pavel's machine
+
+OSRM and Open-Meteo are both unreachable from the sandbox (`403 blocked-by-allowlist`), so
+anything that needs the network is his to run:
+
+```
+cd deploy
+node scripts/bake-roads.js miami --write        # Miami has no geometry yet
+node scripts/nudge-zones.js all                 # dry run first — read the gaps
+node scripts/nudge-zones.js all --write
+node scripts/bake-roads.js austin --write       # re-bake whatever moved
+node scripts/bake-roads.js dallas --write
+npm test && npm run check-parity
+```
+
+Until the Miami bake lands, `roadsFor('miami')` is `{}` and the map draws straight lines there —
+a supported state (`roadPath()` returns null and the caller falls back), not a bug.
+
 ### Open
 
-- **Zone centroids up to 452 m from the nearest routable road.** OSRM snaps to drivable
-  geometry, so a zone placed in a park or mid-block gets a route that starts a couple of
-  blocks from its own pin (worst case Austin 452 m, Dallas 311 m). Not caused by thinning —
-  RDP preserves endpoints — it's the centroids themselves. Cosmetic, but visible at zoom 13.
-  The fix is nudging the offending zone coordinates onto a street.
-- Night-accent contrast (see 2 above).
-- Correct `DESIGN.md` §5's Dallas row (see 3 above).
+- Miami road geometry not yet baked (see above).
+- Zone centroids not yet nudged (script written, needs a network run).
+- `DESIGN.md` §5 and §6.1 — **corrected in v0.24.0.** §5 now carries the real launch dates,
+  Dallas's compact geofence and Miami's exclusion list; §6.1 states the real time scale
+  (`simPerReal:1`, speeds 0/1/4/20, 18 real hours at 1× and 54 minutes at 20×).

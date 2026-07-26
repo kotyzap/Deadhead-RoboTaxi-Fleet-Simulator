@@ -98,8 +98,13 @@ async function run(file) {
   for (const id of Object.keys(A.ZONES_BY_CITY)) {
     check(`${id} authors 3 live zones by default`,
       () => A.ZONES_BY_CITY[id].filter((z) => z.on !== false).length === 3);
-    check(`${id} has exactly one airport zone`,
-      () => A.ZONES_BY_CITY[id].filter((z) => z.p === 'airport').length === 1);
+    // AT MOST one, not exactly one. This was `=== 1` until Miami, whose real
+    // geofence excludes MIA entirely — the first scenario with no airport run
+    // at all. Two zones with p:'airport' would still be a bug, because
+    // airportZone() returns the first and the policy toggle would silently
+    // control one of them.
+    check(`${id} has no more than one airport zone`,
+      () => A.ZONES_BY_CITY[id].filter((z) => z.p === 'airport').length <= 1);
     check(`${id} zone names are unique`, () => {
       const n = A.ZONES_BY_CITY[id].map((z) => z.n);
       return new Set(n).size === n.length;
@@ -161,18 +166,30 @@ async function run(file) {
     check(`${id} day accent ${t.day.accent} clears AA 4.5:1 vs white (${dayRatio.toFixed(2)}:1)`,
       () => dayRatio >= 4.5);
 
-    // Night: 3.0:1, and this is a DOCUMENTED DEVIATION rather than a laxer
-    // rule. Night mode deliberately lightens the accent so it reads against a
-    // dark surface, and Austin's existing #5A82EB has measured 3.60:1 against
-    // white since long before cities were a thing — the shortfall is inherited
-    // from the current design, not introduced by a new scenario. Darkening it
-    // to pass 4.5 would change how Austin looks at night, which is a product
-    // decision, not a test's to make. 3.0 is WCAG's floor for UI components
-    // and large text, so this still fails loudly on a genuinely illegible
-    // accent while not silently blessing 4.5 as met.
+    // Night: the SAME 4.5:1 floor as day, as of v0.24.0. This used to be a
+    // documented 3.0 deviation, because night mode lightened the accent to
+    // read against a dark surface and Austin's #5A82EB had measured 3.60:1
+    // since long before cities existed. The deviation was wrong in a way the
+    // comment defended rather than fixed: the token is a solid FILL under
+    // white text, so the surface behind it is irrelevant and 4.5 was always
+    // the real requirement. Every city's night accent was darkened to the
+    // lightest value of its own hue that clears it, which changes how night
+    // mode looks — deliberately, and with Pavel's sign-off.
     const nightRatio = contrastWithWhite(t.night.accent);
-    check(`${id} night accent ${t.night.accent} clears 3:1 vs white (${nightRatio.toFixed(2)}:1)`,
-      () => nightRatio >= 3.0);
+    check(`${id} night accent ${t.night.accent} clears AA 4.5:1 vs white (${nightRatio.toFixed(2)}:1)`,
+      () => nightRatio >= 4.5);
+    // The gradient's lighter top stop is the lightest pixel any white label
+    // actually sits on, so it gets a floor too — 4.0, not 4.5, and that gap is
+    // a real deviation rather than a hidden one. Austin's DAY hi has measured
+    // 4.12:1 since the gradient existed; holding `hi` to 4.5 would mean
+    // hi === accent and no gradient at all in any city or theme.
+    for (const th of ['day', 'night']) {
+      const hiRatio = contrastWithWhite(t[th].hi);
+      check(`${id} ${th} gradient top ${t[th].hi} clears 4:1 vs white (${hiRatio.toFixed(2)}:1)`,
+        () => hiRatio >= 4.0);
+      check(`${id} ${th} gradient runs light-to-dark`,
+        () => contrastWithWhite(t[th].hi) < contrastWithWhite(t[th].accent));
+    }
     // The bright tint is explicitly allowed to fail contrast — it must never
     // be used as a fill. This asserts the two are actually different, i.e.
     // that a city hasn't quietly collapsed them into one colour and lost the
@@ -204,6 +221,113 @@ async function run(file) {
   check('Dallas wears cars harder and Austin is the 1.0 baseline',
     () => A.CITIES.dallas.depK > 1 && A.CITIES.austin.depK === 1 &&
           A.CITIES.austin.fareK === 1 && A.CITIES.austin.insK === 1);
+  // ---- 5m. Miami: the scenario that is defined by what it lacks ---------
+  check('Miami has no airport zone at all',
+    () => A.ZONES_BY_CITY.miami.filter((z) => z.p === 'airport').length === 0);
+  check('airportZone() returns null in Miami rather than throwing', () => {
+    S.city = 'miami'; A.loadCityTables();
+    return A.airportZone() === null;
+  });
+  check('the airport toggle disables itself where there is no airport', () => {
+    S.city = 'miami'; A.loadCityTables(); A.render();
+    const b = w.document.getElementById('dp-air');
+    return b.disabled === true && /No airport/.test(b.title);
+  });
+  check('the airport toggle is live again in a city that has one', () => {
+    S.city = 'austin'; A.loadCityTables(); A.render();
+    const b = w.document.getElementById('dp-air');
+    return b.disabled === false;
+  });
+  // FPL's summer on-peak window is noon to 21:00 — nine hours where Austin has
+  // five. This is the harshest single number in the game and it is a published
+  // tariff, so it is worth a test that would notice it being "balanced" away.
+  check('Miami power is expensive across the whole afternoon', () => {
+    S.city = 'miami'; A.loadCityTables();
+    const p = A.CITIES.miami.power;
+    return p.peakTo - p.peakFrom === 9 && A.tariff(13) === p.peak &&
+           A.tariff(13) > A.tariff(11);
+  });
+  check('Austin still has its five-hour evening peak', () => {
+    S.city = 'austin'; A.loadCityTables();
+    const p = A.CITIES.austin.power;
+    return p.peakTo - p.peakFrom === 5 && A.tariff(13) === p.mid;
+  });
+  check('Miami charges slowly — its best site is beaten by Dallas', () => {
+    const bestM = Math.max.apply(null, A.CHARGERS_BY_CITY.miami.map((c) => c.kw));
+    const bestD = Math.max.apply(null, A.CHARGERS_BY_CITY.dallas.map((c) => c.kw));
+    return bestM < bestD;
+  });
+  check('Miami earns less per fare and insures for more',
+    () => A.CITIES.miami.fareK < 1 && A.CITIES.miami.insK > A.CITIES.dallas.insK);
+
+  // ---- 5n. incident risk is a function, not a constant ------------------
+  // It was the literal 0.00018 inline in step(), which could express neither
+  // "this city is rougher" nor "it is raining" — and the second was glaring,
+  // because rain already slowed the cars and surged the demand.
+  const setWx = (cond) => { A.setWx({ temp: 25, cond: cond, ok: true, byHour: null }); };
+  check('dry Austin is the baseline risk', () => {
+    S.city = 'austin'; A.loadCityTables(); setWx('Clear');
+    return Math.abs(A.incidentRisk() - A.INC_BASE) < 1e-12;
+  });
+  check('rain raises risk', () => {
+    S.city = 'austin'; A.loadCityTables(); setWx('Rain');
+    return A.incidentRisk() > A.INC_BASE;
+  });
+  check('a storm is worse than rain', () => {
+    setWx('Rain'); const r = A.incidentRisk();
+    setWx('Storm'); return A.incidentRisk() > r;
+  });
+  check('weather hits safety harder than it hits the schedule', () => {
+    setWx('Storm');
+    // +120% risk against -35% speed: rain is a safety problem first.
+    return (A.weatherIncidentMult() - 1) > (1 - A.weatherSpeedMult());
+  });
+  check('Miami is rougher than Austin in the same weather', () => {
+    setWx('Clear');
+    S.city = 'austin'; A.loadCityTables(); const a = A.incidentRisk();
+    S.city = 'miami'; A.loadCityTables(); const m = A.incidentRisk();
+    return m > a;
+  });
+  check('elevated risk is stated, not merely applied', () => {
+    S.city = 'miami'; A.loadCityTables(); setWx('Storm');
+    const n = A.incidentRiskNote();
+    return /Miami/.test(n) && /storm/i.test(n) && /above baseline/.test(n);
+  });
+  check('a calm baseline says nothing at all', () => {
+    S.city = 'austin'; A.loadCityTables(); setWx('Clear');
+    return A.incidentRiskNote() === '';
+  });
+  // THE ONE THAT MATTERS: that the simulation actually consumes the function.
+  // Everything above would pass with incidentRisk() perfect and step() still
+  // running the old inline 0.00018 — mutation-tested, and it did. So drive a
+  // car through stepCar() with Math.random pinned BETWEEN the baseline and the
+  // elevated risk: dry Austin must survive the roll that wet Miami fails.
+  const rollAt = (city, cond, r) => {
+    S.city = city; A.loadCityTables(); setWx(cond);
+    const car = {
+      id: 'T-TEST', state: 'onTrip', soc: 80, odo: 0, earn: 0,
+      lat: A.zones()[0].lat, lng: A.zones()[0].lng,
+      route: [[A.zones()[1].lat, A.zones()[1].lng]],
+      ride: { from: A.zones()[0].n, to: A.zones()[1].n, km: 5, fare: 12, plat: 'hitchr' },
+      at: A.zones()[0].n, blocked: 0, idleFor: 0, fatigue: 0,
+    };
+    const real = w.Math.random;
+    w.Math.random = () => r;
+    try { A.stepCar(car, 1); } finally { w.Math.random = real; }
+    return car.state === 'blocked';
+  };
+  check('step() reads incidentRisk() rather than a constant of its own', () => {
+    const mid = A.INC_BASE * 1.5;          // above baseline, below Miami+storm
+    const dryAustin = rollAt('austin', 'Clear', mid);
+    const wetMiami = rollAt('miami', 'Storm', mid);
+    return dryAustin === false && wetMiami === true;
+  });
+  check('a missing incK reads as 1.0, not NaN', () => {
+    S.city = 'dallas'; A.loadCityTables(); setWx('Clear');
+    return A.incidentRisk() === A.INC_BASE * A.cityK('incK') &&
+           isFinite(A.incidentRisk());
+  });
+
   check('every city declares a fleet cap and a goal',
     () => Object.keys(A.CITIES).every((id) =>
       typeof A.CITIES[id].fleetCap === 'number' &&
@@ -215,17 +339,25 @@ async function run(file) {
   // the point of these three checks: S.shiftNo increments on clock-ON, so a
   // naive `shiftNo > 0` would open the tab during the first shift, before the
   // player has ever seen a shift report.
+  // Each of these now names the city it is running in. They used to rely on
+  // boot state leaving S.city==='austin', which held right up until a later
+  // section switched city — and 'shift1@austin' cares which city you are in.
   check('Dallas is locked before any shift', () => {
     A.PROG().unlocked.dallas = false;
+    A.PROG().results.austin = {};
+    S.city = 'austin'; A.loadCityTables();
     S.shiftNo = 0; S.onClock = false;
     return A.cityUnlocked('dallas') === false;
   });
   check('Dallas stays locked DURING the first shift', () => {
     A.PROG().unlocked.dallas = false;
+    A.PROG().results.austin = {};
+    S.city = 'austin';
     S.shiftNo = 1; S.onClock = true;
     return A.cityUnlocked('dallas') === false;
   });
   check('clocking off the first shift unlocks Dallas', () => {
+    S.city = 'austin';
     S.shiftNo = 1; S.onClock = false;
     return A.cityUnlocked('dallas') === true;
   });
@@ -244,10 +376,70 @@ async function run(file) {
   check("every city's gate is one gateMet() understands",
     () => Object.keys(A.CITIES).every((id) => {
       const n = A.CITIES[id].needs;
-      return !n || ['shift1', 'day1'].indexOf(n) >= 0;
+      if (!n) return true;
+      if (['shift1', 'day1'].indexOf(n) >= 0) return true;
+      // 'shift1@<city>' is only understood if that city actually exists —
+      // gateMet() returns false for a typo, which would hide the scenario
+      // forever rather than opening it. Catch it here instead.
+      return n.indexOf('shift1@') === 0 && !!A.CITIES[n.slice(7)];
     }));
   check('cityList() is ordered by CITIES[].order',
-    () => A.cityList().join(',') === 'austin,dallas');
+    () => A.cityList().join(',') === 'austin,dallas,miami');
+
+  // ---- 6a. the gate CHAIN ---------------------------------------------
+  // Austin opens Dallas, Dallas opens Miami. The bare 'shift1' gate could not
+  // express this: it reads the live run only and cannot tell which city the
+  // shift happened in, so a second Austin shift would have opened city #3
+  // without the player ever visiting city #2.
+  const gateReset = () => {
+    A.PROG().unlocked.dallas = false;
+    A.PROG().unlocked.miami = false;
+    A.PROG().results.austin = {}; A.PROG().results.dallas = {};
+    S.city = 'austin'; S.shiftNo = 0; S.onClock = false;
+  };
+  check('Miami names Dallas in its gate, not Austin',
+    () => A.CITIES.miami.needs === 'shift1@dallas' &&
+          A.CITIES.dallas.needs === 'shift1@austin');
+  check('an Austin shift does NOT open Miami', () => {
+    gateReset();
+    S.shiftNo = 1; S.onClock = false;      // clocked off, in Austin
+    A.progGates();
+    return A.cityUnlocked('dallas') === true && A.cityUnlocked('miami') === false;
+  });
+  check('a Dallas shift opens Miami', () => {
+    gateReset();
+    S.city = 'dallas'; S.shiftNo = 1; S.onClock = false;
+    A.progGates();
+    return A.cityUnlocked('miami') === true;
+  });
+  check('the Dallas shift is remembered after leaving Dallas', () => {
+    gateReset();
+    S.city = 'dallas'; S.shiftNo = 1; S.onClock = false;
+    A.progGates();                          // banks results.dallas.shiftDone
+    S.city = 'austin'; S.shiftNo = 0; S.onClock = false;
+    A.PROG().unlocked.miami = false;        // drop the latch, keep the record
+    return A.cityShiftDone('dallas') === true && A.cityUnlocked('miami') === true;
+  });
+  check('mid-shift in Dallas is not a finished Dallas shift', () => {
+    gateReset();
+    S.city = 'dallas'; S.shiftNo = 1; S.onClock = true;
+    return A.gateMet('shift1@dallas') === false;
+  });
+  check('a gate naming a city that does not exist stays locked',
+    () => A.gateMet('shift1@nowhere') === false);
+  check('the Miami padlock hint names Dallas',
+    () => A.gateHint('shift1@dallas').indexOf('Dallas') >= 0);
+  // progTrack() REPLACES the results record rather than merging into it, so a
+  // field it forgets to carry is destroyed on the next autosave — and this one
+  // is the next city's unlock condition.
+  check('progTrack() does not wipe shiftDone', () => {
+    gateReset();
+    S.city = 'dallas'; S.shiftNo = 1; S.onClock = false;
+    A.progGates();
+    S.onClock = true;                       // back on shift: gate goes false
+    A.progTrack();
+    return A.PROG().results.dallas.shiftDone === true;
+  });
 
   // ---- 6b. a second city is not a first city --------------------------
   // The reported bug: clicking Dallas replayed the intro video and stayed on

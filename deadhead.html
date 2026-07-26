@@ -185,10 +185,18 @@ html[data-theme="night"]{
   --sheet:rgba(28,32,38,.82);
   --sheet-sh:rgba(0,0,0,.66);
 
-  --accent:#5A82EB;
-  --accent-2:#3E6AE1;
-  --accent-rgb:90,130,235;
-  --accent-hi:#6E92EF;
+  /* Raised from #5A82EB / #6E92EF / rgb(90,130,235) in v0.24.0. Those were
+     3.60:1 and 2.99:1 against white, and --accent is a SOLID FILL under
+     `color:#fff` in five rules — so night mode was shipping primary buttons
+     below the 4.5:1 floor, and had been since long before cities existed.
+     #406EE8 is the lightest blue of the same hue that clears it (4.55:1).
+     Must stay in step with CITIES.austin.tone.night: this block is what the
+     page looks like before applyCityTone() runs, and a test asserts the two
+     agree. */
+  --accent:#406EE8;
+  --accent-2:#2F55C4;
+  --accent-rgb:64,110,232;
+  --accent-hi:#4672E9;
   --city-tint:#7FB0F8;
 
   --s-idle:#6E727A;
@@ -2228,7 +2236,7 @@ const CITIES={
     /* Tutorial city. Permissive regulation, cheap power, short hops, and a
        real fleet that peaked near 17 cars — so the scenario caps there too. */
     permit:'Supervised', fleetCap:17,
-    fareK:1.0, depK:1.0, insK:1.0,
+    fareK:1.0, depK:1.0, insK:1.0, incK:1.0,
     power:{peak:0.34, mid:0.19, off:0.11, peakFrom:16, peakTo:21, offFrom:23, offTo:7},
     goal:{cash:40000, text:'Clear $40,000 in the bank without losing your permit.'},
     order:0,
@@ -2243,7 +2251,13 @@ const CITIES={
        See citiesplan.md, "City identity". */
     tone:{
       day:  {accent:'#3E6AE1', hi:'#4B77E8', a2:'#2F55C4', tint:'#5A9BF6'},
-      night:{accent:'#5A82EB', hi:'#6E92EF', a2:'#3E6AE1', tint:'#7FB0F8'}
+      /* Was #5A82EB / #6E92EF, which measured 3.60:1 and 2.99:1 against white
+         — under the 4.5:1 floor for the solid fills that carry white text.
+         This is the lightest blue of the same hue that clears it (4.55:1), so
+         night still reads a shade brighter and more saturated than day without
+         the primary buttons failing AA. Every city's night accent was raised
+         the same way; see the note above CITIES.miami's tone. */
+      night:{accent:'#406EE8', hi:'#4672E9', a2:'#2F55C4', tint:'#7FB0F8'}
     }},
 
   /* ---- DALLAS ----------------------------------------------------------
@@ -2285,15 +2299,86 @@ const CITIES={
        lands: the shift report shows what the car earned against what it costs
        to own for the twenty hours you were not watching it. A player who has
        read that page understands what a second city is FOR. Making them
-       finish the rest of the scripted day first only delays the offer. */
-    needs:'shift1',
+       finish the rest of the scripted day first only delays the offer.
+
+       'shift1@austin', not the bare 'shift1', since Miami asks the same
+       question about Dallas: the cities are a CHAIN, and a chain needs gates
+       that name their city. See gateMet(). */
+    needs:'shift1@austin',
     /* Burnt bronze. Highway dust, and far enough from --s-attn amber that a
        low-charge warning still reads as a warning — the one collision in this
        palette worth checking on screen rather than trusting. 5.17:1 against
        white, so it is safe as a fill. */
     tone:{
-      day:  {accent:'#A15C1E', hi:'#B96D28', a2:'#7E4715', tint:'#E08A2E'},
-      night:{accent:'#C87A33', hi:'#D98B41', a2:'#A15C1E', tint:'#EFA555'}
+      /* hi was #B96D28 (3.98:1) — one hair under the 4:1 floor the gradient's
+         top stop now has to clear, so it is #B86C28 (4.03:1). A one-digit
+         change nobody will see, kept in preference to loosening the test. */
+      day:  {accent:'#A15C1E', hi:'#B86C28', a2:'#7E4715', tint:'#E08A2E'},
+      night:{accent:'#A7662B', hi:'#AE6A2D', a2:'#7E4715', tint:'#EFA555'}
+    }},
+
+  /* ---- MIAMI -----------------------------------------------------------
+     Tesla published a Miami geofence on 3 July 2026 — the first city outside
+     Texas and California — and it is TINY: roughly 10 to 14 square miles of
+     western Miami-Dade, bounded by the Palmetto (SR-826) and US-41, covering
+     West Miami and a strip running out to Doral and Sweetwater. It leaves out
+     downtown Miami, Brickell, Miami Beach, MIA airport, and all but a corner
+     of Coral Gables.
+
+     That exclusion list is the scenario, and it is why Miami is not a re-skin
+     of anything:
+
+       1. NO AIRPORT ZONE. Every city so far has had one long, well-paid run
+          to lean on — AUS in Austin, Love Field in Dallas. MIA is outside the
+          service area, so Miami has none, and airportZone() returns null here.
+          The policy strip's airport toggle DISABLES itself and says why, which
+          it had to learn to do: before this it stayed live and did nothing at
+          all when clicked.
+       2. NO DOWNTOWN. There is no CBD work-curve monster like Austin's
+          Downtown core (base 14). Demand is office parks, a mall, a
+          university and suburbia, so fareK is BELOW 1: short hops in a small
+          box, priced accordingly.
+       3. CHARGING IS SLOW, not scarce. Miami's Supercharger coverage is
+          heavily legacy urban hardware — Dadeland Station is 12 stalls at
+          72 kW, Brickell 10 at 72 kW. Two 250 kW sites serve the geofence and
+          both sit on its edge. See CHARGERS_BY_CITY.miami.
+       4. FPL's time-of-use peak runs NOON TO 21:00 on summer weekdays at
+          26c/kWh, against Austin's five-hour 16:00-21:00 window. Nine hours
+          of expensive power covering the whole productive afternoon is the
+          single harshest number in the game, and it is FPL's published rate,
+          not a difficulty knob.
+       5. Florida is the most expensive place in the United States to insure a
+          car, hence insK 1.35 — the highest in the table by a wide margin.
+
+     And the new one: incK. Aggressive traffic plus daily summer downpours,
+     which DESIGN.md §5 always said Miami was about. The weather layer already
+     slowed cars and surged demand in rain; it did not touch incident risk,
+     which was a flat constant everywhere. Now it does, and Miami is the city
+     where that lands hardest. See incidentRisk(). */
+  miami:{name:'Miami', short:'Miami', lat:25.7750, lon:-80.3450, tz:'America/New_York',
+    permit:'Unsupervised', fleetCap:16,
+    fareK:0.94, depK:1.08, insK:1.35, incK:1.30,
+    /* FPL RTR-1 residential time-of-use, effective January 2026: 26c/kWh
+       on-peak, 9c off-peak, summer peak noon-21:00 weekdays. `mid` is the
+       standard non-TOU-ish shoulder. Note peakFrom:12 — nine hours, where
+       every other city has five or six. */
+    power:{peak:0.26, mid:0.15, off:0.09, peakFrom:12, peakTo:21, offFrom:22, offTo:7},
+    /* Lower than Dallas's $60,000 on purpose: fares are smaller here, power
+       is dearer for longer, and insurance is the worst in the country. The
+       target is what the city can actually pay, not a bigger number for its
+       own sake. As in Dallas, only the cash figure is machine-checked; the
+       safety clause is the player's own standard. */
+    goal:{cash:50000, text:'Clear $50,000 in the box Tesla drew — and keep safety above 75.'},
+    order:2,
+    /* The chain: Austin opens Dallas, Dallas opens Miami. Same trigger as
+       Dallas's, asked about a different city — which is exactly why the gate
+       had to learn to name one (see gateMet). */
+    needs:'shift1@dallas',
+    /* Deco magenta. Furthest from every status colour in the set, and the day
+       fill is the strongest in the table at 5.95:1 against white. */
+    tone:{
+      day:  {accent:'#B5257E', hi:'#C93690', a2:'#8E1C62', tint:'#F2559F'},
+      night:{accent:'#D4308D', hi:'#D63A92', a2:'#8E1C62', tint:'#F87FBB'}
     }}
 };
 /* Scenario order for the city tabs — by `order`, so the table can grow in any
@@ -2465,6 +2550,50 @@ function weatherSurgeBump(){
   if(f.precip>=0.4) return 0.12;
   return 0;
 }
+/* ---- INCIDENT RISK ----------------------------------------------------
+   Chance per car-second of a car getting stuck while carrying or fetching a
+   rider. This was the bare literal 0.00018 sitting inline in step(), which
+   made two true things impossible to say.
+
+   The first is that rain matters. The weather layer already slowed every car
+   (weatherSpeedMult) and surged the demand (weatherSurgeBump), and then a
+   Florida thunderstorm made no difference whatsoever to whether a car got
+   stuck — which is the one thing a camera-only driving stack is actually
+   worst at. The multipliers below are deliberately the harshest weather
+   factors in the file: a storm more than doubles the risk where it only costs
+   35% of the speed, because rain is a safety problem before it is a schedule
+   problem.
+
+   The second is that cities differ. `incK` is the per-city knob (CITIES),
+   1.0 everywhere except Miami's 1.30 — aggressive traffic in a small box.
+   DESIGN.md §5 always described Miami this way; there was simply nowhere to
+   put the number until now.
+
+   Both read forecastAt(hour()) — the SIM hour — so risk moves in lockstep
+   with the rain drawn on the map and with the speed penalty, rather than
+   each guessing its own weather. */
+const INC_BASE=0.00018;
+function weatherIncidentMult(){
+  const f=forecastAt(hour());
+  if(f.storm) return 2.2;
+  if(f.precip>=2) return 1.7;
+  if(f.precip>=0.4) return 1.25;
+  return 1;
+}
+function incidentRisk(){ return INC_BASE*cityK('incK')*weatherIncidentMult() }
+/* Why risk is above the baseline right now, as a short phrase, or '' when it
+   is not. The Incidents panel says this out loud: an invisible multiplier is
+   indistinguishable from bad luck, and a player who cannot see the reason
+   learns nothing from the consequence. */
+function incidentRiskNote(){
+  const w=weatherIncidentMult(), c=cityK('incK');
+  if(w<=1&&c<=1) return '';
+  const f=forecastAt(hour());
+  const why=[];
+  if(w>1) why.push(f.storm?'storms':'rain');
+  if(c>1) why.push(CITIES[S.city].short+' traffic');
+  return 'Risk '+Math.round((w*c-1)*100)+'% above baseline — '+why.join(' + ')+'.';
+}
 /* The city's actual current local time (real-world, via its timezone) —
    distinct from S.t, the in-game simulated clock shown as tb-clock. Also
    used for the console status strip's clock (c-clock), which used to show
@@ -2565,6 +2694,51 @@ const ZONES_BY_CITY={
     {n:'Deep Ellum Brewing', lat:32.7793,lng:-96.7745, base:5, p:'brewery', on:false},
     {n:'Peticolas Brewing',  lat:32.7930,lng:-96.8210, base:4, p:'brewery', on:false},
     {n:'Community Beer Co',  lat:32.7885,lng:-96.8290, base:5, p:'brewery', on:false}
+  ],
+  /* ---- MIAMI -----------------------------------------------------------
+     The published geofence is a box in western Miami-Dade, and everything
+     Miami is famous for is outside it: no downtown, no Brickell, no Miami
+     Beach, no MIA. What is left is a business park, a mall, a university and
+     a lot of suburbia — which is why this list looks nothing like the other
+     two, and why it has NO p:'airport' entry at all. Miami is the first
+     scenario without an airport run, and that absence is the design.
+
+     Consequence worth spelling out: the money here is the MORNING, not the
+     evening. Austin and Dallas both hand you a nightlife district (Rainey,
+     Uptown) that carries the late hours; Miami's nightlife is all in the
+     excluded half of the county. The rhythm is Fontainebleau and Westchester
+     commuting into Doral and back, so a player who learned to run late shifts
+     in Texas is working the wrong end of the clock here.
+
+     Same HONESTY NOTE as Dallas: the Supercharger coordinates in
+     CHARGERS_BY_CITY.miami are TRANSCRIBED from Tesla's own location pages to
+     the digit. These zone coordinates are NOT — they are neighbourhood
+     centroids placed from street geography, good to a block or so, which is
+     all a demand zone needs. The three taprooms are real Miami breweries
+     (Biscayne Bay and The Tank both sit in the Doral/Medley industrial belt,
+     Titanic is the Coral Gables institution on Ponce), placed the same way.
+
+     Three live by default like the other cities, but the MIX is work/work/home
+     rather than work/work/night, because there is no night district inside the
+     box to switch on. At the 06:00 open the work curve is 1.0 and home is 0.9,
+     so this opens slightly busier than Austin (~20 offers/h against 18.3) —
+     see offersPerHour(). Small box, dense demand, slow charging. */
+  miami:[
+    {n:'Doral business park', lat:25.8195,lng:-80.3553, base:11, p:'work',    on:true},
+    {n:'Fontainebleau',       lat:25.7740,lng:-80.3400, base:8,  p:'home',    on:true},
+    {n:'FIU / Sweetwater',    lat:25.7573,lng:-80.3739, base:8,  p:'work',    on:true},
+    {n:'Dolphin Mall',        lat:25.7860,lng:-80.3830, base:7,  p:'leisure', on:false},
+    {n:'Westchester',         lat:25.7450,lng:-80.3300, base:6,  p:'home',    on:false},
+    {n:'Flagami',             lat:25.7660,lng:-80.3200, base:5,  p:'home',    on:false},
+    {n:'West Miami',          lat:25.7620,lng:-80.2980, base:4,  p:'night',   on:false},
+    {n:'Tamiami',             lat:25.7580,lng:-80.3980, base:4,  p:'home',    on:false},
+    /* "Only a corner of Coral Gables" is how the launch map was described, so
+       this sits on the geofence edge rather than on Miracle Mile, which is
+       outside it. */
+    {n:'Gables edge',         lat:25.7455,lng:-80.2820, base:6,  p:'leisure', on:false},
+    {n:'Biscayne Bay Brewing', lat:25.8080,lng:-80.3230, base:5, p:'brewery', on:false},
+    {n:'The Tank Brewing',     lat:25.8290,lng:-80.3170, base:4, p:'brewery', on:false},
+    {n:'Titanic Brewing',      lat:25.7360,lng:-80.2790, base:5, p:'brewery', on:false}
   ]
 };
 /* Fresh objects every call — see the `on` note above. Never return the
@@ -2670,6 +2844,42 @@ const CHARGERS_BY_CITY={
      lat:32.7703573, lng:-96.8734674, stalls:8,  kw:250},
     {n:'The Hill',       site:'The Hill Shopping Center',
      lat:32.8816920, lng:-96.7675450, stalls:11, kw:72}
+  ],
+  /* ---- MIAMI -----------------------------------------------------------
+     Four real sites, every field transcribed from Tesla's own location pages,
+     same standard as the two cities above.
+
+     Miami is the city where charging is the problem, and not because there is
+     too little of it. There is plenty — it is just OLD. Dadeland Station is
+     twelve stalls at 72 kW, Brickell City Centre is ten at 72 kW, Miami Beach
+     eighteen at 72 kW: a legacy urban Supercharger belt built for overnight
+     top-ups, not for a car that has to be earning again in twenty minutes.
+     Compare Dallas, where S Riverfront alone is 34 stalls at 325 kW.
+
+     And the geography is against you as well. Only Doral sits inside the
+     geofence; the other three are south or east of it, so charging means
+     leaving the box. Measured with dist() from Doral business park, the zone
+     that anchors the default geofence:
+
+       Doral            2.3 km   8 stalls  250 kW
+       SW 24th Street   9.1 km   8 stalls  250 kW
+       Bird Road       10.9 km  12 stalls  250 kW
+       S Dixie Hwy     14.8 km  12 stalls   72 kW   <- never worth it
+
+     S Dixie Hwy is deliberately kept in the list even though it is close to a
+     trap: the panel shows distance, stalls and kW before you commit, and a
+     player who reads it will learn more from choosing not to go than from
+     never being offered it. Every city so far has exactly one 72 kW site;
+     Miami's is also its furthest. */
+  miami:[
+    {n:'Doral',          site:'Wawa',
+     lat:25.8059550, lng:-80.3378667, stalls:8,  kw:250},
+    {n:'SW 24th Street', site:'Wawa',
+     lat:25.7484550, lng:-80.3087290, stalls:8,  kw:250},
+    {n:'Bird Road',      site:'Bird Ludlam',
+     lat:25.7326890, lng:-80.3042484, stalls:12, kw:250},
+    {n:'S Dixie Hwy',    site:'Dadeland Station',
+     lat:25.6934800, lng:-80.3046400, stalls:12, kw:72}
   ]
 };
 function chargersFor(city){ return CHARGERS_BY_CITY[city]||CHARGERS_BY_CITY.austin }
@@ -3532,7 +3742,7 @@ function stepCar(c,dt){
   const moved=moveToward(c,tgt[0],tgt[1],km);
   drive(c,moved);
   /* incident risk while carrying or fetching a rider */
-  if((c.state==='onTrip'||c.state==='dispatched')&&Math.random()<0.00018*dt){
+  if((c.state==='onTrip'||c.state==='dispatched')&&Math.random()<incidentRisk()*dt){
     c.state='blocked'; c.blocked=0; c.needs=latency(); S.d.blocked++;
     log(c.id,'blocked — operator ETA '+Math.round(c.needs)+'s',1);
     sndBlocked();
@@ -4695,6 +4905,122 @@ const ROADS_BY_CITY={
     'SMU campus|Uptown':[32.8411,-96.7845,32.8411,-96.7852,32.8366,-96.7852,32.8366,-96.7798,32.8363,-96.7794,32.8353,-96.78,32.8306,-96.7815,32.8282,-96.7831,32.8235,-96.7852,32.8154,-96.7897,32.8088,-96.793,32.8069,-96.7934,32.7986,-96.7931,32.7963,-96.7934,32.7953,-96.7941,32.791,-96.8004,32.791,-96.8007,32.7929,-96.8028,32.796,-96.8019],
     'SMU campus|Victory Park':[32.8411,-96.7845,32.8411,-96.7852,32.8366,-96.7852,32.8366,-96.7798,32.8363,-96.7794,32.8353,-96.78,32.8306,-96.7815,32.8282,-96.7831,32.8235,-96.7852,32.8154,-96.7897,32.8088,-96.793,32.8069,-96.7934,32.7986,-96.7931,32.7961,-96.7935,32.7953,-96.7941,32.7916,-96.7996,32.79,-96.8015,32.7917,-96.8034,32.792,-96.8049,32.792,-96.8052,32.789,-96.8091,32.789,-96.81,32.7901,-96.8109],
     'Uptown|Victory Park':[32.796,-96.8019,32.7916,-96.8033,32.792,-96.8052,32.789,-96.8091,32.789,-96.81,32.7901,-96.8109]
+  },
+  miami:{
+    'Biscayne Bay Brewing|CH:Bird Road':[25.808,-80.323,25.808,-80.3253,25.8092,-80.3253,25.8091,-80.323,25.8088,-80.3222,25.8081,-80.3217,25.8052,-80.3213,25.7936,-80.3215,25.7824,-80.3211,25.7757,-80.3206,25.7711,-80.3207,25.7655,-80.3204,25.7608,-80.3212,25.7591,-80.3212,25.7539,-80.3201,25.746,-80.3201,25.7391,-80.3197,25.7384,-80.3199,25.734,-80.319,25.7331,-80.319,25.7329,-80.3189,25.7329,-80.3166,25.7333,-80.3049,25.733,-80.3049,25.733,-80.3044,25.7327,-80.3044],
+    'Biscayne Bay Brewing|CH:Doral':[25.808,-80.323,25.808,-80.3253,25.8044,-80.3252,25.8045,-80.3323,25.8054,-80.3345,25.8054,-80.3381,25.806,-80.3381],
+    'Biscayne Bay Brewing|CH:S Dixie Hwy':[25.808,-80.323,25.808,-80.3253,25.8092,-80.3253,25.8091,-80.323,25.8088,-80.3222,25.8081,-80.3217,25.8052,-80.3213,25.7936,-80.3215,25.7824,-80.3211,25.7757,-80.3206,25.7711,-80.3207,25.7655,-80.3204,25.7608,-80.3212,25.7591,-80.3212,25.7539,-80.3201,25.746,-80.3201,25.7394,-80.3198,25.7331,-80.3186,25.7279,-80.3185,25.7228,-80.3189,25.7137,-80.3181,25.6963,-80.3173,25.6876,-80.3172,25.6873,-80.3176,25.6876,-80.3183,25.6881,-80.3183,25.6884,-80.3178,25.6888,-80.3084,25.6925,-80.3038,25.6928,-80.3043,25.6934,-80.3043,25.6936,-80.3046],
+    'Biscayne Bay Brewing|CH:SW 24th Street':[25.808,-80.323,25.808,-80.3253,25.8092,-80.3253,25.8091,-80.323,25.8088,-80.3222,25.8081,-80.3217,25.8052,-80.3213,25.7936,-80.3215,25.7824,-80.3211,25.7757,-80.3206,25.7711,-80.3207,25.7655,-80.3204,25.7608,-80.3212,25.7591,-80.3212,25.7539,-80.3201,25.7506,-80.3203,25.7495,-80.3212,25.748,-80.3212,25.748,-80.3091,25.7486,-80.3091,25.7487,-80.3086,25.7485,-80.3086],
+    'Biscayne Bay Brewing|Dolphin Mall':[25.808,-80.323,25.808,-80.3253,25.7972,-80.325,25.7969,-80.3407,25.7969,-80.385,25.7902,-80.3848,25.79,-80.3845,25.7867,-80.3845,25.7857,-80.3836,25.7856,-80.3833,25.786,-80.3831],
+    'Biscayne Bay Brewing|Doral business park':[25.808,-80.323,25.808,-80.3253,25.8094,-80.3253,25.8094,-80.326,25.8099,-80.3278,25.8099,-80.3366,25.8117,-80.3483,25.8117,-80.3533,25.8185,-80.3534,25.8209,-80.3537,25.8209,-80.3551,25.8213,-80.3567,25.8207,-80.3568,25.8207,-80.357,25.8199,-80.3569,25.8199,-80.3553,25.8197,-80.3553],
+    'Biscayne Bay Brewing|FIU / Sweetwater':[25.808,-80.323,25.808,-80.3253,25.8092,-80.3253,25.8091,-80.323,25.8088,-80.3222,25.8081,-80.3217,25.8052,-80.3213,25.7936,-80.3215,25.7817,-80.321,25.7775,-80.3212,25.7668,-80.3206,25.7639,-80.3208,25.7626,-80.3215,25.7623,-80.3232,25.7612,-80.3763,25.7578,-80.3763,25.7579,-80.3759,25.7575,-80.3755,25.7573,-80.3745],
+    'Biscayne Bay Brewing|Flagami':[25.808,-80.323,25.808,-80.3253,25.8092,-80.3253,25.809,-80.3225,25.8081,-80.3217,25.8069,-80.3215,25.8052,-80.3213,25.7936,-80.3215,25.7817,-80.321,25.7775,-80.3212,25.7733,-80.3209,25.7723,-80.3213,25.7717,-80.322,25.7705,-80.3221,25.7697,-80.3219,25.7698,-80.3201,25.766,-80.3199],
+    'Biscayne Bay Brewing|Fontainebleau':[25.808,-80.323,25.808,-80.3253,25.7972,-80.325,25.797,-80.3371,25.7733,-80.3366,25.7732,-80.3381,25.7725,-80.3398,25.7732,-80.3406,25.774,-80.34],
+    'Biscayne Bay Brewing|Gables edge':[25.808,-80.323,25.808,-80.3253,25.8092,-80.3253,25.8091,-80.323,25.8088,-80.3222,25.8081,-80.3217,25.8052,-80.3213,25.7936,-80.3215,25.7824,-80.3211,25.7757,-80.3206,25.7711,-80.3207,25.7655,-80.3204,25.7608,-80.3212,25.7591,-80.3212,25.7539,-80.3201,25.7506,-80.3203,25.7495,-80.3212,25.748,-80.3212,25.748,-80.2999,25.7485,-80.285,25.7467,-80.2848,25.7467,-80.2822,25.7455,-80.2819],
+    'Biscayne Bay Brewing|Tamiami':[25.808,-80.323,25.808,-80.3253,25.8092,-80.3253,25.8091,-80.323,25.8088,-80.3222,25.8081,-80.3217,25.8052,-80.3213,25.7936,-80.3215,25.7871,-80.3212,25.7834,-80.3217,25.7822,-80.3229,25.7819,-80.325,25.7816,-80.3333,25.7817,-80.3648,25.7811,-80.3685,25.7781,-80.3819,25.7769,-80.3851,25.7759,-80.3863,25.7749,-80.3868,25.7737,-80.3869,25.7685,-80.3863,25.7636,-80.3862,25.7614,-80.3873,25.7611,-80.3876,25.7611,-80.3928,25.7587,-80.3927,25.7586,-80.3981,25.7583,-80.3983,25.7572,-80.3982,25.7571,-80.398,25.758,-80.3981],
+    'Biscayne Bay Brewing|The Tank Brewing':[25.808,-80.323,25.808,-80.3253,25.8262,-80.3258,25.8262,-80.3178,25.8289,-80.3178,25.8289,-80.317],
+    'Biscayne Bay Brewing|Titanic Brewing':[25.808,-80.323,25.808,-80.3253,25.8092,-80.3253,25.8091,-80.323,25.8088,-80.3222,25.8081,-80.3217,25.8052,-80.3213,25.7936,-80.3215,25.7824,-80.3211,25.7757,-80.3206,25.7711,-80.3207,25.7655,-80.3204,25.7608,-80.3212,25.7591,-80.3212,25.7539,-80.3201,25.746,-80.3201,25.7391,-80.3197,25.7384,-80.3199,25.7329,-80.3189,25.7343,-80.2736,25.7343,-80.2754,25.7351,-80.2756,25.7358,-80.2783,25.7358,-80.279],
+    'Biscayne Bay Brewing|West Miami':[25.808,-80.323,25.808,-80.3253,25.8092,-80.3253,25.8091,-80.323,25.8088,-80.3222,25.8081,-80.3217,25.8052,-80.3213,25.7936,-80.3215,25.7817,-80.321,25.7775,-80.3212,25.7733,-80.3209,25.7723,-80.3213,25.7714,-80.3221,25.7698,-80.322,25.7706,-80.2982,25.762,-80.2979],
+    'Biscayne Bay Brewing|Westchester':[25.808,-80.323,25.808,-80.3253,25.8092,-80.3253,25.8091,-80.323,25.8088,-80.3222,25.8081,-80.3217,25.8052,-80.3213,25.7936,-80.3215,25.7824,-80.3211,25.7757,-80.3206,25.7711,-80.3207,25.7655,-80.3204,25.7608,-80.3212,25.7591,-80.3212,25.7546,-80.3202,25.7521,-80.3201,25.7506,-80.3203,25.7495,-80.3212,25.7482,-80.3213,25.748,-80.3277,25.7454,-80.3276,25.7453,-80.3288,25.7448,-80.3299],
+    'CH:Bird Road|Dolphin Mall':[25.7327,-80.3044,25.733,-80.3044,25.733,-80.3048,25.7333,-80.3048,25.7333,-80.3031,25.7335,-80.3029,25.7331,-80.315,25.7331,-80.3178,25.7334,-80.3181,25.7344,-80.3182,25.7383,-80.3194,25.7461,-80.3198,25.7539,-80.3198,25.759,-80.3209,25.761,-80.3209,25.7646,-80.3202,25.7723,-80.3204,25.7755,-80.32,25.7786,-80.32,25.7799,-80.3205,25.7811,-80.3216,25.7818,-80.3232,25.7819,-80.3242,25.7816,-80.3333,25.7816,-80.3576,25.782,-80.3629,25.7815,-80.3685,25.7817,-80.3687,25.7842,-80.3686,25.784,-80.3697,25.7828,-80.3719,25.7828,-80.3797,25.7846,-80.3798,25.7851,-80.3826,25.7856,-80.3833,25.786,-80.3831],
+    'CH:Bird Road|Doral business park':[25.7327,-80.3044,25.733,-80.3044,25.733,-80.3048,25.7333,-80.3048,25.7333,-80.3031,25.7335,-80.3029,25.7331,-80.3178,25.7334,-80.3181,25.7344,-80.3182,25.7383,-80.3194,25.7461,-80.3198,25.7539,-80.3198,25.759,-80.3209,25.761,-80.3209,25.7646,-80.3202,25.7694,-80.3204,25.7771,-80.3202,25.7837,-80.3209,25.7953,-80.3212,25.8009,-80.3209,25.8072,-80.3209,25.8079,-80.3205,25.8083,-80.3199,25.8087,-80.3197,25.8093,-80.3198,25.8094,-80.326,25.8099,-80.3278,25.8099,-80.3366,25.8117,-80.3483,25.8117,-80.3533,25.8162,-80.3533,25.8209,-80.3537,25.8209,-80.3551,25.8213,-80.3567,25.8207,-80.3568,25.8207,-80.357,25.8199,-80.3569,25.8199,-80.3553,25.8197,-80.3553],
+    'CH:Bird Road|FIU / Sweetwater':[25.7327,-80.3044,25.733,-80.3044,25.733,-80.3048,25.7333,-80.3048,25.7333,-80.3031,25.7335,-80.3029,25.7331,-80.315,25.7332,-80.318,25.7383,-80.3194,25.7396,-80.3195,25.7461,-80.3198,25.7539,-80.3198,25.7571,-80.3204,25.7584,-80.3204,25.7597,-80.3199,25.7625,-80.32,25.7612,-80.3763,25.7578,-80.3763,25.7579,-80.3759,25.7575,-80.3755,25.7573,-80.3745],
+    'CH:Bird Road|Flagami':[25.7327,-80.3044,25.733,-80.3044,25.733,-80.3048,25.7333,-80.3048,25.7333,-80.3031,25.7335,-80.3029,25.7331,-80.315,25.7331,-80.3178,25.7334,-80.3181,25.7344,-80.3182,25.7383,-80.3194,25.7461,-80.3198,25.7539,-80.3198,25.759,-80.3209,25.761,-80.3209,25.7646,-80.3202,25.7694,-80.3204,25.7717,-80.32,25.772,-80.3197,25.772,-80.3193,25.7718,-80.319,25.7702,-80.319,25.7698,-80.3187,25.7699,-80.3184,25.7681,-80.3183,25.768,-80.32,25.766,-80.3199],
+    'CH:Bird Road|Fontainebleau':[25.7327,-80.3044,25.733,-80.3044,25.733,-80.3048,25.7333,-80.3048,25.7333,-80.3031,25.7335,-80.3029,25.7331,-80.315,25.7332,-80.318,25.7383,-80.3194,25.7396,-80.3195,25.7461,-80.3198,25.7539,-80.3198,25.7571,-80.3204,25.7584,-80.3204,25.7597,-80.3199,25.7624,-80.3199,25.7621,-80.3361,25.7733,-80.3365,25.7732,-80.3381,25.7725,-80.3398,25.7732,-80.3406,25.774,-80.34],
+    'CH:Bird Road|Gables edge':[25.7327,-80.3044,25.733,-80.3044,25.733,-80.3048,25.7333,-80.3048,25.734,-80.2865,25.7446,-80.2871,25.7449,-80.2819,25.7455,-80.2819],
+    'CH:Bird Road|Tamiami':[25.7327,-80.3044,25.733,-80.3044,25.733,-80.3048,25.7333,-80.3048,25.7333,-80.3031,25.7335,-80.3029,25.7331,-80.315,25.7332,-80.318,25.7383,-80.3194,25.7396,-80.3195,25.7461,-80.3198,25.7539,-80.3198,25.7571,-80.3204,25.7584,-80.3204,25.7597,-80.3199,25.7625,-80.32,25.7611,-80.3797,25.7611,-80.3928,25.7587,-80.3927,25.7586,-80.3981,25.7583,-80.3983,25.7572,-80.3982,25.7571,-80.398,25.758,-80.3981],
+    'CH:Bird Road|The Tank Brewing':[25.7327,-80.3044,25.733,-80.3044,25.733,-80.3048,25.7333,-80.3048,25.7333,-80.3031,25.7335,-80.3029,25.7331,-80.3178,25.7334,-80.3181,25.7344,-80.3182,25.7383,-80.3194,25.7461,-80.3198,25.7539,-80.3198,25.759,-80.3209,25.761,-80.3209,25.7646,-80.3202,25.7694,-80.3204,25.7771,-80.3202,25.7837,-80.3209,25.7953,-80.3212,25.8009,-80.3209,25.8232,-80.3215,25.825,-80.3211,25.826,-80.3205,25.8262,-80.3178,25.8289,-80.3178,25.8289,-80.317],
+    'CH:Bird Road|Titanic Brewing':[25.7327,-80.3044,25.733,-80.3044,25.733,-80.3048,25.7333,-80.3048,25.7343,-80.2736,25.7343,-80.2754,25.7351,-80.2756,25.7358,-80.2783,25.7358,-80.279],
+    'CH:Bird Road|West Miami':[25.7327,-80.3044,25.733,-80.3044,25.733,-80.3048,25.7333,-80.3048,25.7334,-80.3029,25.748,-80.3036,25.7481,-80.2975,25.762,-80.2979],
+    'CH:Bird Road|Westchester':[25.7327,-80.3044,25.733,-80.3044,25.733,-80.3048,25.7333,-80.3048,25.7333,-80.3031,25.7335,-80.3029,25.733,-80.3185,25.7334,-80.3275,25.7454,-80.3276,25.7453,-80.3288,25.7448,-80.3299],
+    'CH:Doral|Dolphin Mall':[25.806,-80.3381,25.8062,-80.338,25.8062,-80.3374,25.8055,-80.3373,25.797,-80.3371,25.7968,-80.3611,25.7969,-80.385,25.7902,-80.3848,25.79,-80.3845,25.7867,-80.3845,25.7857,-80.3836,25.7856,-80.3833,25.786,-80.3831],
+    'CH:Doral|Doral business park':[25.806,-80.3381,25.8062,-80.338,25.8062,-80.3374,25.8052,-80.3372,25.81,-80.3373,25.8117,-80.3483,25.8117,-80.3533,25.8185,-80.3534,25.8209,-80.3537,25.8209,-80.3551,25.8213,-80.3567,25.8207,-80.3568,25.8207,-80.357,25.8199,-80.3569,25.8199,-80.3553,25.8197,-80.3553],
+    'CH:Doral|FIU / Sweetwater':[25.806,-80.3381,25.8062,-80.338,25.8062,-80.3374,25.8055,-80.3373,25.7845,-80.3367,25.7734,-80.3367,25.7621,-80.3362,25.7612,-80.3763,25.7578,-80.3763,25.7579,-80.3759,25.7575,-80.3755,25.7573,-80.3745],
+    'CH:Doral|Flagami':[25.806,-80.3381,25.8062,-80.338,25.8062,-80.3374,25.8055,-80.3373,25.7968,-80.3371,25.7969,-80.3219,25.7967,-80.3217,25.7817,-80.321,25.7775,-80.3212,25.7733,-80.3209,25.7723,-80.3213,25.7717,-80.322,25.7705,-80.3221,25.7697,-80.3219,25.7698,-80.3201,25.766,-80.3199],
+    'CH:Doral|Fontainebleau':[25.806,-80.3381,25.8062,-80.338,25.8062,-80.3374,25.8055,-80.3373,25.7733,-80.3366,25.7732,-80.3381,25.7725,-80.3398,25.7732,-80.3406,25.774,-80.34],
+    'CH:Doral|Gables edge':[25.806,-80.3381,25.8062,-80.338,25.8062,-80.3374,25.8055,-80.3373,25.7968,-80.3371,25.7969,-80.3219,25.7967,-80.3217,25.7757,-80.3206,25.7711,-80.3207,25.7655,-80.3204,25.7608,-80.3212,25.7591,-80.3212,25.7539,-80.3201,25.7506,-80.3203,25.7495,-80.3212,25.748,-80.3212,25.748,-80.2999,25.7485,-80.285,25.7467,-80.2848,25.7467,-80.2822,25.7455,-80.2819],
+    'CH:Doral|Tamiami':[25.806,-80.3381,25.8062,-80.338,25.8062,-80.3374,25.8055,-80.3373,25.7845,-80.3367,25.7835,-80.3367,25.7828,-80.337,25.7829,-80.3384,25.7819,-80.3406,25.7816,-80.3446,25.7817,-80.3648,25.7811,-80.3685,25.7788,-80.3792,25.7771,-80.3847,25.7759,-80.3863,25.7744,-80.3869,25.7685,-80.3863,25.7636,-80.3862,25.7614,-80.3873,25.7611,-80.3876,25.7611,-80.3928,25.7587,-80.3927,25.7586,-80.3981,25.7583,-80.3983,25.7572,-80.3982,25.7571,-80.398,25.758,-80.3981],
+    'CH:Doral|The Tank Brewing':[25.806,-80.3381,25.8062,-80.338,25.8062,-80.3374,25.8052,-80.3372,25.8149,-80.3373,25.8156,-80.3375,25.8262,-80.3378,25.8262,-80.3178,25.8289,-80.3178,25.8289,-80.317],
+    'CH:Doral|Titanic Brewing':[25.806,-80.3381,25.8062,-80.338,25.8062,-80.3374,25.8055,-80.3373,25.7968,-80.3371,25.7969,-80.3219,25.7967,-80.3217,25.7757,-80.3206,25.7711,-80.3207,25.7655,-80.3204,25.7608,-80.3212,25.7591,-80.3212,25.7539,-80.3201,25.746,-80.3201,25.7391,-80.3197,25.7384,-80.3199,25.7329,-80.3189,25.7343,-80.2736,25.7343,-80.2754,25.7351,-80.2756,25.7358,-80.2783,25.7358,-80.279],
+    'CH:Doral|West Miami':[25.806,-80.3381,25.8062,-80.338,25.8062,-80.3374,25.8055,-80.3373,25.7834,-80.3368,25.7832,-80.3342,25.7825,-80.3312,25.7826,-80.3179,25.7817,-80.3173,25.7809,-80.3161,25.7775,-80.3127,25.7729,-80.3123,25.7701,-80.3124,25.7706,-80.2982,25.762,-80.2979],
+    'CH:Doral|Westchester':[25.806,-80.3381,25.8062,-80.338,25.8062,-80.3374,25.8055,-80.3373,25.7968,-80.3371,25.7969,-80.3219,25.7967,-80.3217,25.7757,-80.3206,25.7711,-80.3207,25.7655,-80.3204,25.7608,-80.3212,25.7591,-80.3212,25.7539,-80.3201,25.7506,-80.3203,25.7495,-80.3212,25.7486,-80.3212,25.7481,-80.3215,25.748,-80.3277,25.7454,-80.3276,25.7453,-80.3288,25.7448,-80.3299],
+    'CH:S Dixie Hwy|Dolphin Mall':[25.6936,-80.3046,25.6944,-80.3064,25.6962,-80.306,25.6961,-80.3094,25.7034,-80.3096,25.7031,-80.3165,25.7034,-80.3169,25.7053,-80.3174,25.7207,-80.3186,25.7246,-80.318,25.7332,-80.3183,25.7383,-80.3194,25.7461,-80.3198,25.7539,-80.3198,25.759,-80.3209,25.761,-80.3209,25.7646,-80.3202,25.7723,-80.3204,25.7755,-80.32,25.7786,-80.32,25.7802,-80.3207,25.7811,-80.3216,25.7816,-80.3226,25.7819,-80.3242,25.7816,-80.3333,25.7816,-80.3576,25.782,-80.3629,25.7815,-80.3685,25.7817,-80.3687,25.7842,-80.3686,25.784,-80.3697,25.7828,-80.3719,25.7828,-80.3797,25.7846,-80.3798,25.7851,-80.3826,25.7856,-80.3833,25.786,-80.3831],
+    'CH:S Dixie Hwy|Doral business park':[25.6936,-80.3046,25.6944,-80.3064,25.6962,-80.306,25.6961,-80.3094,25.7034,-80.3096,25.7031,-80.3165,25.7034,-80.3169,25.704,-80.3171,25.7067,-80.3176,25.7136,-80.3179,25.7207,-80.3186,25.7246,-80.318,25.7332,-80.3183,25.7383,-80.3194,25.7461,-80.3198,25.7539,-80.3198,25.759,-80.3209,25.761,-80.3209,25.7646,-80.3202,25.7694,-80.3204,25.7771,-80.3202,25.7837,-80.3209,25.7968,-80.3212,25.8009,-80.3209,25.8072,-80.3209,25.8079,-80.3205,25.8083,-80.3199,25.8087,-80.3197,25.8093,-80.3198,25.8094,-80.326,25.8099,-80.3278,25.8099,-80.3366,25.8117,-80.3483,25.8117,-80.3533,25.8185,-80.3534,25.8209,-80.3537,25.8209,-80.3551,25.8213,-80.3567,25.8207,-80.3568,25.8207,-80.357,25.8199,-80.3569,25.8199,-80.3553,25.8197,-80.3553],
+    'CH:S Dixie Hwy|FIU / Sweetwater':[25.6936,-80.3046,25.6944,-80.3064,25.6962,-80.306,25.6961,-80.3094,25.7034,-80.3096,25.7031,-80.3165,25.7034,-80.3169,25.7044,-80.3172,25.7067,-80.3176,25.7136,-80.3179,25.7207,-80.3186,25.7246,-80.318,25.7332,-80.3183,25.7383,-80.3194,25.7461,-80.3198,25.7539,-80.3198,25.7571,-80.3204,25.7584,-80.3204,25.7597,-80.3199,25.7625,-80.32,25.7612,-80.3763,25.7578,-80.3763,25.7579,-80.3759,25.7575,-80.3755,25.7573,-80.3745],
+    'CH:S Dixie Hwy|Flagami':[25.6936,-80.3046,25.6944,-80.3064,25.6962,-80.306,25.6961,-80.3094,25.7034,-80.3096,25.7031,-80.3165,25.7034,-80.3169,25.7053,-80.3174,25.7207,-80.3186,25.7246,-80.318,25.7332,-80.3183,25.7383,-80.3194,25.7461,-80.3198,25.7539,-80.3198,25.759,-80.3209,25.761,-80.3209,25.7646,-80.3202,25.7694,-80.3204,25.7717,-80.32,25.772,-80.3197,25.772,-80.3193,25.7718,-80.319,25.7702,-80.319,25.7698,-80.3187,25.7699,-80.3184,25.7681,-80.3183,25.768,-80.32,25.766,-80.3199],
+    'CH:S Dixie Hwy|Fontainebleau':[25.6936,-80.3046,25.6944,-80.3064,25.6962,-80.306,25.6961,-80.3094,25.7034,-80.3096,25.7031,-80.3165,25.7034,-80.3169,25.7044,-80.3172,25.7067,-80.3176,25.7136,-80.3179,25.7207,-80.3186,25.7246,-80.318,25.7332,-80.3183,25.7383,-80.3194,25.7461,-80.3198,25.7539,-80.3198,25.7571,-80.3204,25.7584,-80.3204,25.7597,-80.3199,25.7624,-80.3199,25.7621,-80.3361,25.7733,-80.3365,25.7732,-80.3381,25.7725,-80.3398,25.7732,-80.3406,25.774,-80.34],
+    'CH:S Dixie Hwy|Gables edge':[25.6936,-80.3046,25.6944,-80.3064,25.6962,-80.306,25.6965,-80.299,25.7075,-80.2855,25.7329,-80.2864,25.7446,-80.2871,25.7449,-80.2819,25.7455,-80.2819],
+    'CH:S Dixie Hwy|Tamiami':[25.6936,-80.3046,25.6944,-80.3064,25.6962,-80.306,25.6961,-80.3094,25.7034,-80.3096,25.7031,-80.3165,25.7034,-80.3169,25.7044,-80.3172,25.7067,-80.3176,25.7136,-80.3179,25.7207,-80.3186,25.7246,-80.318,25.7332,-80.3183,25.7383,-80.3194,25.7461,-80.3198,25.7539,-80.3198,25.7571,-80.3204,25.7584,-80.3204,25.7597,-80.3199,25.7625,-80.32,25.7611,-80.3797,25.7611,-80.3928,25.7587,-80.3927,25.7586,-80.3981,25.7583,-80.3983,25.7572,-80.3982,25.7571,-80.398,25.758,-80.3981],
+    'CH:S Dixie Hwy|The Tank Brewing':[25.6936,-80.3046,25.6944,-80.3064,25.6962,-80.306,25.6961,-80.3094,25.7034,-80.3096,25.7031,-80.3165,25.7034,-80.3169,25.704,-80.3171,25.7067,-80.3176,25.7136,-80.3179,25.7207,-80.3186,25.7246,-80.318,25.7332,-80.3183,25.7383,-80.3194,25.7461,-80.3198,25.7539,-80.3198,25.759,-80.3209,25.761,-80.3209,25.7646,-80.3202,25.7694,-80.3204,25.7771,-80.3202,25.7837,-80.3209,25.7953,-80.3212,25.8009,-80.3209,25.8232,-80.3215,25.825,-80.3211,25.826,-80.3205,25.8262,-80.3178,25.8289,-80.3178,25.8289,-80.317],
+    'CH:S Dixie Hwy|Titanic Brewing':[25.6936,-80.3046,25.6944,-80.3064,25.6962,-80.306,25.6965,-80.299,25.7038,-80.2902,25.7193,-80.2708,25.7204,-80.2719,25.7216,-80.2725,25.7223,-80.2726,25.7231,-80.2739,25.7248,-80.2731,25.7281,-80.2731,25.7311,-80.2738,25.7324,-80.2743,25.7334,-80.275,25.7344,-80.2752,25.7343,-80.2754,25.7351,-80.2756,25.7358,-80.2783,25.7358,-80.279],
+    'CH:S Dixie Hwy|West Miami':[25.6936,-80.3046,25.6944,-80.3064,25.6962,-80.306,25.6964,-80.3011,25.7155,-80.3022,25.748,-80.3036,25.7481,-80.2975,25.762,-80.2979],
+    'CH:S Dixie Hwy|Westchester':[25.6936,-80.3046,25.6944,-80.3064,25.6962,-80.306,25.6961,-80.3094,25.7034,-80.3096,25.7031,-80.3165,25.7034,-80.3169,25.704,-80.3171,25.7067,-80.3176,25.7136,-80.3179,25.7207,-80.3186,25.7246,-80.318,25.7332,-80.3183,25.7383,-80.3194,25.7441,-80.3197,25.7455,-80.3197,25.7463,-80.3194,25.7472,-80.3184,25.7482,-80.3184,25.748,-80.3277,25.7454,-80.3276,25.7453,-80.3288,25.7448,-80.3299],
+    'CH:SW 24th Street|Dolphin Mall':[25.7485,-80.3086,25.7487,-80.3086,25.7486,-80.3091,25.7481,-80.3091,25.7482,-80.3185,25.7472,-80.3185,25.747,-80.3187,25.747,-80.3194,25.7474,-80.3197,25.7539,-80.3198,25.759,-80.3209,25.761,-80.3209,25.7646,-80.3202,25.7723,-80.3204,25.7755,-80.32,25.7786,-80.32,25.7799,-80.3205,25.7811,-80.3216,25.7818,-80.3232,25.7819,-80.3242,25.7816,-80.3333,25.7816,-80.3576,25.782,-80.3629,25.7815,-80.3685,25.7817,-80.3687,25.7842,-80.3686,25.784,-80.3697,25.7828,-80.3719,25.7828,-80.3797,25.7846,-80.3798,25.7851,-80.3826,25.7856,-80.3833,25.786,-80.3831],
+    'CH:SW 24th Street|Doral business park':[25.7485,-80.3086,25.7487,-80.3086,25.7486,-80.3091,25.7481,-80.3091,25.7482,-80.3185,25.7472,-80.3185,25.7469,-80.3189,25.747,-80.3194,25.7478,-80.3198,25.7539,-80.3198,25.759,-80.3209,25.761,-80.3209,25.7646,-80.3202,25.7694,-80.3204,25.7771,-80.3202,25.7837,-80.3209,25.7953,-80.3212,25.8009,-80.3209,25.8072,-80.3209,25.8079,-80.3205,25.8083,-80.3199,25.8087,-80.3197,25.8093,-80.3198,25.8094,-80.326,25.8099,-80.3278,25.8099,-80.3366,25.8117,-80.3483,25.8117,-80.3533,25.8185,-80.3534,25.8209,-80.3537,25.8209,-80.3551,25.8213,-80.3567,25.8207,-80.3568,25.8207,-80.357,25.8199,-80.3569,25.8199,-80.3553,25.8197,-80.3553],
+    'CH:SW 24th Street|FIU / Sweetwater':[25.7485,-80.3086,25.7487,-80.3086,25.7486,-80.3091,25.7481,-80.3091,25.7482,-80.3212,25.7477,-80.3356,25.7621,-80.3361,25.7612,-80.3763,25.7578,-80.3763,25.7579,-80.3759,25.7575,-80.3755,25.7573,-80.3745],
+    'CH:SW 24th Street|Flagami':[25.7485,-80.3086,25.7487,-80.3086,25.7486,-80.3091,25.7481,-80.3091,25.7482,-80.3185,25.7472,-80.3185,25.747,-80.3187,25.747,-80.3194,25.7474,-80.3197,25.7539,-80.3198,25.759,-80.3209,25.761,-80.3209,25.7646,-80.3202,25.7694,-80.3204,25.7717,-80.32,25.772,-80.3197,25.772,-80.3193,25.7718,-80.319,25.7702,-80.319,25.7698,-80.3187,25.7699,-80.3184,25.7681,-80.3183,25.768,-80.32,25.766,-80.3199],
+    'CH:SW 24th Street|Fontainebleau':[25.7485,-80.3086,25.7487,-80.3086,25.7486,-80.3091,25.7481,-80.3091,25.7482,-80.3212,25.7477,-80.3356,25.7733,-80.3365,25.7732,-80.3381,25.7725,-80.3398,25.7732,-80.3406,25.774,-80.34],
+    'CH:SW 24th Street|Gables edge':[25.7485,-80.3086,25.7483,-80.3086,25.7483,-80.3079,25.748,-80.3079,25.748,-80.2999,25.7485,-80.285,25.7467,-80.2848,25.7467,-80.2822,25.7455,-80.2819],
+    'CH:SW 24th Street|Tamiami':[25.7485,-80.3086,25.7487,-80.3086,25.7486,-80.3091,25.7481,-80.3091,25.7482,-80.3212,25.7468,-80.3658,25.7465,-80.3816,25.7462,-80.3852,25.7463,-80.3882,25.7457,-80.3898,25.7446,-80.3912,25.7444,-80.3921,25.7456,-80.3921,25.7466,-80.3918,25.7477,-80.3909,25.7489,-80.3903,25.7517,-80.3903,25.7519,-80.3929,25.7533,-80.3957,25.7553,-80.3974,25.7565,-80.3979,25.758,-80.3981],
+    'CH:SW 24th Street|The Tank Brewing':[25.7485,-80.3086,25.7487,-80.3086,25.7486,-80.3091,25.7481,-80.3091,25.7482,-80.3185,25.7472,-80.3185,25.7469,-80.3189,25.747,-80.3194,25.7478,-80.3198,25.7539,-80.3198,25.759,-80.3209,25.761,-80.3209,25.7646,-80.3202,25.7694,-80.3204,25.7771,-80.3202,25.7837,-80.3209,25.7953,-80.3212,25.8009,-80.3209,25.8232,-80.3215,25.825,-80.3211,25.826,-80.3205,25.8262,-80.3178,25.8289,-80.3178,25.8289,-80.317],
+    'CH:SW 24th Street|Titanic Brewing':[25.7485,-80.3086,25.7483,-80.3086,25.7483,-80.3079,25.748,-80.3079,25.748,-80.2999,25.7484,-80.2873,25.7446,-80.2871,25.7447,-80.2824,25.7439,-80.2816,25.7421,-80.2807,25.7415,-80.2796,25.7416,-80.2746,25.7363,-80.2744,25.7344,-80.2737,25.7343,-80.2754,25.7351,-80.2756,25.7358,-80.2783,25.7358,-80.279],
+    'CH:SW 24th Street|West Miami':[25.7485,-80.3086,25.7483,-80.3086,25.7483,-80.3079,25.748,-80.3079,25.7481,-80.2975,25.762,-80.2979],
+    'CH:SW 24th Street|Westchester':[25.7485,-80.3086,25.7487,-80.3086,25.7486,-80.3091,25.7481,-80.3091,25.7482,-80.3212,25.748,-80.3277,25.7454,-80.3276,25.7453,-80.3288,25.7448,-80.3299],
+    'Dolphin Mall|Doral business park':[25.786,-80.3831,25.7856,-80.3833,25.7857,-80.3836,25.7867,-80.3845,25.7897,-80.3846,25.79,-80.3843,25.7903,-80.3848,25.7968,-80.385,25.7969,-80.369,25.8116,-80.3694,25.8115,-80.3615,25.8121,-80.3616,25.8138,-80.3613,25.8182,-80.3594,25.8194,-80.3594,25.8209,-80.3602,25.8214,-80.3591,25.8214,-80.3573,25.8212,-80.3567,25.8207,-80.3568,25.8207,-80.357,25.8199,-80.3569,25.8199,-80.3553,25.8197,-80.3553],
+    'Dolphin Mall|FIU / Sweetwater':[25.786,-80.3831,25.7856,-80.3833,25.7851,-80.3826,25.7846,-80.3799,25.7827,-80.3798,25.7826,-80.3723,25.7829,-80.371,25.7839,-80.3696,25.7841,-80.3688,25.7823,-80.3688,25.7769,-80.3696,25.7747,-80.3696,25.7614,-80.3686,25.7612,-80.3763,25.7578,-80.3763,25.7579,-80.3759,25.7575,-80.3755,25.7573,-80.3745],
+    'Dolphin Mall|Flagami':[25.786,-80.3831,25.7856,-80.3833,25.7851,-80.3826,25.7846,-80.3799,25.7827,-80.3798,25.7826,-80.3723,25.7829,-80.371,25.7839,-80.3696,25.7841,-80.3688,25.7792,-80.3692,25.7785,-80.3697,25.7784,-80.3706,25.7787,-80.371,25.7793,-80.371,25.7798,-80.3703,25.7805,-80.3674,25.7811,-80.3616,25.7813,-80.3334,25.7811,-80.3318,25.7811,-80.3262,25.7807,-80.3229,25.7802,-80.3219,25.7797,-80.3215,25.7771,-80.3211,25.7733,-80.3209,25.7723,-80.3213,25.7714,-80.3221,25.7698,-80.322,25.7698,-80.3201,25.766,-80.3199],
+    'Dolphin Mall|Fontainebleau':[25.786,-80.3831,25.7856,-80.3833,25.7851,-80.3826,25.7846,-80.3799,25.7827,-80.3798,25.7826,-80.3723,25.7829,-80.371,25.7841,-80.369,25.7839,-80.3671,25.7831,-80.3659,25.7826,-80.3645,25.7826,-80.3588,25.7834,-80.3545,25.7835,-80.3527,25.7834,-80.3474,25.7832,-80.3467,25.7832,-80.3385,25.7834,-80.3368,25.7733,-80.3366,25.7732,-80.3381,25.7725,-80.3398,25.7732,-80.3406,25.774,-80.34],
+    'Dolphin Mall|Gables edge':[25.786,-80.3831,25.7856,-80.3833,25.7851,-80.3826,25.7846,-80.3799,25.7827,-80.3798,25.7826,-80.3723,25.7829,-80.371,25.7839,-80.3696,25.7841,-80.3688,25.7792,-80.3692,25.7785,-80.3697,25.7784,-80.3706,25.7787,-80.371,25.7793,-80.371,25.7796,-80.3707,25.7803,-80.3685,25.7809,-80.3645,25.7812,-80.3577,25.7813,-80.3261,25.7808,-80.3215,25.7796,-80.3164,25.7796,-80.3139,25.7801,-80.312,25.7835,-80.3049,25.7841,-80.3029,25.7845,-80.294,25.7839,-80.2909,25.7838,-80.2888,25.7836,-80.2886,25.7786,-80.2885,25.7776,-80.2883,25.7446,-80.2871,25.7449,-80.2819,25.7455,-80.2819],
+    'Dolphin Mall|Tamiami':[25.786,-80.3831,25.7856,-80.3833,25.7851,-80.3826,25.7846,-80.3799,25.7828,-80.3798,25.7827,-80.3874,25.7829,-80.3877,25.7856,-80.3879,25.786,-80.3876,25.786,-80.3867,25.7855,-80.3863,25.7849,-80.3862,25.7783,-80.3863,25.7744,-80.3874,25.7734,-80.3874,25.7708,-80.3865,25.7636,-80.3862,25.7614,-80.3873,25.7611,-80.3876,25.7611,-80.3928,25.7587,-80.3927,25.7586,-80.3981,25.7583,-80.3983,25.7572,-80.3982,25.7571,-80.398,25.758,-80.3981],
+    'Dolphin Mall|The Tank Brewing':[25.786,-80.3831,25.7856,-80.3833,25.7857,-80.3836,25.7867,-80.3845,25.7897,-80.3846,25.79,-80.3843,25.7903,-80.3848,25.7968,-80.385,25.7968,-80.3233,25.797,-80.3208,25.8232,-80.3215,25.825,-80.3211,25.826,-80.3205,25.8262,-80.3178,25.8289,-80.3178,25.8289,-80.317],
+    'Dolphin Mall|Titanic Brewing':[25.786,-80.3831,25.7856,-80.3833,25.7851,-80.3826,25.7846,-80.3799,25.7827,-80.3798,25.7826,-80.3723,25.7829,-80.371,25.7839,-80.3696,25.7841,-80.3688,25.7792,-80.3692,25.7785,-80.3697,25.7784,-80.3706,25.7787,-80.371,25.7793,-80.371,25.7798,-80.3703,25.7805,-80.3674,25.7811,-80.3616,25.7813,-80.3403,25.7807,-80.3362,25.7808,-80.3262,25.7804,-80.3231,25.7801,-80.3222,25.7795,-80.3215,25.7783,-80.321,25.7735,-80.3206,25.7711,-80.3207,25.7653,-80.3204,25.7608,-80.3212,25.7591,-80.3212,25.7539,-80.3201,25.746,-80.3201,25.7391,-80.3197,25.7384,-80.3199,25.7329,-80.3189,25.7343,-80.2736,25.7343,-80.2754,25.7351,-80.2756,25.7358,-80.2783,25.7358,-80.279],
+    'Dolphin Mall|West Miami':[25.786,-80.3831,25.7856,-80.3833,25.7851,-80.3826,25.7846,-80.3799,25.7827,-80.3798,25.7826,-80.3723,25.7829,-80.371,25.7839,-80.3696,25.7841,-80.3688,25.7792,-80.3692,25.7785,-80.3697,25.7784,-80.3706,25.7787,-80.371,25.7793,-80.371,25.7796,-80.3707,25.7803,-80.3685,25.7809,-80.3645,25.7812,-80.3577,25.7813,-80.3334,25.7811,-80.3318,25.7811,-80.3262,25.7809,-80.3239,25.7803,-80.3212,25.7797,-80.319,25.7795,-80.3189,25.7787,-80.3168,25.7788,-80.3139,25.7777,-80.3128,25.7769,-80.3125,25.7701,-80.3124,25.7706,-80.2982,25.762,-80.2979],
+    'Dolphin Mall|Westchester':[25.786,-80.3831,25.7856,-80.3833,25.7851,-80.3826,25.7846,-80.3799,25.7827,-80.3798,25.7826,-80.3723,25.7829,-80.371,25.7839,-80.3696,25.7841,-80.3688,25.7823,-80.3688,25.7769,-80.3696,25.7747,-80.3696,25.7612,-80.3685,25.7619,-80.3362,25.7476,-80.3357,25.7477,-80.3315,25.7446,-80.3315,25.7448,-80.3299],
+    'Doral business park|FIU / Sweetwater':[25.8197,-80.3553,25.8199,-80.3553,25.8199,-80.3569,25.8207,-80.357,25.8209,-80.3566,25.8213,-80.3565,25.8215,-80.3573,25.8216,-80.3587,25.8213,-80.3598,25.8209,-80.3604,25.8198,-80.3597,25.8182,-80.3595,25.8136,-80.3615,25.8117,-80.3617,25.8117,-80.3696,25.8096,-80.3693,25.8046,-80.3692,25.8035,-80.3694,25.7866,-80.3688,25.7823,-80.3688,25.7769,-80.3696,25.7747,-80.3696,25.7614,-80.3686,25.7612,-80.3763,25.7578,-80.3763,25.7579,-80.3759,25.7575,-80.3755,25.7573,-80.3745],
+    'Doral business park|Flagami':[25.8197,-80.3553,25.8199,-80.3553,25.8199,-80.3569,25.8207,-80.357,25.8209,-80.3566,25.8212,-80.3566,25.8208,-80.3552,25.8208,-80.3539,25.8185,-80.3535,25.8115,-80.3535,25.8116,-80.3491,25.8098,-80.3372,25.8097,-80.3276,25.8093,-80.3262,25.809,-80.3225,25.8085,-80.3219,25.8052,-80.3213,25.7936,-80.3215,25.7817,-80.321,25.7775,-80.3212,25.7733,-80.3209,25.7723,-80.3213,25.7717,-80.322,25.7705,-80.3221,25.7697,-80.3219,25.7698,-80.3201,25.766,-80.3199],
+    'Doral business park|Fontainebleau':[25.8197,-80.3553,25.8199,-80.3553,25.8199,-80.3569,25.8207,-80.357,25.8209,-80.3566,25.8212,-80.3566,25.8208,-80.3552,25.8208,-80.3539,25.8185,-80.3535,25.8115,-80.3535,25.8116,-80.3491,25.8099,-80.3375,25.7845,-80.3367,25.7776,-80.3368,25.7733,-80.3366,25.7732,-80.3381,25.7725,-80.3398,25.7732,-80.3406,25.774,-80.34],
+    'Doral business park|Gables edge':[25.8197,-80.3553,25.8199,-80.3553,25.8199,-80.3569,25.8207,-80.357,25.8209,-80.3566,25.8212,-80.3566,25.8208,-80.3552,25.8208,-80.3539,25.8185,-80.3535,25.8115,-80.3535,25.8116,-80.3491,25.8098,-80.3372,25.8097,-80.3276,25.8093,-80.3262,25.809,-80.3225,25.8081,-80.3217,25.8052,-80.3213,25.7936,-80.3215,25.7824,-80.3211,25.7757,-80.3206,25.7711,-80.3207,25.7655,-80.3204,25.7608,-80.3212,25.7591,-80.3212,25.7539,-80.3201,25.7506,-80.3203,25.7495,-80.3212,25.748,-80.3212,25.748,-80.2999,25.7485,-80.285,25.7467,-80.2848,25.7467,-80.2822,25.7455,-80.2819],
+    'Doral business park|Tamiami':[25.8197,-80.3553,25.8199,-80.3553,25.8199,-80.3569,25.8207,-80.357,25.8209,-80.3566,25.8213,-80.3565,25.8215,-80.3573,25.8216,-80.3587,25.8213,-80.3598,25.8209,-80.3604,25.8198,-80.3597,25.8182,-80.3595,25.8136,-80.3615,25.8117,-80.3617,25.8118,-80.3885,25.8116,-80.3884,25.8116,-80.3874,25.8111,-80.387,25.8092,-80.3867,25.8044,-80.3865,25.8041,-80.3863,25.7925,-80.386,25.7922,-80.3862,25.7795,-80.3862,25.7771,-80.3865,25.7744,-80.3874,25.7734,-80.3874,25.7708,-80.3865,25.7636,-80.3862,25.7611,-80.3876,25.7611,-80.3928,25.7587,-80.3927,25.7586,-80.3981,25.7583,-80.3983,25.7572,-80.3982,25.7571,-80.398,25.758,-80.3981],
+    'Doral business park|The Tank Brewing':[25.8197,-80.3553,25.8199,-80.3553,25.8199,-80.3569,25.8207,-80.357,25.8209,-80.3566,25.8212,-80.3566,25.8208,-80.3552,25.8208,-80.3537,25.8262,-80.3539,25.8261,-80.3189,25.8262,-80.3178,25.8289,-80.3178,25.8289,-80.317],
+    'Doral business park|Titanic Brewing':[25.8197,-80.3553,25.8199,-80.3553,25.8199,-80.3569,25.8207,-80.357,25.8209,-80.3566,25.8212,-80.3566,25.8208,-80.3552,25.8208,-80.3539,25.8185,-80.3535,25.8115,-80.3535,25.8116,-80.3491,25.8098,-80.3372,25.8097,-80.3276,25.8093,-80.3262,25.809,-80.3225,25.8081,-80.3217,25.8052,-80.3213,25.7936,-80.3215,25.7824,-80.3211,25.7757,-80.3206,25.7711,-80.3207,25.7655,-80.3204,25.7608,-80.3212,25.7591,-80.3212,25.7539,-80.3201,25.746,-80.3201,25.7391,-80.3197,25.7384,-80.3199,25.7329,-80.3189,25.7343,-80.2736,25.7343,-80.2754,25.7351,-80.2756,25.7358,-80.2783,25.7358,-80.279],
+    'Doral business park|West Miami':[25.8197,-80.3553,25.8199,-80.3553,25.8199,-80.3569,25.8207,-80.357,25.8209,-80.3566,25.8212,-80.3566,25.8208,-80.3552,25.8208,-80.3539,25.8185,-80.3535,25.8115,-80.3535,25.8116,-80.3491,25.8098,-80.3372,25.8097,-80.3276,25.8093,-80.3262,25.809,-80.3225,25.8085,-80.3219,25.8052,-80.3213,25.7936,-80.3215,25.7817,-80.321,25.7775,-80.3212,25.7733,-80.3209,25.7723,-80.3213,25.7714,-80.3221,25.7698,-80.322,25.7706,-80.2982,25.762,-80.2979],
+    'Doral business park|Westchester':[25.8197,-80.3553,25.8199,-80.3553,25.8199,-80.3569,25.8207,-80.357,25.8209,-80.3566,25.8212,-80.3566,25.8208,-80.3552,25.8208,-80.3539,25.8185,-80.3535,25.8115,-80.3535,25.8116,-80.3491,25.8098,-80.3372,25.8097,-80.3276,25.8093,-80.3262,25.809,-80.3225,25.8081,-80.3217,25.8052,-80.3213,25.7936,-80.3215,25.7824,-80.3211,25.7757,-80.3206,25.7711,-80.3207,25.7655,-80.3204,25.7608,-80.3212,25.7591,-80.3212,25.7546,-80.3202,25.7521,-80.3201,25.7506,-80.3203,25.7495,-80.3212,25.7482,-80.3213,25.748,-80.3277,25.7454,-80.3276,25.7453,-80.3288,25.7448,-80.3299],
+    'FIU / Sweetwater|Flagami':[25.7573,-80.3745,25.7575,-80.3755,25.7579,-80.3759,25.761,-80.3761,25.7619,-80.3361,25.7695,-80.3363,25.7698,-80.3201,25.766,-80.3199],
+    'FIU / Sweetwater|Fontainebleau':[25.7573,-80.3745,25.7575,-80.3755,25.7579,-80.3759,25.761,-80.3761,25.7617,-80.3442,25.7692,-80.3444,25.7694,-80.339,25.7717,-80.3392,25.7726,-80.3398,25.7732,-80.3406,25.774,-80.34],
+    'FIU / Sweetwater|Gables edge':[25.7573,-80.3745,25.7575,-80.3755,25.7579,-80.3759,25.761,-80.3761,25.7622,-80.3238,25.7621,-80.3233,25.7617,-80.3229,25.7593,-80.3214,25.758,-80.3209,25.7546,-80.3202,25.7521,-80.3201,25.7506,-80.3203,25.7495,-80.3212,25.748,-80.3212,25.748,-80.2999,25.7485,-80.285,25.7467,-80.2848,25.7467,-80.2822,25.7455,-80.2819],
+    'FIU / Sweetwater|Tamiami':[25.7573,-80.3745,25.7575,-80.3755,25.7579,-80.3759,25.7612,-80.3762,25.7611,-80.3928,25.7587,-80.3927,25.7586,-80.3981,25.7583,-80.3983,25.7572,-80.3982,25.7571,-80.398,25.758,-80.3981],
+    'FIU / Sweetwater|The Tank Brewing':[25.7573,-80.3745,25.7575,-80.3755,25.7579,-80.3759,25.761,-80.3761,25.7612,-80.3684,25.7753,-80.3695,25.7789,-80.3691,25.7795,-80.3689,25.7799,-80.3684,25.7807,-80.3644,25.7809,-80.3642,25.7812,-80.3577,25.7813,-80.3403,25.7807,-80.3362,25.7808,-80.3262,25.7805,-80.3231,25.7806,-80.3218,25.781,-80.321,25.7817,-80.3205,25.7827,-80.3204,25.7875,-80.3208,25.7878,-80.321,25.7968,-80.3212,25.8009,-80.3209,25.8232,-80.3215,25.825,-80.3211,25.826,-80.3205,25.8262,-80.3178,25.8289,-80.3178,25.8289,-80.317],
+    'FIU / Sweetwater|Titanic Brewing':[25.7573,-80.3745,25.7575,-80.3755,25.7579,-80.3759,25.761,-80.3761,25.7621,-80.3298,25.7621,-80.3233,25.7593,-80.3214,25.758,-80.3209,25.7546,-80.3202,25.746,-80.3201,25.7391,-80.3197,25.7384,-80.3199,25.7329,-80.3189,25.7343,-80.2736,25.7343,-80.2754,25.7351,-80.2756,25.7358,-80.2783,25.7358,-80.279],
+    'FIU / Sweetwater|West Miami':[25.7573,-80.3745,25.7575,-80.3755,25.7579,-80.3759,25.761,-80.3761,25.7622,-80.3222,25.7628,-80.3141,25.7633,-80.2981,25.7633,-80.2979,25.762,-80.2979],
+    'FIU / Sweetwater|Westchester':[25.7573,-80.3745,25.7575,-80.3755,25.7579,-80.3759,25.761,-80.3761,25.7619,-80.3362,25.7476,-80.3357,25.7477,-80.3315,25.7446,-80.3315,25.7448,-80.3299],
+    'Flagami|Fontainebleau':[25.766,-80.3199,25.7698,-80.3201,25.7699,-80.3164,25.7701,-80.3163,25.7696,-80.3389,25.7717,-80.3392,25.7726,-80.3398,25.7732,-80.3406,25.774,-80.34],
+    'Flagami|Gables edge':[25.766,-80.3199,25.7698,-80.3201,25.7705,-80.3044,25.7708,-80.2881,25.7446,-80.2871,25.7449,-80.2819,25.7455,-80.2819],
+    'Flagami|Tamiami':[25.766,-80.3199,25.7698,-80.3201,25.7699,-80.3164,25.7701,-80.3163,25.7697,-80.3365,25.7621,-80.3362,25.7611,-80.3797,25.7611,-80.3928,25.7587,-80.3927,25.7586,-80.3981,25.7583,-80.3983,25.7572,-80.3982,25.7571,-80.398,25.758,-80.3981],
+    'Flagami|The Tank Brewing':[25.766,-80.3199,25.7698,-80.3201,25.7698,-80.3192,25.7701,-80.3188,25.7712,-80.3188,25.7718,-80.3189,25.7733,-80.3199,25.7775,-80.3195,25.7806,-80.3205,25.7837,-80.3209,25.7953,-80.3212,25.8009,-80.3209,25.8232,-80.3215,25.825,-80.3211,25.826,-80.3205,25.8262,-80.3178,25.8289,-80.3178,25.8289,-80.317],
+    'Flagami|Titanic Brewing':[25.766,-80.3199,25.7698,-80.3201,25.7705,-80.3044,25.7708,-80.2881,25.7446,-80.2871,25.7447,-80.2824,25.7439,-80.2816,25.7421,-80.2807,25.7415,-80.2796,25.7416,-80.2746,25.7363,-80.2744,25.7344,-80.2737,25.7343,-80.2754,25.7351,-80.2756,25.7358,-80.2783,25.7358,-80.279],
+    'Flagami|West Miami':[25.766,-80.3199,25.7698,-80.3201,25.7706,-80.2982,25.762,-80.2979],
+    'Flagami|Westchester':[25.766,-80.3199,25.7698,-80.3201,25.77,-80.3162,25.7699,-80.3212,25.7704,-80.3219,25.7714,-80.322,25.7718,-80.3216,25.7717,-80.3211,25.7714,-80.3209,25.769,-80.3207,25.7643,-80.3205,25.7608,-80.3212,25.7591,-80.3212,25.7539,-80.3201,25.7506,-80.3203,25.7495,-80.3212,25.7486,-80.3212,25.7481,-80.3215,25.748,-80.3277,25.7454,-80.3276,25.7453,-80.3288,25.7448,-80.3299],
+    'Fontainebleau|Gables edge':[25.774,-80.34,25.7732,-80.3405,25.7733,-80.3411,25.7723,-80.3398,25.773,-80.3383,25.7731,-80.3366,25.7619,-80.3362,25.7622,-80.3238,25.7621,-80.3233,25.7617,-80.3229,25.7595,-80.3215,25.758,-80.3209,25.7539,-80.3201,25.7506,-80.3203,25.7495,-80.3212,25.748,-80.3212,25.748,-80.2999,25.7485,-80.285,25.7467,-80.2848,25.7467,-80.2822,25.7455,-80.2819],
+    'Fontainebleau|Tamiami':[25.774,-80.34,25.7732,-80.3405,25.7733,-80.3411,25.7728,-80.3403,25.772,-80.3396,25.771,-80.3392,25.7696,-80.3391,25.7686,-80.3691,25.7614,-80.3686,25.7611,-80.3797,25.7611,-80.3928,25.7587,-80.3927,25.7586,-80.3981,25.7583,-80.3983,25.7572,-80.3982,25.7571,-80.398,25.758,-80.3981],
+    'Fontainebleau|The Tank Brewing':[25.774,-80.34,25.7732,-80.3405,25.7733,-80.3411,25.7723,-80.3398,25.773,-80.3383,25.7731,-80.3365,25.7803,-80.3366,25.7809,-80.336,25.781,-80.3322,25.7805,-80.3223,25.781,-80.321,25.7817,-80.3205,25.7865,-80.3207,25.7878,-80.321,25.7953,-80.3212,25.8009,-80.3209,25.8232,-80.3215,25.825,-80.3211,25.826,-80.3205,25.8262,-80.3178,25.8289,-80.3178,25.8289,-80.317],
+    'Fontainebleau|Titanic Brewing':[25.774,-80.34,25.7732,-80.3405,25.7733,-80.3411,25.7723,-80.3398,25.773,-80.3383,25.7731,-80.3366,25.7619,-80.3362,25.7622,-80.3238,25.7621,-80.3233,25.7617,-80.3229,25.7595,-80.3215,25.758,-80.3209,25.7539,-80.3201,25.746,-80.3201,25.7391,-80.3197,25.7384,-80.3199,25.7329,-80.3189,25.7343,-80.2736,25.7343,-80.2754,25.7351,-80.2756,25.7358,-80.2783,25.7358,-80.279],
+    'Fontainebleau|West Miami':[25.774,-80.34,25.7732,-80.3405,25.7733,-80.3411,25.7728,-80.3403,25.772,-80.3396,25.771,-80.3392,25.7694,-80.3391,25.7697,-80.3292,25.7697,-80.321,25.7705,-80.3044,25.7706,-80.2982,25.762,-80.2979],
+    'Fontainebleau|Westchester':[25.774,-80.34,25.7732,-80.3405,25.7733,-80.3411,25.7723,-80.3398,25.773,-80.3383,25.7731,-80.3366,25.7476,-80.3357,25.7477,-80.3315,25.7446,-80.3315,25.7448,-80.3299],
+    'Gables edge|Tamiami':[25.7455,-80.2819,25.7449,-80.2819,25.7448,-80.2871,25.7573,-80.2876,25.7624,-80.2919,25.7634,-80.2919,25.7627,-80.3144,25.7628,-80.3158,25.7623,-80.3232,25.7611,-80.3797,25.7611,-80.3928,25.7587,-80.3927,25.7586,-80.3981,25.7583,-80.3983,25.7572,-80.3982,25.7571,-80.398,25.758,-80.3981],
+    'Gables edge|The Tank Brewing':[25.7455,-80.2819,25.7449,-80.2819,25.7448,-80.2871,25.7485,-80.2873,25.748,-80.3039,25.7482,-80.3185,25.7472,-80.3185,25.747,-80.3187,25.747,-80.3194,25.7474,-80.3197,25.7539,-80.3198,25.759,-80.3209,25.761,-80.3209,25.7646,-80.3202,25.7694,-80.3204,25.7771,-80.3202,25.7837,-80.3209,25.7953,-80.3212,25.8009,-80.3209,25.8232,-80.3215,25.825,-80.3211,25.826,-80.3205,25.8262,-80.3178,25.8289,-80.3178,25.8289,-80.317],
+    'Gables edge|Titanic Brewing':[25.7455,-80.2819,25.7441,-80.2818,25.7424,-80.2809,25.7418,-80.2803,25.7415,-80.2796,25.7416,-80.2746,25.7363,-80.2744,25.7344,-80.2737,25.7343,-80.2754,25.7351,-80.2756,25.7358,-80.2783,25.7358,-80.279],
+    'Gables edge|West Miami':[25.7455,-80.2819,25.7449,-80.2819,25.7448,-80.2871,25.7485,-80.2873,25.7482,-80.2975,25.762,-80.2979],
+    'Gables edge|Westchester':[25.7455,-80.2819,25.7449,-80.2819,25.7448,-80.2871,25.7485,-80.2873,25.748,-80.3039,25.7482,-80.3212,25.748,-80.3277,25.7454,-80.3276,25.7453,-80.3288,25.7448,-80.3299],
+    'Tamiami|The Tank Brewing':[25.758,-80.3981,25.7585,-80.3981,25.7586,-80.3974,25.7587,-80.3927,25.7606,-80.3927,25.7609,-80.3924,25.7609,-80.3843,25.7607,-80.3836,25.7603,-80.3832,25.7595,-80.3831,25.7592,-80.3835,25.7594,-80.3846,25.7598,-80.385,25.7606,-80.3852,25.771,-80.3855,25.774,-80.3851,25.7748,-80.3847,25.7756,-80.3841,25.7766,-80.3824,25.7803,-80.3685,25.7809,-80.3645,25.7812,-80.3577,25.7813,-80.3403,25.7807,-80.3362,25.7808,-80.3262,25.7805,-80.3223,25.781,-80.321,25.7817,-80.3205,25.7827,-80.3204,25.7875,-80.3208,25.7878,-80.321,25.7968,-80.3212,25.8009,-80.3209,25.8232,-80.3215,25.825,-80.3211,25.826,-80.3205,25.8262,-80.3178,25.8289,-80.3178,25.8289,-80.317],
+    'Tamiami|Titanic Brewing':[25.758,-80.3981,25.7585,-80.3981,25.7586,-80.3974,25.7587,-80.3927,25.7606,-80.3927,25.7609,-80.3924,25.761,-80.376,25.7622,-80.3238,25.7621,-80.3233,25.7617,-80.3229,25.7593,-80.3214,25.758,-80.3209,25.7546,-80.3202,25.746,-80.3201,25.7391,-80.3197,25.7384,-80.3199,25.7329,-80.3189,25.7343,-80.2736,25.7343,-80.2754,25.7351,-80.2756,25.7358,-80.2783,25.7358,-80.279],
+    'Tamiami|West Miami':[25.758,-80.3981,25.7585,-80.3981,25.7586,-80.3974,25.7587,-80.3927,25.7606,-80.3927,25.7609,-80.3924,25.7609,-80.3818,25.7618,-80.3368,25.7622,-80.3222,25.7628,-80.3141,25.7633,-80.2981,25.7633,-80.2979,25.762,-80.2979],
+    'Tamiami|Westchester':[25.758,-80.3981,25.7585,-80.3981,25.7586,-80.3974,25.7587,-80.3927,25.7606,-80.3927,25.7609,-80.3924,25.761,-80.376,25.7619,-80.3362,25.7476,-80.3357,25.7477,-80.3315,25.7446,-80.3315,25.7448,-80.3299],
+    'The Tank Brewing|Titanic Brewing':[25.8289,-80.317,25.8289,-80.3178,25.8262,-80.3178,25.8263,-80.3228,25.8257,-80.3227,25.8247,-80.322,25.824,-80.3219,25.8096,-80.3214,25.8002,-80.3213,25.7936,-80.3215,25.7824,-80.3211,25.7757,-80.3206,25.7711,-80.3207,25.7655,-80.3204,25.7608,-80.3212,25.7591,-80.3212,25.7539,-80.3201,25.746,-80.3201,25.7391,-80.3197,25.7384,-80.3199,25.734,-80.319,25.7331,-80.319,25.7329,-80.3189,25.7329,-80.3166,25.7343,-80.2736,25.7343,-80.2754,25.7351,-80.2756,25.7358,-80.2783,25.7358,-80.279],
+    'The Tank Brewing|West Miami':[25.8289,-80.317,25.8289,-80.3139,25.7919,-80.3129,25.7911,-80.3132,25.7902,-80.3139,25.7895,-80.3151,25.7888,-80.3176,25.7878,-80.3188,25.7866,-80.3194,25.7849,-80.3193,25.7819,-80.3175,25.7809,-80.3161,25.7775,-80.3127,25.7729,-80.3123,25.7701,-80.3124,25.7706,-80.2982,25.762,-80.2979],
+    'The Tank Brewing|Westchester':[25.8289,-80.317,25.8289,-80.3178,25.8262,-80.3178,25.8263,-80.3228,25.8257,-80.3227,25.8247,-80.322,25.824,-80.3219,25.8159,-80.3216,25.8052,-80.3213,25.7936,-80.3215,25.7824,-80.3211,25.7757,-80.3206,25.7711,-80.3207,25.7655,-80.3204,25.7608,-80.3212,25.7591,-80.3212,25.7539,-80.3201,25.7506,-80.3203,25.7495,-80.3212,25.7486,-80.3212,25.7481,-80.3215,25.748,-80.3277,25.7454,-80.3276,25.7453,-80.3288,25.7448,-80.3299],
+    'Titanic Brewing|West Miami':[25.7358,-80.279,25.7358,-80.2783,25.7351,-80.2756,25.7343,-80.2754,25.7341,-80.2865,25.7485,-80.2873,25.7482,-80.2975,25.762,-80.2979],
+    'Titanic Brewing|Westchester':[25.7358,-80.279,25.7358,-80.2783,25.7351,-80.2756,25.7343,-80.2754,25.7341,-80.2879,25.733,-80.3185,25.7334,-80.3275,25.7454,-80.3276,25.7453,-80.3288,25.7448,-80.3299],
+    'West Miami|Westchester':[25.762,-80.2979,25.7633,-80.2979,25.7627,-80.3144,25.7628,-80.3158,25.7623,-80.3229,25.7618,-80.323,25.7595,-80.3215,25.758,-80.3209,25.7539,-80.3201,25.7506,-80.3203,25.7495,-80.3212,25.7486,-80.3212,25.7481,-80.3215,25.748,-80.3277,25.7454,-80.3276,25.7453,-80.3288,25.7448,-80.3299]
   }
 };
 /* A city with no baked geometry is a supported state, not an error: roadPath()
@@ -5348,6 +5674,9 @@ function render(){
   if(!inc) inc='<div class="empty">No open incidents. '+(S.ops.length
     ? 'Latency '+Math.round(lat)+'s.'
     : 'You are the only operator.')+'</div>';
+  /* Elevated risk is stated, never merely applied — see incidentRiskNote(). */
+  const irn=incidentRiskNote();
+  if(irn) inc+='<div class="empty">'+escapeHtml(irn)+'</div>';
   $('inc-list').innerHTML=inc;
 
   /* ride queue */
@@ -5588,6 +5917,15 @@ function render(){
   $('dp-charge').setAttribute('aria-pressed',S.autoCharge!==false?'true':'false');
   const airZ=airportZone();
   $('dp-air').setAttribute('aria-pressed',airZ&&airZ.on!==false?'true':'false');
+  /* Miami is the first city with NO airport in its service area — MIA sits
+     outside the published geofence — so this toggle would be a control that
+     does nothing when clicked, which is precisely the decorative-button
+     failure the control-strip audit went looking for. Disable it and say why
+     instead of leaving it live and inert. */
+  $('dp-air').disabled=!airZ;
+  $('dp-air').title=airZ
+    ? (airZ.n+' — airport runs '+(airZ.on!==false?'on':'off'))
+    : ('No airport in the '+(CITIES[S.city].short||CITIES[S.city].name)+' service area.');
   const liveZ=activeZones().length;
   $('dp-fence').setAttribute('aria-pressed',liveZ>0?'true':'false');
   $('dp-fence').title=liveZ+' of '+ZONES.length+' zones live — click for the list.';
@@ -5934,7 +6272,7 @@ const SLOTS=['slot1','slot2','slot3'];
    SAVE_V above is the STATE SHAPE version and moves only when the
    snapshot format changes — the two are deliberately independent, so
    shipping 0.9.0 does not invalidate 0.8.0 saves. */
-const VERSION='0.23.7';
+const VERSION='0.24.0';
 
 function snapshot(){
   return {
@@ -6343,7 +6681,7 @@ function setSpeed(v){
    ============================================================ */
 function physKey(k){ return k==='auto'?('auto:'+S.city):k }
 
-const PROG_V=1;
+const PROG_V=2;
 let PROG={unlocked:{austin:true}, results:{}, last:'austin'};
 function progSave(){
   return Store.put('progress',{v:PROG_V, unlocked:PROG.unlocked,
@@ -6356,34 +6694,88 @@ function progLoad(){
     if(r.results&&typeof r.results==='object') PROG.results=r.results;
     if(r.last&&CITIES[r.last]) PROG.last=r.last;
     PROG.unlocked.austin=true;      /* the tutorial city is never locked */
+    /* v1 -> v2: results records had no `shiftDone`, because the gate that
+       needs it ('shift1@<city>') did not exist yet. Reading a missing flag as
+       false would make a player who has already run several Dallas days clock
+       off one MORE shift to open city #3, which is a regression disguised as a
+       migration. A run that reached day 2 provably clocked off at least once
+       (the day only advances through the shift report), so infer it from the
+       one elapsed-time field a v1 record already carries. Day 1 records stay
+       false: there, "did you finish a shift" genuinely is not recoverable. */
+    if((r.v||1)<2){
+      Object.keys(PROG.results).forEach(function(id){
+        const rec=PROG.results[id];
+        if(rec&&typeof rec==='object'&&(rec.day||0)>1) rec.shiftDone=true;
+      });
+      progSave();
+    }
   }).catch(function(){});
+}
+/* THE ONE DEFINITION of "has completed a shift", reused rather than restated.
+   S.shiftNo increments on clock-ON, so `shiftNo>0` alone is true from the first
+   minute of the first shift; `shiftNo>0 && !onClock` is the phrase the codebase
+   already uses for a FINISHED shift (it gates the ops panel and tutorial beat
+   12). Every gate below reads this instead of spelling it out again. */
+function shiftFinished(){ return S.shiftNo>0&&!S.onClock }
+/* Has city `id` ever had a shift clocked off, across all time? The live run is
+   checked first because the permanent record is only written on the autosave
+   cadence, and a tab should light the instant the shift report appears. */
+function cityShiftDone(id){
+  if(id===S.city&&shiftFinished()) return true;
+  const r=PROG.results[id];
+  return !!(r&&r.shiftDone);
+}
+/* Record the current run's shift into the permanent record. Returns true when
+   something changed, so the caller (progGates) can decide to write — this must
+   not open an IndexedDB transaction on every one of the five frames a second
+   render() runs. */
+function progNoteShift(){
+  if(!shiftFinished()) return false;
+  const r=PROG.results[S.city]||(PROG.results[S.city]={});
+  if(r.shiftDone) return false;
+  r.shiftDone=true;
+  return true;
 }
 /* What each gate means, in ONE place, because two callers ask: cityUnlocked()
    for the tab state and progGates() for the permanent promotion. When those
    two disagreed the tab could light up without the unlock ever being recorded.
 
-   'shift1' — the first shift is FINISHED. Not started: S.shiftNo increments on
-   clock-ON, so `shiftNo>0` alone is true from the first minute of the first
-   shift. `shiftNo>0 && !onClock` is the codebase's existing expression for
-   "has completed a shift" — it already gates the ops panel and tutorial beat
-   12, and reusing it means there is one definition of that idea rather than
-   two that can drift apart.
+   'shift1@<city>' — one shift clocked off IN THAT CITY. This is the form every
+   scenario should use, and it is what makes the cities a CHAIN: Austin opens
+   Dallas, Dallas opens Miami. The bare 'shift1' below cannot express that,
+   because it reads the live run only and has no idea which city the shift
+   happened in — under it, a second Austin shift would have opened city #3
+   without the player ever seeing Dallas. Per-city needs a record that outlives
+   the run, which is PROG.results[city].shiftDone.
+
+   'shift1' — a finished shift in ANY city. Kept for back-compatibility and for
+   a scenario that genuinely does not care where you learned the game.
 
    'day1' — the whole guided first day. Kept because it is a real alternative
    and costs nothing, not because anything uses it now.
 
    An unrecognised gate stays LOCKED. A typo in a city's `needs` should hide a
-   scenario, not silently open it. */
+   scenario, not silently open it — including 'shift1@nowhere', which names a
+   city that does not exist and therefore never comes true. */
 function gateMet(kind){
-  if(kind==='shift1') return S.shiftNo>0&&!S.onClock;
+  if(typeof kind!=='string') return false;
+  if(kind.indexOf('shift1@')===0){
+    const id=kind.slice(7);
+    return !!CITIES[id]&&cityShiftDone(id);
+  }
+  if(kind==='shift1') return shiftFinished();
   if(kind==='day1')   return !!(S.ray&&S.ray.day1Done);
   return false;
 }
-/* Wording for a padlocked tab's tooltip. The city named is whichever scenario
-   comes first, rather than 'Austin' spelled out, so reordering CITIES cannot
-   leave the hint pointing at the wrong game. */
+/* Wording for a padlocked tab's tooltip. Every branch names the city from the
+   gate itself rather than spelling one out, so reordering or renaming CITIES
+   cannot leave a hint pointing at the wrong game. */
 function gateHint(kind){
   const first=CITIES[cityList()[0]];
+  if(typeof kind==='string'&&kind.indexOf('shift1@')===0){
+    const c=CITIES[kind.slice(7)];
+    return c?('clock off a shift in '+c.name+' to unlock'):'not available yet';
+  }
   if(kind==='shift1') return 'clock off your first shift in '+first.name+' to unlock';
   if(kind==='day1')   return 'finish your first day in '+first.name+' to unlock';
   return 'not available yet';
@@ -6396,7 +6788,9 @@ function gateHint(kind){
    Note the ordering: PROG.unlocked is checked BEFORE gateMet(), so clocking
    back on for a second shift cannot re-lock a city that has already been
    earned — gateMet('shift1') goes false again while on shift, and only the
-   latch stops that mattering. */
+   latch stops that mattering. ('shift1@<city>' latches on its own once the
+   record is written, but the ordering still matters for the window between
+   the shift ending and the next autosave.) */
 function cityUnlocked(id){
   const c=CITIES[id];
   if(!c) return false;
@@ -6408,6 +6802,10 @@ function cityUnlocked(id){
    from render(), so it must stay free when there is nothing to do: the only
    work in the common case is one boolean test per city. */
 function progGates(){
+  /* First: bank the fact that THIS city has had a shift clocked off, because
+     that is what the next city's gate reads. It has to happen before the loop
+     below, or the tab would wait for the following frame to notice. */
+  let dirty=progNoteShift();
   let gained=null;
   cityList().forEach(function(id){
     const need=CITIES[id].needs;
@@ -6415,8 +6813,8 @@ function progGates(){
       PROG.unlocked[id]=true; gained=id;
     }
   });
+  if(gained||dirty) progSave();
   if(gained){
-    progSave();
     log('System',CITIES[gained].name+' unlocked',0);
     renderCityTabs();
   }
@@ -7164,7 +7562,11 @@ function progTrack(){
   const g=currentCity().goal, r=PROG.results[S.city]||{};
   const best=Math.max(r.bestCash||0,S.cash);
   PROG.results[S.city]={bestCash:best, day:Math.max(r.day||0,S.day),
-    goalMet:!!(r.goalMet||(g&&typeof g.cash==='number'&&S.cash>=g.cash))};
+    goalMet:!!(r.goalMet||(g&&typeof g.cash==='number'&&S.cash>=g.cash)),
+    /* Carried explicitly. This object REPLACES the old record rather than
+       merging into it, so any field not named here is silently destroyed —
+       and shiftDone is the next city's unlock condition. */
+    shiftDone:!!(r.shiftDone||shiftFinished())};
 }
 function autosave(reason){
   if(saving) return Promise.resolve();
@@ -7363,6 +7765,12 @@ window.DH_ACT1={
   CITIES:CITIES,loadCityTables:loadCityTables,applyCityTone:applyCityTone,
   cityList:cityList,cityUnlocked:cityUnlocked,switchCity:switchCity,
   gateMet:gateMet,gateHint:gateHint,progGates:progGates,
+  shiftFinished:shiftFinished,cityShiftDone:cityShiftDone,progNoteShift:progNoteShift,
+  progTrack:progTrack,
+  INC_BASE:INC_BASE,incidentRisk:incidentRisk,
+  weatherIncidentMult:weatherIncidentMult,incidentRiskNote:incidentRiskNote,
+  weatherSpeedMult:weatherSpeedMult,weatherSurgeBump:weatherSurgeBump,
+  forecastAt:forecastAt,wx:function(){ return WX },setWx:function(w){ WX=w },
   bgTileUrl:bgTileUrl,centerCity:centerCity,buildCityLayers:buildCityLayers,
   uTemp:uTemp,WX_CLOUD_MIN:WX_CLOUD_MIN,WXOV:WXOV,
   offersPerHour:offersPerHour,THIN_RATE:THIN_RATE,activeZones:activeZones,

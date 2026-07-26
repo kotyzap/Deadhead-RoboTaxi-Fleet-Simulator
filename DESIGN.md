@@ -171,15 +171,27 @@ difficulty.
 Each real Tesla Robotaxi metro is a scenario with its own goal, constraints, and
 required strategy. Extensible as new cities launch.
 
-| City | Role | Character |
-|---|---|---|
-| **Austin, TX** | Tutorial | Permissive regulation, cheap power, sprawl → long deadheads. Brutal summer heat drains range via A/C. Event surges (SXSW, UT football, ACL). Real fleet capped near 17 cars — so does the scenario. |
-| **Dallas / Houston, TX** | Expansion | Unsupervised from day one. Enormous geography, highway-heavy trips: high revenue per fare but punishing depreciation. |
-| **Miami, FL** | Chaos | Unsupervised, dense, tourist-heavy. Aggressive traffic raises incident rate; flooding and hurricane events; expensive insurance. |
-| **Orlando / Tampa, FL** | Tourism | Airport and theme-park demand. Extremely peaky, long airport runs, strong seasonality. |
-| **SF Bay Area, CA** | Hard mode | Safety monitor mandatory — payroll from hour one. Highest fares, worst congestion, most expensive power, steep hills hurting range, Meridian entrenched with a strong reputation, hostile regulator. |
+Cities are **sequential, not parallel**: one run is live at a time, each with its own
+$7,500. Cash never travels between them — only unlocks and per-city results do. Each city's
+tab unlocks by clocking off one shift in the city before it (`needs:'shift1@<city>'`), so the
+scenarios form a chain rather than a menu.
 
-Austin is the only city in the prototype.
+| City | Role | Character | In game |
+|---|---|---|---|
+| **Austin, TX** | Tutorial | Permissive regulation, cheap power, short hops. Brutal summer heat drains range via A/C. Real fleet stalled near 17–20 cars — so the scenario caps at 17. | **Shipped** (v0.22) |
+| **Dallas, TX** | Expansion | Unsupervised from day one, and a **compact** geofence — downtown, Uptown, the Park Cities, Highland Park — tighter than Austin's. Difficulty comes from wear (`depK` 1.22), insurance (`insK` 1.18) and having no supervised grace period, not from sprawl. Charging is the *easiest* in the game: S Riverfront is 34 stalls at 325 kW. | **Shipped** (v0.23) |
+| **Miami, FL** | Constraint | Unsupervised. The real geofence is 10–14 sq mi of *western* Miami-Dade and excludes downtown, Brickell, Miami Beach and MIA — so it is the first city with **no airport run and no CBD**. Fares are smaller (`fareK` 0.94), insurance is the worst in the country (`insK` 1.35), FPL's on-peak window covers **nine hours** (noon–21:00 at 26¢/kWh), and the Supercharger belt is legacy 72 kW hardware mostly outside the box. Aggressive traffic plus daily storms raise incident risk (`incK` 1.30). | **Shipped** (v0.24) |
+| **Orlando / Tampa, FL** | Tourism | Airport and theme-park demand. Extremely peaky, long airport runs, strong seasonality. Wants a new demand-curve profile, which is why it is not next. | Planned |
+| **SF Bay Area, CA** | Hard mode | Safety monitor mandatory — payroll from hour one. Highest fares, worst congestion, most expensive power, steep hills hurting range, Meridian entrenched, hostile regulator. **The monitor IS Act 2's payroll mechanic**, so this city cannot ship before Act 2. | Blocked on Act 2 |
+
+Earlier drafts of this table guessed at the cities from a distance and got two things wrong,
+both corrected above: Dallas's launch geofence was *smaller* than Austin's rather than
+"enormous geography", and Miami's headline is not flooding and hurricanes — no such events
+exist — it is how much of Miami the service area leaves out. Where reportage and a nice
+design idea disagreed, the code followed the reportage.
+
+Real launch dates, for the record: Austin June 2025 (supervised), Dallas and Houston
+18 April 2026 (unsupervised), Miami 3 July 2026, Orlando and Tampa 21 July 2026.
 
 ---
 
@@ -187,8 +199,16 @@ Austin is the only city in the prototype.
 
 ### 6.1 Time
 
-1 game day ≈ 10–15 real minutes. Pause, 1x, 2x, 4x. Rides, charging, and shifts all
-resolve on the ticking clock. Day ends with a report; the player re-plans between days.
+**1× is real time.** `CFG.simPerReal` is 1, so one simulated hour is one real hour and the
+18-hour day (06:00 → midnight) is 18 real hours at 1×. The speeds are **pause / 1× / 4× /
+20×**, which puts a full day at 54 minutes flat out. Rides, charging and shifts all resolve
+on the ticking clock, and clocking off fast-forwards to the next 06:00 so the fixed costs
+land at a real midnight rather than a hardcoded 24.0 h.
+
+This paragraph used to claim "10–15 real minutes" and speeds of 1×/2×/4×. Neither was ever
+true in the code, and the time scale was deliberately left alone when the mismatch was found:
+real-time-at-1× is the intended feel, and 20× is the lever for people who want a day in an
+hour. The document was what needed correcting.
 
 ### 6.2 Demand
 
