@@ -156,7 +156,7 @@ What it buys the game:
   A game about margin should let you feel that.
 
 What it costs: the opening is one click longer, and a player who rents without reading may
-not understand why they are poorer on day five. That is what Ray's beat 2 is for.
+not understand why they are poorer on day five. That is what Paolo's beat 2 is for.
 
 ### 3.3 You are the remote operator
 
@@ -173,7 +173,7 @@ Mechanically this means:
 - At one car this is trivial. At three it is annoying. At four it is impossible — and
   that impossibility, not a menu unlock, is what opens Act 2.
 
-The single most important sentence in the tutorial is the one where Ray points out your
+The single most important sentence in the tutorial is the one where Paolo points out your
 margin was your own unpaid attention.
 
 ### 3.4 Act 1 trilemma
@@ -363,7 +363,7 @@ you, and nothing below Attention ever does.
 | Tier | Examples | Behaviour |
 |---|---|---|
 | **Notice** (grey) | New offer, charge complete, shift milestone | Badge count only. No auto-slow |
-| **Attention** (amber) | SoC below 25%; charger queue ahead; cleanliness under 60%; rating band change | Badge + **auto-slow to 1×** + Ray-style one-line summary |
+| **Attention** (amber) | SoC below 25%; charger queue ahead; cleanliness under 60%; rating band change | Badge + **auto-slow to 1×** + Paolo-style one-line summary |
 | **Urgent** (red) | Car cannot reach a charger; blocked car; accepted ride about to expire; collision | Badge + auto-slow + audible tone + **the car rail auto-selects that car** |
 
 The battery alert is deliberately not "battery low", which is not actionable. It is:
@@ -586,7 +586,7 @@ the pretty number will work the trough and earn less.
 
 That tension is the best thing in the economy and must survive tuning. Cost per mile is
 diagnostic, not the score. Net cash is the score. The shift report presents them in that
-order, and Ray says so once (beat 11).
+order, and Paolo says so once (beat 11).
 
 Skilled Act 1 play — a long shift, both platforms, both peaks, the trough skipped — reaches
 **$130–135/shift**. Against $44.60 for a casual four hours, that is the difference between
@@ -731,7 +731,7 @@ hours you don't takes a two-car fleet from 12 car-hours to 36:
 **Hiring more than doubles profit and makes cost per mile worse.** That is not a tuning
 error, it is the correct answer, and it is the sharpest possible demonstration of §6.3a:
 free hours improve cost per mile, *purchased* hours cost $0.44/mile in monitoring and only
-save $0.28/mile in spread fixed cost. Ray's warning in beat 11 — don't chase cost per mile —
+save $0.28/mile in spread fixed cost. Paolo's warning in beat 11 — don't chase cost per mile —
 pays off here, two acts later, on a player who now understands why.
 
 ### 8.2a A flaw this exposes in the original design
@@ -782,18 +782,18 @@ company, and Act 2 begins when you work out what you were worth.
 
 ---
 
-## 9. Tutorial: Ray
+## 9. Tutorial: Paolo
 
 ### 9.1 Who he is
 
-**Ray Salcido**, 41 years driving a cab in Austin. Got out in 2024, before it stopped
+**Paolo Cortez**, 41 years driving a cab in Austin. Got out in 2024, before it stopped
 being a choice. He is not your employer, your assistant, or a UI voice — he's the guy
 who sold you the car, and he texts you because he wants to see whether the thing that
 ended his trade is at least a real job.
 
 Voice rules:
 
-- **Short sentences.** Ray does not explain twice.
+- **Short sentences.** Paolo does not explain twice.
 - **Dry, not folksy.** No "well howdy partner". No wisdom-of-the-elders cadence.
 - **Bitter about the industry, never about you.** He wants you to make it.
 - **Never says the word "tutorial", never says "click".** He says what to do, and the
@@ -812,7 +812,7 @@ Sample register:
 
 ### 9.2 Window anatomy
 
-Diegetic and compliant with `UI-SPEC.md`: Ray's messages are an **opaque card**,
+Diegetic and compliant with `UI-SPEC.md`: Paolo's messages are an **opaque card**,
 `--surface-2`, 12px radius, 1px `--border`, no shadow, 24px padding — the same material as
 any app window, because it *is* one. His messages arrive in a Messages card.
 
@@ -822,7 +822,7 @@ Placement and behaviour:
   the top edge (§8).
 - **Max 320px wide, 3–4 lines of body text.** If a beat needs more, it's two beats.
 - **Never modal, never pauses the clock** — except beat 1, which arrives at 06:00 while
-  the game is already paused. Everything Ray says can be ignored while cars keep earning,
+  the game is already paused. Everything Paolo says can be ignored while cars keep earning,
   because a tutorial that stops the world teaches nothing about time pressure.
 - **Spotlight, not arrow.** The referenced control gets a 2px `--accent` ring and the rest
   of the console dims 25%. The card physically cannot cover its own target, since it lives
@@ -836,7 +836,7 @@ Placement and behaviour:
 ### 9.3 Act 1 beat script
 
 **Fourteen** beats, all triggered by game state rather than a timer, so the tutorial follows the
-player rather than the reverse. Ray never blocks the clock (§9.2) — at 1:1 there is room for
+player rather than the reverse. Paolo never blocks the clock (§9.2) — at 1:1 there is room for
 him between offers, which is the whole reason a real-time game can afford a narrator at all.
 
 | # | Trigger | Beat | Spotlight |
@@ -885,7 +885,7 @@ Left for the player to find, because being told ruins them:
 - That the fixed $42/day, not driving, is most of what a mile costs
 - That standing orders (§5.2c) are the job description you'll hire against in Act 2
 
-Ray warns against chasing cost per mile in beat 12 without explaining why. A player who
+Paolo warns against chasing cost per mile in beat 12 without explaining why. A player who
 works the trough to flatter that number and earns less has learned the lesson properly.
 
 ---
@@ -899,7 +899,7 @@ repossessed and the run is over.
 platform, a collision deductible, a soiled car during peak.
 
 **Act 1 win:** finance car #2. There is no fanfare — the payment appears in tomorrow's
-fixed cost and Ray says something unencouraging.
+fixed cost and Paolo says something unencouraging.
 
 **Campaign goal (Austin):** hold an unsupervised permit, run 15+ cars, and land cost per
 mile under $0.55 with a safety score above 75. The `DESIGN.md` §10 question of whether to
@@ -996,7 +996,7 @@ Ordered by whether the prototype currently lies to us without it.
 14. **Manual unsticking**, so the player can be the operator before hiring one.
 15. **Financing** at the new $1,500 down / $200 reserve / $13.60/day terms, from deferred.
 16. **Fixed cost decomposed** to $42 base + lease/loan/owned (§3.1), replacing the flat $70.
-17. **Messages app and the spotlight mechanic** for Ray, and the thirteen beats.
+17. **Messages app and the spotlight mechanic** for Paolo, and the thirteen beats.
 18. **Soiled incidents** and the cleaning dispatch.
 19. **Fleet-vs-gig insurance tiering**, and a Books view showing cost per mile and take rate
     as two separate numbers (§6.3).
@@ -1080,7 +1080,7 @@ This document supersedes parts of `DESIGN.md`, which has not been updated:
 
 ### Carried over
 
-- **Ray's ending.** He should stop texting at some point in Act 2, and the reason matters.
+- **Paolo's ending.** He should stop texting at some point in Act 2, and the reason matters.
   Undecided.
 - **Whether 1:1 with one car is actually engaging**, or whether ~18 minutes per ride cycle
   is too sparse even with an offer feed to read. This is the one open question that can

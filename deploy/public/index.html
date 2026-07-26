@@ -20,11 +20,23 @@
 :root{
   /* management surfaces */
   --canvas:#EDEFF2;
-  --glass:rgba(255,255,255,0.72);
-  --glass-brd:rgba(255,255,255,0.65);
+  /* GLASS 1b — thinner, deeper glass. See GLASS-STYLE.md before touching these. */
+  --glass:rgba(255,255,255,0.40);
+  --glass-brd:rgba(255,255,255,0.55);
   --glass-ring:rgba(23,26,32,0.08);
-  --panel-solid:rgba(255,255,255,0.92);
-  --inset:rgba(23,26,32,0.035);
+  --panel-solid:rgba(255,255,255,0.62);
+  --inset:rgba(255,255,255,0.44);      /* raised fill ON glass */
+  --inset-2:rgba(23,26,32,0.07);       /* recessed track/rule */
+  --overlay:rgba(23,26,32,0.34);
+  --blur:34px;
+  --sat:1.8;
+  --elev:0 20px 44px -20px rgba(23,26,32,.36);
+  --elev-hi:0 26px 54px -20px rgba(23,26,32,.42);
+  --hi:inset 0 1px 0 rgba(255,255,255,.95),inset 0 0 0 1px rgba(255,255,255,.14);
+  --hi-1:inset 0 1px 0 rgba(255,255,255,.85);
+  --tone:.13;                          /* header tone strength */
+  --tone-rgb:23,26,32;                 /* header tone hue, per panel */
+  --tone-txt:#393C41;
 
   --text-1:#171A20;
   --text-2:#393C41;
@@ -35,12 +47,14 @@
 
   --accent:#3E6AE1;
   --accent-2:#2F55C4;
+  --accent-rgb:62,106,225;
 
   --s-idle:#8E8E8E;
   --s-active:#3E6AE1;
   --s-charge:#1F8A4C;
   --s-attn:#B87503;
   --s-crit:#C0392B;
+  --s-crit-rgb:192,57,43;
 
   /* console chrome — fixed, does not theme */
   --c-black:#000;
@@ -54,8 +68,9 @@
   --app-red:#E0453C;
   --app-blue:#3E6AE1;
 
-  --r-ctl:4px;
-  --r-srf:12px;
+  --text:#171A20;
+  --r-ctl:6px;
+  --r-srf:14px;
   --dur-fast:.15s;
   --dur-base:.33s;
   --ease:cubic-bezier(.5,0,0,.75);
@@ -66,11 +81,23 @@
 
 html[data-theme="night"]{
   --canvas:#0E1013;
-  --glass:rgba(39,44,51,0.66);
+  --glass:rgba(39,44,51,0.46);
   --glass-brd:rgba(255,255,255,0.10);
   --glass-ring:rgba(0,0,0,0.5);
-  --panel-solid:rgba(31,35,41,0.92);
-  --inset:rgba(255,255,255,0.045);
+  --panel-solid:rgba(31,35,41,0.72);
+  --inset:rgba(255,255,255,0.05);
+  --inset-2:rgba(255,255,255,0.10);
+  --overlay:rgba(6,7,9,0.50);
+  --blur:40px;
+  --sat:1.4;
+  --elev:0 24px 50px -24px rgba(0,0,0,.85);
+  --elev-hi:0 30px 60px -24px rgba(0,0,0,.9);
+  --hi:inset 0 1px 0 rgba(255,255,255,.14);
+  --hi-1:inset 0 1px 0 rgba(255,255,255,.08);
+  --tone:.14;
+  --tone-rgb:255,255,255;
+  --tone-txt:#FFFFFF;
+  --text:#FFFFFF;
 
   --text-1:#FFFFFF;
   --text-2:#C4C7CC;
@@ -81,12 +108,14 @@ html[data-theme="night"]{
 
   --accent:#5A82EB;
   --accent-2:#3E6AE1;
+  --accent-rgb:90,130,235;
 
   --s-idle:#6E727A;
   --s-active:#5A82EB;
   --s-charge:#34C77B;
   --s-attn:#F5B92E;
   --s-crit:#E5564B;
+  --s-crit-rgb:229,86,75;
 
   --bgmap-filter:invert(1) hue-rotate(180deg) saturate(.25) brightness(.85);
   --bgmap-op:.40;
@@ -118,17 +147,19 @@ body{
 /* ============ top bar ============ */
 .topbar{
   flex:0 0 48px;display:flex;align-items:center;gap:22px;padding:0 16px;
-  background:var(--glass);backdrop-filter:blur(16px) saturate(1.15);
-  -webkit-backdrop-filter:blur(16px) saturate(1.15);
+  background:var(--glass);backdrop-filter:blur(var(--blur)) saturate(var(--sat));
+  -webkit-backdrop-filter:blur(var(--blur)) saturate(var(--sat));
   border:1px solid var(--glass-brd);border-radius:var(--r-srf);
-  box-shadow:0 0 0 1px var(--glass-ring);
+  box-shadow:var(--elev),var(--hi);
 }
+/* cash is the number the whole game turns on — give it a raised chip */
+.tb-cash{padding:3px 10px;border-radius:6px;background:var(--inset);box-shadow:var(--hi-1)}
 .brand{display:flex;align-items:baseline;gap:9px;padding-right:20px;border-right:1px solid var(--brd)}
 .brand b{font-weight:500;font-size:16px;letter-spacing:.14em;text-transform:uppercase}
 .brand span{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-4)}
 .brand .ver{font-style:normal;font-size:9.5px;letter-spacing:.1em;color:var(--text-4);
   padding:1px 5px;border:1px solid var(--brd-2);border-radius:3px;align-self:center}
-.clockbtn.on{background:var(--s-charge);border-color:var(--s-charge);color:#fff}
+.clockbtn.on{background:linear-gradient(180deg,#28A05B,var(--s-charge));border-color:transparent;color:#fff}
 /* ---- platforms ---- */
 .plat{display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--brd)}
 .plat:last-child{border-bottom:0}
@@ -136,12 +167,12 @@ body{
 .plat-n small{display:block;font-weight:400;font-size:10px;color:var(--text-3);margin-top:1px}
 .plat button{height:26px;padding:0 10px;font:inherit;font-size:11px;cursor:pointer;
   border:1px solid var(--brd-2);border-radius:var(--r-ctl);background:transparent;color:var(--text)}
-.plat button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.plat button.on{background:linear-gradient(180deg,#4B77E8,var(--accent));border-color:transparent;color:#fff}
 .plat .ar{font-size:10.5px;color:var(--text-3);flex:0 0 62px;text-align:right}
 /* ---- offer cards ---- */
-.offer{border:1px solid var(--brd);border-radius:7px;padding:8px 9px;margin-bottom:6px;
-  background:var(--c-card)}
-.offer.warn{border-color:var(--s-attn)}
+.offer{border:1px solid var(--glass-brd);border-radius:9px;padding:9px 10px;margin-bottom:7px;
+  background:var(--panel-solid);box-shadow:var(--hi-1),0 6px 16px -10px rgba(23,26,32,.3)}
+.offer.warn{border-color:var(--s-attn);box-shadow:var(--hi-1),0 6px 16px -10px rgba(184,117,3,.4)}
 .offer-top{display:flex;align-items:baseline;gap:7px;font-size:12px}
 .offer-top .pn{font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3)}
 .offer-top .net{margin-left:auto;font-weight:500}
@@ -149,22 +180,26 @@ body{
 .offer-act{display:flex;gap:5px;align-items:center}
 .offer-act button{flex:1;height:26px;font:inherit;font-size:11px;cursor:pointer;
   border:1px solid var(--brd-2);border-radius:var(--r-ctl);background:transparent;color:var(--text)}
-.offer-act button.acc{background:var(--accent);border-color:var(--accent);color:#fff}
+.offer-act button.acc{background:linear-gradient(180deg,#4B77E8,var(--accent));border-color:transparent;color:#fff;
+  box-shadow:0 4px 12px -6px rgba(47,85,196,.8)}
 .offer-act .cd{flex:0 0 34px;text-align:right;font-size:11px;color:var(--text-3);
   font-variant-numeric:tabular-nums}
 .offer.warn .cd{color:var(--s-attn)}
 .tb-item{display:flex;align-items:baseline;gap:7px}
 .tb-item label{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--text-4)}
 .tb-item b{font-weight:500;font-size:15px}
+/* Real local time for the city, next to its name — distinct from CLOCK
+   (the in-game simulated shift clock) a few items over. */
+.tb-sub{font-size:10.5px;color:var(--text-4);font-variant-numeric:tabular-nums}
 .tb-cash b{font-size:19px}
 .spacer{flex:1}
-.seg{display:flex;border:1px solid var(--brd-2);border-radius:var(--r-ctl);overflow:hidden}
+.seg{display:flex;border:1px solid var(--glass-brd);border-radius:var(--r-ctl);overflow:hidden;background:var(--inset);box-shadow:var(--hi-1)}
 .seg button{background:none;border:0;font:inherit;font-size:12px;font-weight:500;color:var(--text-3);
   min-width:44px;height:30px;cursor:pointer;transition:background var(--dur-fast),color var(--dur-fast)}
 .seg button+button{border-left:1px solid var(--brd-2)}
 .seg button:hover{background:var(--inset)}
-.seg button[aria-pressed="true"]{background:var(--accent);color:#fff}
-.ghost{display:flex;align-items:center;gap:7px;background:none;border:1px solid var(--brd-2);
+.seg button[aria-pressed="true"]{background:linear-gradient(180deg,#4B77E8,var(--accent));color:#fff}
+.ghost{display:flex;align-items:center;gap:7px;background:var(--inset);box-shadow:var(--hi-1);border:1px solid var(--glass-brd);
   border-radius:var(--r-ctl);height:30px;padding:0 12px;font:inherit;font-size:12px;font-weight:500;
   color:var(--text-2);cursor:pointer;transition:background var(--dur-fast),border-color var(--dur-fast)}
 .ghost:hover{background:var(--inset);border-color:var(--text-4)}
@@ -182,17 +217,28 @@ body{
 /* ============ glass panel ============ */
 .panel{
   display:flex;flex-direction:column;min-height:0;overflow:hidden;
-  background:var(--glass);backdrop-filter:blur(16px) saturate(1.15);
-  -webkit-backdrop-filter:blur(16px) saturate(1.15);
+  background:var(--glass);backdrop-filter:blur(var(--blur)) saturate(var(--sat));
+  -webkit-backdrop-filter:blur(var(--blur)) saturate(var(--sat));
   border:1px solid var(--glass-brd);border-radius:var(--r-srf);
-  box-shadow:0 0 0 1px var(--glass-ring);
+  box-shadow:var(--elev),var(--hi);
+  transition:box-shadow var(--dur-base) var(--ease),transform var(--dur-base) var(--ease);
 }
-.p-head{flex:0 0 auto;display:flex;align-items:center;gap:9px;padding:9px 12px;
-  border-bottom:1px solid var(--brd)}
-.p-head .ms{font-size:17px;color:var(--text-3)}
-.p-head h2{font-size:11px;font-weight:500;letter-spacing:.11em;text-transform:uppercase;color:var(--text-2)}
-.p-head .tag{margin-left:auto;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-4)}
-.p-body{flex:1;min-height:0;overflow-y:auto;padding:8px 12px 10px;
+.panel:hover{box-shadow:var(--elev-hi),var(--hi);transform:translateY(-2px)}
+.panel.locked:hover{transform:none;box-shadow:var(--elev),var(--hi)}
+/* Header tone. The band replaces the divider: the panel says what it is by
+   hue, not by a rule. Neutral is the default; only three panels are typed. */
+.panel[data-tone="blue"]{--tone-rgb:62,106,225;--tone-txt:#2F55C4}
+.panel[data-tone="green"]{--tone-rgb:31,138,76;--tone-txt:#17703D}
+.panel[data-tone="amber"]{--tone-rgb:184,117,3;--tone-txt:#8F5B02}
+html[data-theme="night"] .panel[data-tone="blue"]{--tone-rgb:90,130,235;--tone-txt:#A8BEF7}
+html[data-theme="night"] .panel[data-tone="green"]{--tone-rgb:52,199,123;--tone-txt:#82E2AE}
+html[data-theme="night"] .panel[data-tone="amber"]{--tone-rgb:245,185,46;--tone-txt:#F8D179}
+.p-head{flex:0 0 auto;display:flex;align-items:center;gap:9px;padding:11px 13px 10px;
+  background:linear-gradient(180deg,rgba(var(--tone-rgb),var(--tone)),rgba(var(--tone-rgb),0))}
+.p-head .ms{font-size:16px;color:var(--tone-txt)}
+.p-head h2{font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--tone-txt)}
+.p-head .tag{margin-left:auto;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-4)}
+.p-body{flex:1;min-height:0;overflow-y:auto;padding:9px 13px 12px;
   scrollbar-width:thin;scrollbar-gutter:stable;scrollbar-color:var(--brd-2) transparent}
 .p-body::-webkit-scrollbar{width:7px}
 .p-body::-webkit-scrollbar-track{background:transparent}
@@ -204,7 +250,7 @@ body{
 .metrics{display:grid;gap:6px;margin-bottom:9px}
 .metrics.c3{grid-template-columns:repeat(3,1fr)}
 .metrics.c2{grid-template-columns:repeat(2,1fr)}
-.metric{background:var(--inset);border-radius:var(--r-ctl);padding:7px 9px}
+.metric{background:var(--inset);border-radius:7px;padding:7px 9px;box-shadow:var(--hi-1)}
 .metric b{display:block;font-weight:500;font-size:20px;margin-top:2px;letter-spacing:-.01em}
 .metric small{font-size:11px;color:var(--text-4);font-weight:400}
 
@@ -212,7 +258,7 @@ table{width:100%;border-collapse:collapse}
 th{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--text-4);
   font-weight:400;text-align:left;padding:0 0 7px}
 th.r,td.r{text-align:right}
-td{padding:7px 0;border-top:1px solid var(--brd);font-size:12.5px}
+td{padding:7px 0;border-top:1px solid var(--inset-2);font-size:12.5px}
 tr:first-child td{border-top:0}
 .cid{font-weight:500;font-size:13px}
 .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;vertical-align:0}
@@ -223,8 +269,8 @@ tr:first-child td{border-top:0}
 .d-attn{background:var(--s-attn)} .t-attn{color:var(--s-attn)}
 .d-crit{background:var(--s-crit)} .t-crit{color:var(--s-crit)}
 
-.bar{height:5px;border-radius:3px;background:var(--inset);overflow:hidden;margin-top:5px}
-.bar i{display:block;height:100%;border-radius:3px;background:var(--accent)}
+.bar{height:5px;border-radius:3px;background:var(--inset-2);overflow:hidden;margin-top:5px}
+.bar i{display:block;height:100%;border-radius:3px;background:var(--accent);transition:width var(--dur-base) var(--ease)}
 
 .row{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--brd)}
 .row:first-child{border-top:0}
@@ -235,12 +281,12 @@ tr:first-child td{border-top:0}
 .costline{display:flex;align-items:center;gap:9px;font-size:12px;padding:3px 0}
 .costline span:first-child{flex:1;color:var(--text-3)}
 .costline .amt{font-weight:500;min-width:52px;text-align:right}
-.costline .track{width:76px;height:4px;border-radius:2px;background:var(--inset);overflow:hidden}
-.costline .track i{display:block;height:100%;background:var(--text-4)}
+.costline .track{width:76px;height:5px;border-radius:3px;background:var(--inset-2);overflow:hidden}
+.costline .track i{display:block;height:100%;background:var(--text-4);transition:width var(--dur-base) var(--ease)}
 .costline.hi .track i{background:var(--s-attn)}
 .costline.hi .amt{color:var(--s-attn)}
 
-.alert{border-left:3px solid var(--s-attn);background:var(--inset);border-radius:0 var(--r-ctl) var(--r-ctl) 0;
+.alert{border-left:3px solid var(--s-attn);background:rgba(184,117,3,.09);border-radius:0 var(--r-ctl) var(--r-ctl) 0;
   padding:7px 10px;margin-bottom:6px}
 .alert.crit{border-left-color:var(--s-crit)}
 .alert .top{display:flex;align-items:center;gap:7px;margin-bottom:3px}
@@ -249,6 +295,14 @@ tr:first-child td{border-top:0}
 .alert.crit .top .ms{color:var(--s-crit)}
 .alert p{font-size:11px;color:var(--text-3)}
 .alert .clock{margin-left:auto;font-size:12px;font-weight:500;color:var(--s-attn)}
+/* Only a blocked-car alert opens the dodge mini-game — the safety-score
+   alert renders through the same .alert markup but isn't clickable. */
+.alert.blocked{cursor:pointer;transition:background var(--dur-base) var(--ease)}
+.alert.blocked:hover{background:rgba(184,117,3,.16)}
+.alert.blocked.crit:hover{background:rgba(192,57,43,.14)}
+.alert.blocked p{display:flex;align-items:baseline;gap:8px}
+.alert.blocked p .take{margin-left:auto;flex:0 0 auto;font-size:10.5px;
+  font-weight:500;color:var(--accent);white-space:nowrap}
 
 .opsrow{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid var(--brd)}
 .opsrow:first-child{border-top:0}
@@ -262,14 +316,27 @@ tr:first-child td{border-top:0}
 /* ============================================================
    CONSOLE — flat, opaque, authentic. No glass in here.
    ============================================================ */
-.console{display:flex;flex-direction:column;min-height:0;min-width:0;background:var(--c-black);
-  border-radius:var(--r-srf);overflow:hidden;box-shadow:0 0 0 1px rgba(0,0,0,.55);
+/* The console keeps its flat, opaque in-car register. The glass stops at the
+   bezel: .console is the frame, .t-inner is the screen. */
+.console{display:flex;flex-direction:column;min-height:0;min-width:0;padding:7px;
+  background:rgba(255,255,255,.34);backdrop-filter:blur(var(--blur)) saturate(var(--sat));
+  -webkit-backdrop-filter:blur(var(--blur)) saturate(var(--sat));
+  border:1px solid var(--glass-brd);border-radius:16px;
+  box-shadow:0 24px 50px -22px rgba(23,26,32,.42),inset 0 1px 0 rgba(255,255,255,.95);
   container-type:inline-size}
+html[data-theme="night"] .console{background:rgba(39,44,51,.4);
+  box-shadow:0 28px 60px -26px rgba(0,0,0,.9),inset 0 1px 0 rgba(255,255,255,.12)}
+.t-inner{flex:1;min-height:0;display:flex;flex-direction:column;background:var(--c-black);
+  border-radius:11px;overflow:hidden;
+  box-shadow:0 0 0 1px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.06)}
 
 .t-status{flex:0 0 30px;display:flex;align-items:center;justify-content:space-between;
   padding:0 12px;background:var(--c-black);color:#fff;font-size:11px;letter-spacing:.02em}
 .t-status .grp{display:flex;align-items:center;gap:7px}
 .t-status .ms{font-size:14px}
+/* Real current weather for the city — replaces what used to be a static,
+   hardcoded "34°C". */
+.t-status .cond{color:#9A9DA2;font-size:10px;letter-spacing:.02em}
 .t-status .mid{display:flex;align-items:center;gap:11px;font-weight:500}
 .t-status .mk{font-size:10px;letter-spacing:.22em;font-weight:500}
 .t-status .warn{color:var(--app-red);font-weight:500;letter-spacing:.06em}
@@ -286,15 +353,15 @@ tr:first-child td{border-top:0}
 .t-app:hover .ring{border-color:#fff}
 .t-app[aria-pressed="true"] .ring{border-color:transparent;border-radius:9px}
 .t-app[aria-pressed="true"] label{color:#fff}
-.t-app[data-c="green"][aria-pressed="true"] .ring{background:var(--app-green)}
+.t-app[data-c="green"][aria-pressed="true"] .ring{background:var(--app-green);box-shadow:0 4px 14px rgba(33,191,91,.45)}
 .t-app[data-c="red"][aria-pressed="true"] .ring{background:var(--app-red)}
 .t-app[data-c="orange"][aria-pressed="true"] .ring{background:var(--app-orange)}
 .t-app[data-c="blue"][aria-pressed="true"] .ring{background:var(--app-blue)}
 
 .t-card{flex:1;min-height:0;display:flex;flex-direction:column;margin:8px;
-  border-radius:6px;overflow:hidden;background:var(--c-card)}
+  border-radius:8px;overflow:hidden;background:var(--c-card)}
 .t-cardbar{flex:0 0 34px;display:flex;align-items:center;gap:9px;padding:0 11px;
-  background:var(--c-navy);color:#fff}
+  background:linear-gradient(180deg,#2A4A77,var(--c-navy));color:#fff}
 .t-cardbar .ms{font-size:16px}
 .t-cardbar b{font-size:11px;font-weight:500;letter-spacing:.12em;text-transform:uppercase}
 .t-cardbar .sub{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.62)}
@@ -302,7 +369,11 @@ tr:first-child td{border-top:0}
 
 .t-cardbody{flex:1;min-height:0;min-width:0;display:flex;flex-direction:column}
 .t-side{flex:0 0 auto;min-width:0;display:flex;flex-direction:column}
-#map{flex:1;min-height:120px;min-width:0;background:#DFE3E7}
+/* #map used to carry the flex sizing itself; that moved to .map-wrap so
+   #dodge-incar (the in-car camera view) can sit absolutely on top of it
+   without Leaflet ever being resized, torn down, or rebuilt. */
+.map-wrap{flex:1;min-height:120px;min-width:0;position:relative}
+#map{position:absolute;inset:0;background:#DFE3E7}
 #map.night{filter:var(--tile-filter)}
 .leaflet-container{font-family:Inter,sans-serif}
 .carpin{border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.35)}
@@ -339,17 +410,34 @@ tr:first-child td{border-top:0}
 .t-ev i{font-style:normal;color:#9A9DA2;flex:0 0 auto}
 .t-ev.attn b{color:#B87503}
 
-.t-cta{flex:0 0 auto;display:flex;height:52px;margin:10px;border-radius:4px;overflow:hidden;
+.t-cta{flex:0 0 auto;position:relative;display:flex;height:52px;margin:10px;border-radius:6px;overflow:hidden;
+  box-shadow:0 8px 20px -10px rgba(47,85,196,.7);
   background:var(--accent-2);cursor:pointer;border:0;font:inherit;
   transition:filter var(--dur-base) var(--ease)}
 .t-cta:hover{filter:brightness(1.08)}
-.t-cta .main{flex:1;display:grid;place-items:center;background:var(--app-blue);color:#fff;
-  font-size:16px;font-weight:400;padding-right:24px;
+/* one pass of light across the primary action, on hover only */
+.t-cta::after{content:"";position:absolute;inset:0 auto 0 0;width:40%;pointer-events:none;
+  background:linear-gradient(100deg,transparent,rgba(255,255,255,.34),transparent);transform:translateX(-120%)}
+.t-cta:hover::after{animation:sheen 1.1s var(--ease)}
+@keyframes sheen{to{transform:translateX(220%)}}
+/* pointer-events:none on both halves: .main's clip-path chevron notch is a
+   real hit-test boundary in some browsers, and without this a click near
+   that diagonal seam could land on neither child and appear to do nothing,
+   or land on the "wrong" half of what looks like one button. Handing all
+   hit-testing to the <button> itself makes the whole rectangle uniformly
+   clickable regardless of the decorative cut. */
+.t-cta .main{flex:1;display:grid;place-items:center;background:linear-gradient(180deg,#4B77E8,var(--app-blue));color:#fff;
+  font-size:16px;font-weight:400;padding-right:24px;pointer-events:none;
   clip-path:polygon(0 0,calc(100% - 20px) 0,100% 50%,calc(100% - 20px) 100%,0 100%)}
-.t-cta .side{flex:0 0 158px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+.t-cta .side{pointer-events:none;flex:0 0 158px;display:flex;flex-direction:column;align-items:center;justify-content:center;
   gap:1px;color:#fff}
 .t-cta .side b{font-size:13px;font-weight:500;letter-spacing:.05em}
 .t-cta .side small{font-size:10px;letter-spacing:.09em;opacity:.8}
+/* Off-shift: the CTA stops being an inert "Clocked off" label and becomes
+   the fastest way to fix that — red like a state that needs attention,
+   and clickable straight into clockOn() (see the #cta click handler). */
+.t-cta.off .main{background:linear-gradient(180deg,var(--app-red),var(--s-crit))}
+.t-cta.off{box-shadow:0 8px 20px -10px rgba(192,57,43,.6)}
 
 /* ---- console bottom bar: the climate strip, repurposed ---- */
 .t-ctl{flex:0 0 104px;display:grid;
@@ -491,8 +579,9 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border:0;border-radiu
   .t-split>div{padding:8px 12px}
   .t-metrics>div{padding:7px 5px}
   .t-cta{height:42px;margin:8px}
-  #map{min-height:90px}
+  .map-wrap{min-height:90px}
 }
+
 
 /* ============================================================
    T5: PHONES  <=760px
@@ -610,7 +699,7 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border:0;border-radiu
 
 
 /* ============ prototype-only components ============ */
-.wbtn{width:100%;margin-top:9px;height:32px;border:1px solid var(--brd-2);background:none;
+.wbtn{width:100%;margin-top:10px;height:32px;border:1px solid var(--glass-brd);background:var(--inset);box-shadow:var(--hi-1);
   border-radius:var(--r-ctl);font:inherit;font-size:11px;font-weight:500;letter-spacing:.04em;
   color:var(--text-2);cursor:pointer;transition:background var(--dur-fast),border-color var(--dur-fast)}
 .wbtn:hover:not(:disabled){background:var(--inset);border-color:var(--text-4)}
@@ -634,28 +723,31 @@ tr[data-car].on td{background:var(--inset)}
 .map-off{height:100%;display:grid;place-items:center;text-align:center;color:#8A8D93;
   font-size:12px;letter-spacing:.09em;text-transform:uppercase;padding:24px}
 .map-off span{display:block;text-transform:none;letter-spacing:0;font-size:11px;margin-top:7px;max-width:340px}
-.modal{position:fixed;inset:0;z-index:60;background:var(--overlay);display:grid;place-items:center}
+.modal{position:fixed;inset:0;z-index:60;background:var(--overlay);display:grid;place-items:center;
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
 .modal[hidden]{display:none}
 /* max-width, not just width: three of these carry an inline width (430/560/900)
    that is wider than a phone, and a modal wider than the viewport is one more
    thing that lets the whole page be dragged sideways. */
-.rep{width:520px;max-width:calc(100vw - 20px);max-height:86vh;overflow:auto;background:var(--panel-solid);
-  border:1px solid var(--glass-brd);border-radius:12px;padding:22px 24px;
-  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+.rep{width:520px;max-width:calc(100vw - 20px);max-height:86vh;overflow:auto;background:rgba(255,255,255,.72);
+  border:1px solid var(--glass-brd);border-radius:var(--r-srf);padding:24px;
+  box-shadow:0 30px 60px -24px rgba(23,26,32,.45),var(--hi);
+  backdrop-filter:blur(var(--blur)) saturate(var(--sat));-webkit-backdrop-filter:blur(var(--blur)) saturate(var(--sat))}
 .rep h3{font-size:18px;font-weight:500;margin-bottom:14px}
 .rp-row{display:flex;justify-content:space-between;gap:16px;padding:4px 0;font-size:13px}
 .rp-row span:first-child{color:var(--text-3)}
 .rp-sep{height:1px;background:var(--brd);margin:9px 0}
 .pos{color:var(--s-charge)} .neg{color:var(--s-crit)}
-#rp-go{margin-top:18px;width:100%;height:42px;border:0;border-radius:var(--r-ctl);
-  background:var(--accent);color:#fff;font:inherit;font-size:15px;font-weight:500;cursor:pointer}
+#rp-go{margin-top:20px;width:100%;height:44px;border:0;border-radius:8px;
+  background:linear-gradient(180deg,#4B77E8,var(--accent));color:#fff;font:inherit;font-size:15px;
+  font-weight:500;cursor:pointer;box-shadow:0 10px 24px -10px rgba(47,85,196,.9)}
 
 /* ---------------- save manager ---------------- */
 .rep h4{font-size:11px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;
   color:var(--text-3);margin:16px 0 8px}
 .rep h4:first-of-type{margin-top:6px}
 .slot{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;
-  background:var(--c-card);border:1px solid var(--brd);margin-bottom:7px}
+  background:var(--inset);border:1px solid var(--glass-brd);box-shadow:var(--hi-1);margin-bottom:7px}
 .slot.empty{border-style:dashed;background:transparent}
 .slot-id{flex:0 0 66px;font-size:12px;font-weight:500;letter-spacing:.04em}
 .slot-id small{display:block;font-weight:400;font-size:10px;color:var(--text-3);
@@ -690,30 +782,96 @@ tr[data-car].on td{background:var(--inset)}
 
 /* ---------------- Ray: tutorial messages + spotlight ----------------
    §9.2 — an opaque card in the one corner nothing important occupies, so
-   it physically cannot cover its own spotlight target. Never modal. */
-#ray{position:fixed;left:18px;bottom:122px;z-index:70;width:320px;
-  background:var(--panel-solid);border:1px solid var(--brd);border-radius:12px;
-  padding:18px 20px 14px;box-shadow:none}
+   it physically cannot cover its own spotlight target. Never modal.
+   Styled as an iMessage thread: Ray is texting the player, so the beat
+   reads as a received bubble (grey, tail bottom-left) under a contact
+   header, with the actions as a chip row below — not as a dialog box. */
+#ray{position:fixed;left:18px;bottom:122px;z-index:70;width:330px;
+  max-height:calc(100vh - 40px);overflow-y:auto;
+  background:var(--panel-solid);border:1px solid var(--glass-brd);border-radius:var(--r-srf);
+  padding:16px 16px 14px;box-shadow:0 24px 50px -22px rgba(23,26,32,.42),var(--hi);
+  backdrop-filter:blur(var(--blur)) saturate(var(--sat));-webkit-backdrop-filter:blur(var(--blur)) saturate(var(--sat))}
 #ray[hidden]{display:none}
-#ray .who{display:flex;align-items:baseline;gap:7px;margin-bottom:8px}
-#ray .who b{font-size:12.5px;font-weight:500;letter-spacing:.02em}
-#ray .who span{font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--text-4)}
-#ray .body{font-size:13px;line-height:1.5;color:var(--text-2)}
-#ray .foot{display:flex;align-items:center;gap:8px;margin-top:14px}
-#ray-go{flex:1;height:34px;border:0;border-radius:var(--r-ctl);background:var(--accent);
-  color:#fff;font:inherit;font-size:12.5px;cursor:pointer;display:flex;
-  align-items:center;justify-content:center;gap:8px}
+#ray .thread{display:flex;align-items:flex-end;gap:8px}
+#ray .avatar{flex:0 0 30px;width:30px;height:30px;border-radius:50%;
+  background:linear-gradient(160deg,#9AA0AB,#6C7178);color:#fff;font-size:11px;font-weight:600;
+  letter-spacing:.02em;display:flex;align-items:center;justify-content:center}
+#ray .stack{flex:1;min-width:0}
+#ray .who{display:flex;align-items:baseline;gap:6px;margin:0 0 5px 3px}
+#ray .who b{font-size:11px;font-weight:500;letter-spacing:.02em;color:var(--text-3)}
+#ray .who span{font-size:9px;letter-spacing:.09em;text-transform:uppercase;color:var(--text-4)}
+/* the bubble: iMessage grey, flattened corner toward the avatar reads as
+   the tail without a separate clipped pseudo-element */
+#ray .bubble{position:relative;background:#E9E9EB;border-radius:18px 18px 18px 5px;
+  padding:9px 13px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.03)}
+html[data-theme="night"] #ray .bubble{background:#2C2C2E;box-shadow:inset 0 0 0 1px rgba(255,255,255,.05)}
+#ray .body{font-size:13px;line-height:1.45;color:#171A20}
+html[data-theme="night"] #ray .body{color:#F2F2F4}
+#ray .foot{display:flex;align-items:center;gap:8px;margin-top:13px}
+#ray-go{flex:1;height:34px;border:0;border-radius:17px;background:linear-gradient(180deg,#4B77E8,var(--accent));box-shadow:0 6px 16px -8px rgba(47,85,196,.9);
+  color:#fff;font:inherit;font-size:12.5px;font-weight:500;cursor:pointer;display:flex;
+  align-items:center;justify-content:center;gap:8px;transition:filter var(--dur-fast)}
+#ray-go:hover{filter:brightness(1.06)}
 #ray-go small{opacity:.75;font-size:11px}
-#ray-skip{height:34px;padding:0 11px;border:1px solid var(--brd-2);border-radius:var(--r-ctl);
-  background:transparent;color:var(--text-3);font:inherit;font-size:11.5px;cursor:pointer}
+#ray-skip{height:34px;padding:0 14px;border:1px solid var(--glass-brd);border-radius:17px;
+  background:var(--inset);box-shadow:var(--hi-1);color:var(--text-3);font:inherit;font-size:11.5px;cursor:pointer}
 #ray-skip:hover{color:var(--text)}
 
-/* Spotlight: a ring on the target and everything else dimmed 25%. An arrow
-   would have to point across the screen; a ring does not move. */
+/* Spotlight: a pulsing ring on the target and everything else dimmed 25%.
+   The pulse (not just a static ring) is what pulls the eye there without
+   Ray's card having to point across the screen at it. Collapses to a
+   plain static ring under prefers-reduced-motion (global rule above). */
 body.dimmed .app{filter:brightness(.75)}
-.spotlight{position:relative;z-index:71;box-shadow:0 0 0 2px var(--accent);
-  border-radius:6px;filter:none!important}
+/* A hard on/off blink, not the smoother breathing pulse this replaced —
+   red like an attention state, because "look here" is exactly what a
+   status colour is for elsewhere in the game (§4.3). steps(1,end) gives
+   the abrupt toggle a blink actually needs; an eased pulse reads as calm. */
+.spotlight{position:relative;z-index:71;border-radius:6px;filter:none!important;
+  animation:spot-blink .9s steps(1,end) infinite}
+/* Beats that spotlight a whole panel (rather than one inner field) keep
+   that panel's own corner radius instead of the default 6px, so the ring
+   hugs the card's real rounded corners. #tb-cash-box already uses 6px
+   itself (see .tb-cash), so it needs no override. */
+.panel.spotlight{border-radius:var(--r-srf)}
+@keyframes spot-blink{
+  0%,49%{box-shadow:0 0 0 3px var(--s-crit),0 0 16px 3px rgba(var(--s-crit-rgb),.65)}
+  50%,100%{box-shadow:0 0 0 0 transparent}
+}
 body.dimmed .spotlight{filter:brightness(1.33)}
+
+/* Nav-icon "what does this mean" flash — deliberately NOT the tutorial's
+   red .spotlight blink. Red already means "Ray wants your attention on
+   something urgent"; this is just wayfinding ("here's the section this
+   icon refers to"), so it gets its own calmer blue pulse that runs a fixed
+   number of times and stops on its own — see flashSection(). */
+.nav-highlight{position:relative;z-index:15;border-radius:var(--r-srf);
+  animation:nav-flash 1.4s ease-in-out 1}
+@keyframes nav-flash{
+  0%,100%{box-shadow:0 0 0 0 transparent}
+  20%,55%{box-shadow:0 0 0 3px var(--accent),0 0 18px 4px rgba(var(--accent-rgb),.5)}
+  37%,72%{box-shadow:0 0 0 0 transparent}
+}
+
+/* ---------------- Paolo's intro video ----------------
+   The game's cold open: full view, not a corner thumbnail, shown once
+   before beat 1 ever fires (see showIntro() / newFleet()). Framed as a
+   video message on the same phone thread the rest of the tutorial lives
+   in, but this one gets the whole screen because it's the first thing a
+   new player sees, not a passing aside next to something else. */
+#intro{position:fixed;inset:0;z-index:90;display:grid;place-items:center;
+  background:rgba(6,7,9,.86);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+#intro[hidden]{display:none}
+.intro-frame{display:flex;flex-direction:column;align-items:center;gap:14px;
+  max-width:calc(100vw - 40px)}
+.intro-who{color:#fff;display:flex;align-items:baseline;gap:8px}
+.intro-who b{font-size:14px;font-weight:500}
+.intro-who span{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:#9A9DA2}
+#intro-video{max-height:76vh;max-width:min(90vw,428px);width:auto;height:auto;
+  border-radius:14px;background:#000;box-shadow:0 30px 70px -20px rgba(0,0,0,.7)}
+#intro-skip{height:38px;padding:0 18px;border:1px solid rgba(255,255,255,.28);
+  border-radius:19px;background:rgba(255,255,255,.08);color:#fff;font:inherit;
+  font-size:12.5px;cursor:pointer;transition:background var(--dur-fast)}
+#intro-skip:hover{background:rgba(255,255,255,.16)}
 
 /* Messages app — every beat stays readable, so nothing important is said
    only once (§9.2). */
@@ -731,11 +889,39 @@ body.dimmed .spotlight{filter:brightness(1.33)}
 .gar-sub{font-size:12px;color:var(--text-3);line-height:1.5;margin-bottom:14px}
 .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
 @media (max-width:820px){.cards{grid-template-columns:1fr}}
-.card{border:1px solid var(--brd);border-radius:10px;background:var(--c-card);
-  display:flex;flex-direction:column;overflow:hidden}
+
+/* ---- Take-control dodge mini-game: lives INSIDE the console's own map
+   area (see .map-wrap), styled as the car's own camera feed rather than a
+   popup — Pavel's framing: you're watching an in-car display, not opening
+   a separate app. Sits absolutely over #map; Leaflet is never touched. */
+#dodge-incar{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;
+  background:#0c0d10;color:#fff}
+.dh-top{display:flex;align-items:center;gap:8px;padding:9px 12px;
+  font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.7);
+  border-bottom:1px solid rgba(255,255,255,.14)}
+.dh-top b{color:#fff;font-weight:500}
+.dh-close{margin-left:auto;background:none;border:0;color:rgba(255,255,255,.6);
+  font-size:19px;line-height:1;cursor:pointer;padding:2px 6px}
+.dh-close:hover{color:#fff}
+#dodge-cv{flex:1;display:block;width:100%;min-height:0}
+.dodge-pad{display:flex;gap:10px;padding:8px 12px 0}
+.dodge-pad button{flex:1;height:38px;font-size:17px;cursor:pointer;
+  border:1px solid rgba(255,255,255,.22);border-radius:var(--r-ctl);
+  background:rgba(255,255,255,.07);color:#fff}
+.dodge-pad button:hover{border-color:#fff}
+.dodge-pad button:active{transform:translateY(1px)}
+.dodge-result{font-size:12px;color:rgba(255,255,255,.88);text-align:center;padding:8px 12px 0}
+.dodge-help{font-size:10.5px;color:rgba(255,255,255,.45);text-align:center;padding:6px 12px 10px}
+/* A card sits INSIDE the glass modal, so it must not frost again — glass on
+   glass reads as milk. Raised opaque fill, hairline, top highlight. */
+.card{border:1px solid var(--glass-brd);border-radius:12px;background:var(--inset);
+  display:flex;flex-direction:column;overflow:hidden;
+  box-shadow:0 10px 24px -14px rgba(23,26,32,.34),var(--hi-1);
+  transition:transform var(--dur-base) var(--ease),box-shadow var(--dur-base) var(--ease)}
+.card:hover{transform:translateY(-2px);box-shadow:0 16px 32px -14px rgba(23,26,32,.4),var(--hi-1)}
 .card.owned{border-color:var(--s-charge)}
-.card-art{height:96px;display:grid;place-items:center;background:var(--inset);
-  border-bottom:1px solid var(--brd)}
+.card-art{height:96px;display:grid;place-items:center;background:rgba(255,255,255,.45);
+  border-bottom:1px solid var(--glass-brd)}
 .carart{width:180px;height:70px;fill:none;stroke:var(--text-2);stroke-width:2.1;
   stroke-linecap:round;stroke-linejoin:round}
 .card.owned .carart{stroke:var(--s-charge)}
@@ -758,7 +944,8 @@ body.dimmed .spotlight{filter:brightness(1.33)}
 .card-acts button small{color:var(--text-3);font-size:11px}
 .card-acts button:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
 .card-acts button:hover:not(:disabled) small{color:var(--accent)}
-.card-acts button.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+.card-acts button.pri{background:linear-gradient(180deg,#4B77E8,var(--accent));border-color:transparent;color:#fff;
+  box-shadow:0 6px 16px -8px rgba(47,85,196,.9)}
 .card-acts button.pri small{color:rgba(255,255,255,.8)}
 .card-acts button:disabled{opacity:.38;cursor:default}
 .card-acts .why{font-size:10.5px;color:var(--text-4);text-align:center}
@@ -789,10 +976,10 @@ body.dimmed .spotlight{filter:brightness(1.33)}
   <!-- ============ management top bar ============ -->
   <header class="topbar">
     <div class="brand"><b>Deadhead</b><span>robotaxi fleet ops</span><i class="ver" id="ver"></i></div>
-    <div class="tb-item"><label>City</label><b>Austin</b></div>
+    <div class="tb-item"><label>City</label><b id="tb-city">Austin</b><span class="tb-sub" id="tb-city-time" title="Real local time in the city"></span></div>
     <div class="tb-item"><label>Day</label><b id="tb-day">1</b></div>
     <div class="tb-item"><label>Clock</label><b id="tb-clock">06:00</b></div>
-    <div class="tb-item tb-cash"><label>Cash</label><b id="tb-cash">$0</b></div>
+    <div class="tb-item tb-cash" id="tb-cash-box"><label>Cash</label><b id="tb-cash">$0</b></div>
     <div class="tb-item tb-opt"><label>Permit</label><b id="tb-permit">Supervised</b></div>
     <div class="tb-item"><label>Shift</label><b id="tb-shift">Off</b></div>
     <div class="spacer"></div>
@@ -814,7 +1001,7 @@ body.dimmed .spotlight{filter:brightness(1.33)}
     <!-- ---------- LEFT WING ---------- -->
     <div class="wing">
 
-      <section class="panel">
+      <section class="panel" data-tone="blue" id="panel-fleet">
         <div class="p-head"><svg class="ms"><use href="#i-car"/></svg><h2>Fleet roster</h2><span class="tag" id="fleet-count">&mdash;</span></div>
         <div class="p-body" id="pb-fleet">
           <div class="metrics c3">
@@ -829,7 +1016,7 @@ body.dimmed .spotlight{filter:brightness(1.33)}
       </section>
 
       <div class="stack">
-        <section class="panel">
+        <section class="panel" id="panel-platforms">
           <div class="p-head"><svg class="ms"><use href="#i-groups"/></svg><h2>Platforms</h2><span class="tag" id="ops-tag">&mdash;</span></div>
           <div class="p-body" id="pb-ops">
             <div id="plat-rows"></div>
@@ -837,7 +1024,7 @@ body.dimmed .spotlight{filter:brightness(1.33)}
           </div>
         </section>
 
-        <section class="panel">
+        <section class="panel" data-tone="green" id="panel-rapid">
           <div class="p-head"><svg class="ms"><use href="#i-station"/></svg><h2>Rapid network</h2><span class="tag" id="rapid-tag">&mdash;</span></div>
           <div class="p-body" id="pb-rapid">
             <div class="metrics c2">
@@ -851,35 +1038,55 @@ body.dimmed .spotlight{filter:brightness(1.33)}
     </div>
 
     <!-- ---------- CENTRE: THE CONSOLE ---------- -->
-    <section class="console" aria-label="Robotaxi IRL console">
+    <section class="console" aria-label="Robotaxi IRL console"><div class="t-inner">
 
       <div class="t-status">
-        <div class="grp"><span>34&deg;C</span><svg class="ms"><use href="#i-battery"/></svg></div>
-        <div class="mid"><span class="mk">Nova</span><span id="c-clock">06:00</span></div>
+        <div class="grp" title="Real current weather in the city"><span id="c-temp">&mdash;&deg;C</span><span class="cond" id="c-cond"></span></div>
+        <div class="mid"><span class="mk">Nova</span><span id="c-clock" title="Real local time in the city"></span></div>
         <div class="grp"><svg class="ms"><use href="#i-bt"/></svg><span>LTE</span><svg class="ms"><use href="#i-signal"/></svg><span class="ok" id="c-fleet">Fleet 0 active</span></div>
       </div>
 
       <nav class="t-apps">
-        <button class="t-app" data-c="blue"  aria-pressed="false"><span class="ring"><svg class="ms"><use href="#i-list"/></svg></span><label>Fleet</label></button>
-        <button class="t-app" data-c="green" aria-pressed="true"><span class="ring"><svg class="ms"><use href="#i-nav"/></svg></span><label>Map</label></button>
-        <button class="t-app" data-c="orange" aria-pressed="false"><span class="ring"><svg class="ms"><use href="#i-bolt"/></svg></span><label>Energy</label></button>
-        <button class="t-app" data-c="blue"  aria-pressed="false"><span class="ring"><svg class="ms"><use href="#i-receipt"/></svg></span><label>Books</label></button>
-        <button class="t-app" data-c="red"   aria-pressed="false"><span class="ring"><svg class="ms"><use href="#i-agent"/></svg></span><label>Ops</label></button>
-        <button class="t-app" data-c="green" aria-pressed="false"><span class="ring"><svg class="ms"><use href="#i-cam"/></svg></span><label>Camera</label></button>
-        <button class="t-app" data-c="blue"  aria-pressed="false"><span class="ring"><svg class="ms"><use href="#i-call"/></svg></span><label>Comms</label></button>
+        <button class="t-app" data-c="blue"  aria-pressed="false" data-panel="panel-fleet"><span class="ring"><svg class="ms"><use href="#i-list"/></svg></span><label>Fleet</label></button>
+        <button class="t-app" id="app-map" data-c="green" aria-pressed="true"><span class="ring"><svg class="ms"><use href="#i-nav"/></svg></span><label>Map</label></button>
+        <button class="t-app" data-c="orange" aria-pressed="false" data-panel="panel-rapid"><span class="ring"><svg class="ms"><use href="#i-bolt"/></svg></span><label>Energy</label></button>
+        <button class="t-app" data-c="blue"  aria-pressed="false" data-panel="panel-books"><span class="ring"><svg class="ms"><use href="#i-receipt"/></svg></span><label>Books</label></button>
+        <button class="t-app" data-c="red"   aria-pressed="false" data-panel="panel-platforms"><span class="ring"><svg class="ms"><use href="#i-agent"/></svg></span><label>Ops</label></button>
+        <button class="t-app" id="app-camera" data-c="green" aria-pressed="false"><span class="ring"><svg class="ms"><use href="#i-cam"/></svg></span><label>Camera</label></button>
+        <button class="t-app" data-c="blue"  aria-pressed="false" data-panel="panel-comms"><span class="ring"><svg class="ms"><use href="#i-call"/></svg></span><label>Comms</label></button>
       </nav>
 
       <div class="t-card">
         <div class="t-cardbar">
           <svg class="ms"><use href="#i-menu"/></svg>
           <svg class="ms"><use href="#i-nav"/></svg>
-          <b>Main fleet view</b>
-          <span class="sub">Robotaxi IRL</span>
+          <b id="cb-title">Main fleet view</b>
+          <span class="sub" id="cb-sub">Robotaxi IRL</span>
           <svg class="ms exp"><use href="#i-expand"/></svg>
         </div>
 
         <div class="t-cardbody">
-          <div id="map"></div>
+          <div class="map-wrap" id="map-wrap">
+            <div id="map"></div>
+
+            <!-- "Take control" plays right here, in the car's own display,
+                 rather than a popup modal — Pavel's framing: you're watching
+                 an in-car camera, not a separate app. Sits over #map so
+                 Leaflet never gets torn down/rebuilt between plays. -->
+            <div id="dodge-incar" hidden>
+              <div class="dh-top">
+                <b>Take control</b><span id="dodge-car-id">&mdash;</span>
+                <button id="dodge-close" class="dh-close" aria-label="Close camera view">&times;</button>
+              </div>
+              <canvas id="dodge-cv" aria-label="Obstacle dodge mini-game"></canvas>
+              <p class="dodge-result" id="dodge-result" hidden></p>
+              <div class="dodge-pad">
+                <button id="dodge-left" aria-label="Move left">&larr;</button>
+                <button id="dodge-right" aria-label="Move right">&rarr;</button>
+              </div>
+              <p class="dodge-help">Optional &mdash; ignore the incident and it still clears on its own.</p>
+            </div>
+          </div>
 
           <div class="t-side">
             <div class="t-split">
@@ -953,11 +1160,11 @@ body.dimmed .spotlight{filter:brightness(1.33)}
           <span class="cap">Sim speed</span>
         </div>
       </div>
-    </section>
+    </div></section>
 
     <!-- ---------- RIGHT WING ---------- -->
     <div class="wing">
-      <section class="panel">
+      <section class="panel" id="panel-books">
         <div class="p-head"><svg class="ms"><use href="#i-receipt"/></svg><h2>Books</h2><span class="tag">today</span></div>
         <div class="p-body" id="pb-books">
           <div class="metrics c3">
@@ -972,17 +1179,17 @@ body.dimmed .spotlight{filter:brightness(1.33)}
       </section>
 
       <div class="stack">
-        <section class="panel">
+        <section class="panel" data-tone="amber" id="panel-incidents">
           <div class="p-head"><svg class="ms"><use href="#i-warning"/></svg><h2>Incidents</h2><span class="tag" id="inc-tag">0 open</span></div>
           <div class="p-body" id="pb-inc"><div id="inc-list"></div></div>
         </section>
 
-        <section class="panel">
+        <section class="panel" id="panel-comms">
           <div class="p-head"><svg class="ms"><use href="#i-call"/></svg><h2>Messages</h2><span class="tag" id="msg-tag">0</span></div>
           <div class="p-body" id="pb-msg"><div id="msg-list"></div></div>
         </section>
 
-        <section class="panel">
+        <section class="panel" data-tone="blue" id="panel-offers">
           <div class="p-head"><svg class="ms"><use href="#i-route"/></svg><h2>Offers</h2><span class="tag" id="rq-tag">0 waiting</span></div>
           <div class="p-body" id="pb-rq">
             <div class="chips" id="zone-chips"></div>
@@ -1021,10 +1228,28 @@ body.dimmed .spotlight{filter:brightness(1.33)}
   </div>
 </div>
 
-<!-- Ray. Bottom-left, above the dock, never modal, never over the car rail. -->
+<!-- Paolo's intro video — full view, shown once before the tutorial starts.
+     Not a corner thumbnail: this is the game's cold open, framed as a video
+     message on the same phone thread the tutorial itself lives in. -->
+<div id="intro" hidden>
+  <div class="intro-frame">
+    <div class="intro-who"><b>Paolo Cortez</b><span>Messages</span></div>
+    <video id="intro-video" autoplay muted controls playsinline preload="metadata"
+      poster="paolo-intro-poster.jpg" src="Inside_The_Brutal_New_Robotaxi_Simulator_Deadhead.mp4"></video>
+    <button id="intro-skip">Skip intro</button>
+  </div>
+</div>
+
+<!-- Ray. Bottom-left, above the dock, never modal, never over the car rail.
+     iMessage thread: avatar + contact line + a received bubble. -->
 <div id="ray" hidden>
-  <div class="who"><b>Ray Salcido</b><span>Messages</span></div>
-  <div class="body" id="ray-text"></div>
+  <div class="thread">
+    <div class="avatar" aria-hidden="true">PC</div>
+    <div class="stack">
+      <div class="who"><b>Paolo Cortez</b><span>Messages</span></div>
+      <div class="bubble"><div class="body" id="ray-text"></div></div>
+    </div>
+  </div>
   <div class="foot">
     <button id="ray-go">Got it <small id="ray-count"></small></button>
     <button id="ray-skip">Skip</button>
@@ -1158,6 +1383,65 @@ const LABEL={idle:'Idle',dispatched:'To pickup',onTrip:'On trip',toCharge:'To ch
 const CLS={idle:'idle',dispatched:'active',onTrip:'active',toCharge:'charge',
            charging:'charge',blocked:'attn'};
 
+/* Per-city metadata. Only 'austin' exists today, but real weather and the
+   real local clock both need actual coordinates and an IANA timezone, so
+   this is where a second city gets added later — nothing that reads from
+   currentCity() below needs to change, only this table grows a row. */
+const CITIES={
+  austin:{name:'Austin', lat:30.2672, lon:-97.7431, tz:'America/Chicago'}
+};
+function currentCity(){ return CITIES[S.city]||CITIES.austin }
+
+/* Live weather + the city's real local clock — deliberately NOT part of
+   S/snapshot()/restore(). This is real-world data looked up for whichever
+   city is current, not game state to save or migrate; a reload just looks
+   it up again. */
+let WX={temp:null,cond:'',ok:false};
+/* WMO weather codes (what Open-Meteo returns) collapsed to one short word —
+   plenty of resolution for an 11px status-strip readout. */
+function weatherWord(code){
+  if(code===0) return 'Clear';
+  if(code===1||code===2) return 'Partly cloudy';
+  if(code===3) return 'Overcast';
+  if(code===45||code===48) return 'Fog';
+  if(code>=51&&code<=57) return 'Drizzle';
+  if(code>=61&&code<=67) return 'Rain';
+  if(code>=71&&code<=77) return 'Snow';
+  if(code>=80&&code<=82) return 'Showers';
+  if(code>=85&&code<=86) return 'Snow showers';
+  if(code>=95) return 'Storm';
+  return '';
+}
+/* No API key, CORS-open, built for exactly this — client-side, no backend.
+   Never throws past this function: a failed/offline fetch just keeps
+   whatever WX last held (or the initial blank state), same as the map
+   degrading to a placeholder when Leaflet can't load. */
+async function fetchWeather(){
+  if(typeof fetch!=='function') return;
+  const c=currentCity();
+  try{
+    const url='https://api.open-meteo.com/v1/forecast?latitude='+c.lat+
+      '&longitude='+c.lon+'&current=temperature_2m,weather_code&temperature_unit=celsius';
+    const r=await fetch(url);
+    if(!r.ok) throw new Error('weather http '+r.status);
+    const j=await r.json();
+    if(!j.current||typeof j.current.temperature_2m!=='number') throw new Error('unexpected weather response shape');
+    WX={temp:Math.round(j.current.temperature_2m),cond:weatherWord(j.current.weather_code),ok:true};
+  }catch(e){
+    console.warn('weather fetch failed — keeping last known value',e);
+  }
+  render();
+}
+/* The city's actual current local time (real-world, via its timezone) —
+   distinct from S.t, the in-game simulated clock shown as tb-clock. Also
+   used for the console status strip's clock (c-clock), which used to show
+   the simulated clock too until Pavel asked for it to read real time. */
+function cityLocalTime(c){
+  try{
+    return new Intl.DateTimeFormat('en-US',{timeZone:c.tz,hour:'numeric',minute:'2-digit'}).format(new Date());
+  }catch(e){ return '' }
+}
+
 /* Austin zones. profile drives the hour-of-day demand curve. */
 const ZONES=[
   {n:'Downtown core', lat:30.2685,lng:-97.7420, base:14, p:'work',    on:true},
@@ -1270,6 +1554,10 @@ const S={
   fareMult:1.0, carsPerOp:3, sel:null, seq:0,
   cars:[], rides:[], ops:[], log:[],
   safety:80, permit:'Supervised',
+  /* Which CITIES entry is live. Only 'austin' exists today, but every
+     weather/local-time lookup goes through this instead of a hardcoded
+     name, so a second city is an entry in CITIES plus setting this. */
+  city:'austin',
   /* Act 1 shift model. Cars earn only while you are clocked on, because you
      are the remote operator. Clock off and the car parks — and still owes
      $42 that midnight. A four-hour shift owns a car idle for twenty hours
@@ -1281,8 +1569,9 @@ const S={
   ffwd:false, ffwdTarget:0,
   surge:1.0,
   /* Tutorial progress. Beats are recorded by number so a save resumes the
-     script where it left off rather than replaying it. */
-  ray:{seen:[],cur:null,skipped:false,idleFor:0},
+     script where it left off rather than replaying it. guided/dayIdx/
+     day1Done drive the guided-day-1 sequence — see DAY1_ORDER. */
+  ray:{seen:[],cur:null,skipped:false,idleFor:0,guided:false,dayIdx:0,day1Done:false},
   /* Which console areas the player has earned. Order matters; never shrinks. */
   unlocked:['garage'],
   offers:[],          /* undecided offers awaiting accept/decline */
@@ -1757,7 +2046,7 @@ function checkSafety(){
 /* ============================================================
    RAY  (GameMechanics.md §9)
 
-   Ray Salcido sold you the car. He is not your employer, your assistant,
+   Paolo Cortez sold you the car. He is not your employer, your assistant,
    or a UI voice — he texts because he wants to know whether the thing that
    ended his trade is at least a real job.
 
@@ -1770,24 +2059,24 @@ const RAY=[
   /* Beat 1 no longer says "I sold you that car" — you have no car yet. The
      opening decision is which one, and how you hold it. */
   {n:1, spot:'gar-cards',
-   t:"Ray Salcido. Forty-one years in a cab before I got out, while getting out "+
+   t:"Paolo Cortez. Forty-one years in a cab before I got out, while getting out "+
      "was still my idea.<br><br>Three thousand dollars and no car. You can't buy "+
      "one outright on that, so you'll rent or you'll put money down. Rent costs "+
      "nothing today and the most every day after."},
-  {n:2, spot:'tb-cash',
+  {n:2, spot:'tb-cash-box',
    t:"Whatever you pick, forty-two a day is the floor — before rent, before "+
      "finance, before a wheel turns.<br><br>Do the arithmetic before you sign, "+
      "not after."},
-  {n:3, spot:'plat-rows',
+  {n:3, spot:'panel-platforms',
    t:"The car can't earn until somebody's sending it rides. Two apps will. "+
      "Neither one is your friend."},
-  {n:4, spot:'offer-list',
+  {n:4, spot:'panel-offers',
    t:"Three numbers on every offer. What's on the meter, what you actually get paid, "+
      "and how far you drive empty to reach them.<br><br>Watch the third one."},
-  {n:5, spot:'offer-list',
+  {n:5, spot:'panel-offers',
    t:"Forty-five seconds to decide. That's not them being generous. That's them "+
      "stopping you doing the arithmetic.<br><br>Do it anyway."},
-  {n:6, spot:'pb-books',
+  {n:6, spot:'panel-books',
    t:"Ten eighty on the meter, eight ten in your pocket. That's the deal. "+
      "It doesn't improve."},
   {n:7, spot:'map',
@@ -1799,18 +2088,18 @@ const RAY=[
   {n:9, spot:'seg',
    t:"Most of this job is sitting. I did thirty-one years of sitting.<br><br>"+
      "You can speed the clock up. Just don't get clever and speed through a peak."},
-  {n:10, spot:'pb-rapid',
+  {n:10, spot:'panel-rapid',
    t:"Twenty-three minutes on a charger. Yours, not the car's.<br><br>Do it at four "+
      "in the morning when power's cheap and nobody's going anywhere. Not at six "+
      "in the evening."},
-  {n:11, spot:'inc-list',
+  {n:11, spot:'panel-incidents',
    t:"Somebody's got it wedged. In a big outfit there's a room full of people "+
      "watching for that.<br><br>Right now the room is you, and you're free. "+
      "Remember that."},
   {n:12, spot:'rp-body',
    t:"Read the whole thing, not just the bottom line. Cost per mile tells you how "+
      "hard the car worked. It isn't what you're paid.<br><br>Don't chase it."},
-  {n:13, spot:'plat-rows',
+  {n:13, spot:'panel-platforms',
    t:"They're scoring you. Two bad weeks and they switch you off — and the "+
      "forty-two a day doesn't switch off with you.<br><br>Run both apps."},
   /* §9.3: the thesis of the game, and it points at the HOURS line, not at
@@ -1857,8 +2146,68 @@ function rayReady(n){
   }
 }
 
+/* ---------------- guided day 1 ----------------
+   The 14 beats above are normally opportunistic — first ready, unseen beat
+   wins, in whatever order the player's own actions happen to satisfy them.
+   For a brand-new fleet that reads as scattered: two lessons can become
+   ready in the same tick and whichever wins the array scan is arbitrary,
+   and three of the mechanics (an incident, a low-charge car, a ride
+   actually paying out) might not occur at all in a short first day — a new
+   player could finish day one having only seen half the game.
+
+   DAY1_ORDER re-sequences a SUBSET of the same beats — same numbers, same
+   copy, same spotlight targets — into one fixed path, and forces the three
+   event-driven ones (an offer, an incident, a low-charge car) the instant
+   their prerequisites hold, rather than waiting on chance. Beats 8/9/13
+   (surge, idle, a decline) stay out of the script: surge and idle are the
+   opposite of an active tutorial step, and forcing a decline would fight
+   the very lesson ("accept a ride") the script is teaching — so those
+   three remain available to fire organically, any later day, once guided
+   mode ends. */
+const DAY1_ORDER=[1,2,3,4,5,6,7,11,10,12,14];
+
+function guideForceOffer(){
+  const live=livePlatforms(); if(!live.length) return false;
+  const zs=activeZones(); if(!zs.length) return false;
+  const from=zs[0], to=zs.length>1?zs[1]:zs[0];
+  const p=jit(from), d=jit(to), km=Math.max(1.1,dist(p[0],p[1],d[0],d[1]));
+  const mins=km/CFG.speedKmh*60;
+  const base=CFG.fare.base+km*CFG.fare.perKm+mins*CFG.fare.perMin;
+  const pick=live[0];
+  pick.offered++;
+  S.offers.push({id:'r'+Math.random().toString(36).slice(2,7),from:from.n,to:to.n,
+    p:p,d:d,km:km,fare:base*S.fareMult*S.surge,wait:0,car:null,plat:pick.id,
+    left:CFG.offerDecideSec});
+  return true;
+}
+function guideForceIncident(){
+  const c=S.cars.find(function(x){return x.state==='onTrip'||x.state==='dispatched'});
+  if(!c) return false;
+  c.state='blocked'; c.blocked=0; c.needs=latency(); S.d.blocked++;
+  log(c.id,'blocked — operator ETA '+Math.round(c.needs)+'s',1);
+  return true;
+}
+function guideForceLowCharge(){
+  const c=S.cars.find(function(x){return x.soc>CFG.chargeAt});
+  if(!c) return false;
+  c.soc=Math.max(2,CFG.chargeAt-3);
+  return true;
+}
+/* Only ever looks at the ONE beat next in line — never the whole array —
+   which is what makes the sequence linear instead of opportunistic. */
+function guideCheck(){
+  if(S.ray.dayIdx>=DAY1_ORDER.length){ S.ray.guided=false; S.ray.day1Done=true; return }
+  const n=DAY1_ORDER[S.ray.dayIdx];
+  if(raySeen(n)){ S.ray.dayIdx++; return }        /* defensive: never get stuck */
+  if(n===5&&S.onClock&&livePlatforms().length>0&&!S.offers.length) guideForceOffer();
+  if(n===11&&!S.cars.some(function(c){return c.state==='blocked'})) guideForceIncident();
+  if(n===10&&!S.cars.some(function(c){return c.soc<=CFG.chargeAt})) guideForceLowCharge();
+  if(rayReady(n)) rayShow(n);
+}
+
 function rayCheck(){
   if(S.ray.skipped||S.ray.cur) return;
+  if(S.ray.guided&&!S.ray.day1Done){ guideCheck(); return }
   for(let i=0;i<RAY.length;i++){
     const b=RAY[i];
     if(!raySeen(b.n)&&rayReady(b.n)){ rayShow(b.n); return }
@@ -1875,7 +2224,9 @@ function rayShow(n){
   raySpot(b.spot);
 }
 
-/* The referenced control gets a ring; everything else dims. */
+/* The referenced control gets a ring; everything else dims; the #ray card
+   itself is moved next to the target so it never has to point across the
+   screen at it. */
 let spotEl=null;
 function raySpot(id){
   raySpotClear();
@@ -1884,19 +2235,71 @@ function raySpot(id){
      fires while the modal is closed, the target isn't rendered — offsetParent
      is null for anything inside a display:none ancestor — and spotlighting
      it just dims the whole screen around nothing. */
-  if(!el||!el.offsetParent) return;
+  if(!el||!el.offsetParent){ rayPosition(null); return }
+  /* Beat 2 spotlights #tb-cash-box (the whole Cash box, not just the value)
+     in the topbar, but it can fire while the garage modal is still open (its
+     own trigger is just "beat 1 seen" — see rayReady — so the advice lands
+     before the player signs, which is the point). #tb-cash-box still has a
+     non-null offsetParent in that case; it is merely covered by the modal's
+     scrim, not removed from layout. Ringing a
+     target the player cannot actually see behind an open modal is worse
+     than no ring, so any open modal that doesn't contain the target makes
+     it count as unavailable too. */
+  const openModal=document.querySelector('.modal:not([hidden])');
+  if(openModal&&!openModal.contains(el)){ rayPosition(null); return }
   el.classList.add('spotlight');
   document.body.classList.add('dimmed');
   spotEl=el;
+  rayPosition(el);
 }
 function raySpotClear(){
   if(spotEl){ spotEl.classList.remove('spotlight'); spotEl=null }
   document.body.classList.remove('dimmed');
 }
 
+/* Places #ray beside its target: prefers right, then left, then below,
+   then above, clamped to stay fully on-screen. With no target it falls
+   back to the static corner position set in CSS. */
+function rayPosition(el){
+  const ray=$('ray');
+  if(!ray) return;
+  if(!el){
+    ray.style.left='';
+    ray.style.top='';
+    ray.style.right='';
+    ray.style.bottom='';
+    return;
+  }
+  const margin=16;
+  const r=el.getBoundingClientRect();
+  const rw=ray.offsetWidth||320, rh=ray.offsetHeight||160;
+  const vw=window.innerWidth, vh=window.innerHeight;
+  let left,top;
+  if(r.right+margin+rw<=vw){ left=r.right+margin; top=r.top }
+  else if(r.left-margin-rw>=0){ left=r.left-margin-rw; top=r.top }
+  else if(r.bottom+margin+rh<=vh){ left=r.left; top=r.bottom+margin }
+  else{ left=r.left; top=r.top-margin-rh }
+  top=Math.max(margin,Math.min(top,vh-rh-margin));
+  left=Math.max(margin,Math.min(left,vw-rw-margin));
+  ray.style.right='';
+  /* 'auto', not '': clearing to '' only removes the inline override and lets
+     the stylesheet's bottom:122px show through again. With top now also
+     pinned, a fixed element with BOTH top and bottom constrained stretches
+     to fill the gap between them — that's the card ballooning to nearly the
+     full viewport height instead of sizing to its own content. */
+  ray.style.bottom='auto';
+  ray.style.left=left+'px';
+  ray.style.top=top+'px';
+}
+window.addEventListener('resize',function(){ if(spotEl) rayPosition(spotEl) });
+
 function rayDismiss(){
   const n=S.ray.cur;
   if(n&&!raySeen(n)) S.ray.seen.push(n);
+  if(S.ray.guided&&!S.ray.day1Done&&DAY1_ORDER[S.ray.dayIdx]===n){
+    S.ray.dayIdx++;
+    if(S.ray.dayIdx>=DAY1_ORDER.length){ S.ray.guided=false; S.ray.day1Done=true }
+  }
   S.ray.cur=null;
   $('ray').hidden=true;
   raySpotClear();
@@ -1906,7 +2309,10 @@ function rayDismiss(){
 }
 
 function raySkip(){
-  S.ray.skipped=true; S.ray.cur=null;
+  /* Skipping ends the guided walkthrough outright — no more forced offers,
+     incidents, or low-charge cars once the player has said they don't want
+     the tutorial at all. */
+  S.ray.skipped=true; S.ray.cur=null; S.ray.guided=false; S.ray.day1Done=true;
   $('ray').hidden=true; raySpotClear();
   render();
 }
@@ -2116,11 +2522,16 @@ function stateCell(c){
 }
 function render(){
   const h=hour();
+  const city=currentCity();
+  $('tb-city').textContent=city.name;
+  $('tb-city-time').textContent=cityLocalTime(city);
   $('tb-day').textContent=S.day;
   $('tb-clock').textContent=hhmm(S.t);
   $('tb-cash').textContent=money(S.cash);
   $('tb-permit').textContent=S.permit;
-  $('c-clock').textContent=hhmm(S.t);
+  $('c-clock').textContent=cityLocalTime(city);
+  $('c-temp').textContent=WX.temp==null?'—°C':WX.temp+'°C';
+  $('c-cond').textContent=WX.cond;
   const act=S.cars.filter(function(c){return c.state!=='idle'}).length;
   $('c-fleet').textContent='Fleet '+act+' active';
 
@@ -2191,10 +2602,11 @@ function render(){
   $('inc-tag').textContent=blocked.length+' open';
   let inc=blocked.map(function(c){
     const left=Math.max(0,c.needs-c.blocked);
-    return '<div class="alert'+(c.blocked>CFG.cancelAt*0.7?' crit':'')+'">'+
+    return '<div class="alert blocked'+(c.blocked>CFG.cancelAt*0.7?' crit':'')+'" data-car="'+c.id+'">'+
       '<div class="top"><svg class="ms"><use href="#i-report"/></svg><b>'+c.id+
       ' blocked</b><span class="clock">'+Math.round(c.blocked)+'s</span></div>'+
-      '<p>Operator arriving in '+Math.round(left)+'s. Rider cancels at '+CFG.cancelAt+'s.</p></div>';
+      '<p>Operator arriving in '+Math.round(left)+'s. Rider cancels at '+CFG.cancelAt+
+      's.<span class="take">Take control &rarr;</span></p></div>';
   }).join('');
   if(S.safety<75) inc+='<div class="alert'+(S.safety<65?' crit':'')+'">'+
     '<div class="top"><svg class="ms"><use href="#i-gavel"/></svg><b>Safety score</b>'+
@@ -2285,9 +2697,20 @@ function render(){
     }
   }
   const top=S.offers.slice().sort(function(a,b){return offerNet(b)-offerNet(a)})[0];
+  /* Off-shift, the CTA is the fastest way back on — red, and clickable
+     straight into clockOn() (see the click handler below) — rather than an
+     inert grey label nobody can act on. */
   $('cta-main').textContent=top?('Accept '+top.from+' · '+money2(offerNet(top)))
-    :(S.onClock?'No offers':'Clocked off');
-  $('cta').disabled=!top||!idle;
+    :(S.onClock?'No offers':'Clock on');
+  $('cta').classList.toggle('off',!S.onClock);
+  /* Only "no offer at all" disables it — matches the offers panel's own
+     row-level Accept button, which has never required an idle car either.
+     acceptOffer() already handles "accepted, nothing free to serve it yet"
+     as a normal supported outcome (the rider waits and logs it); requiring
+     idle>0 here just made the CTA a stricter, inconsistent second gate on
+     the exact same function for no documented reason — that's the "big
+     button won't click, the small one does" report. */
+  $('cta').disabled=S.onClock?!top:false;
   $('cta-surge').textContent=S.surge.toFixed(1)+'× surge';
   $('cta-wait').textContent=S.offers.length+' offers · '+idle+' idle';
 
@@ -2345,8 +2768,10 @@ $('zone-chips').addEventListener('click',function(e){
   const z=ZONES[parseInt(b.dataset.zone,10)];
   z.on=z.on===false; render();
 });
-/* CTA accepts the best-paying offer, net of commission. */
+/* CTA accepts the best-paying offer, net of commission — or, off-shift,
+   clocks on instead (clockOn() itself already renders). */
 $('cta').addEventListener('click',function(){
+  if(!S.onClock){ clockOn(); return }
   const best=S.offers.slice().sort(function(a,b){return offerNet(b)-offerNet(a)})[0];
   if(best) acceptOffer(best.id);
 });
@@ -2363,10 +2788,42 @@ $('offer-list').addEventListener('click',function(e){
   const d=e.target.closest('button[data-dec]');
   if(d) return declineOffer(d.dataset.dec);
 });
+/* Nav icons are otherwise Act 2 placeholders (see the gate[] array in
+   paintLocks()) — clicking one still means something today: it flashes the
+   dashboard panel that icon corresponds to, so "what does Energy mean
+   here?" has an answer without guessing. Deliberately a calmer blue pulse
+   (.nav-highlight), not the tutorial's red .spotlight blink — that color
+   is reserved for "Ray wants your attention on something urgent." */
+function flashSection(panelId){
+  const el=$(panelId);
+  if(!el) return;
+  el.classList.remove('nav-highlight');
+  void el.offsetWidth;   /* force reflow so a repeat click restarts the animation */
+  el.classList.add('nav-highlight');
+  clearTimeout(el._navFlashT);
+  el._navFlashT=setTimeout(function(){ el.classList.remove('nav-highlight') },1450);
+}
 document.querySelectorAll('.t-apps .t-app').forEach(function(b){
   b.addEventListener('click',function(){
     document.querySelectorAll('.t-apps .t-app').forEach(function(o){o.setAttribute('aria-pressed','false')});
     b.setAttribute('aria-pressed','true');
+    if(b.id==='app-map'){
+      /* Map is the default display. Its only real job here is handing the
+         console back from the dodge camera view if that's what's showing —
+         closeDodge() re-syncs both icons' aria-pressed itself. */
+      if(!$('dodge-incar').hidden) closeDodge();
+      return;
+    }
+    if(b.id==='app-camera'){
+      /* Same entry point the "Take control" incident alert uses. With
+         nothing blocked there's no feed to switch to, so point at the
+         panel where a blocked-car alert would appear instead. */
+      const blocked=S.cars.filter(function(c){return c.state==='blocked'});
+      if(blocked.length) openDodge(blocked[0].id);
+      else flashSection('panel-incidents');
+      return;
+    }
+    if(b.dataset.panel) flashSection(b.dataset.panel);
   });
 });
 document.querySelectorAll('.t-ctl .icons button').forEach(function(b){
@@ -2409,7 +2866,7 @@ const SLOTS=['slot1','slot2','slot3'];
    SAVE_V above is the STATE SHAPE version and moves only when the
    snapshot format changes — the two are deliberately independent, so
    shipping 0.9.0 does not invalidate 0.8.0 saves. */
-const VERSION='0.11.0';
+const VERSION='0.13.0';
 
 function snapshot(){
   return {
@@ -2528,18 +2985,27 @@ function restore(save){
   S.t=s.t; S.day=s.day; S.cash=s.cash; S.fareMult=s.fareMult;
   S.carsPerOp=s.carsPerOp; S.seq=s.seq; S.safety=s.safety;
   S.permit=s.permit; S.over=!!s.over; S.d=s.d;
+  /* A save from before multi-city support has no city field. */
+  S.city=(s.city&&CITIES[s.city])?s.city:'austin';
   S.ops=s.ops||[];
   S.log=(s.log||[]).map(function(e){
     return {t:e.t,who:escapeHtml(e.who),what:escapeHtml(e.what),kind:e.kind};
   });
   S.surge=typeof s.surge==='number'?s.surge:1.0;
-  S.ray=s.ray||{seen:[],cur:null,skipped:false,idleFor:0};
+  S.ray=s.ray||{seen:[],cur:null,skipped:false,idleFor:0,guided:false,dayIdx:0,day1Done:false};
   /* A save from before progressive disclosure has seen the whole console,
      so do not take it away — grant everything rather than re-locking. */
   S.unlocked=Array.isArray(s.unlocked)?s.unlocked.slice()
     :STAGES.map(function(x){return x.id});
   if(!Array.isArray(S.ray.seen)) S.ray.seen=[];
   S.ray.cur=null;                 /* never restore mid-card */
+  /* A save from before guided day 1 existed has none of these fields.
+     Default them off rather than on — guided mode (with forced offers/
+     incidents/low charge) is a new-game experience, never retrofitted onto
+     a save that's already mid-story. */
+  if(typeof S.ray.guided!=='boolean') S.ray.guided=false;
+  if(typeof S.ray.dayIdx!=='number') S.ray.dayIdx=0;
+  if(typeof S.ray.day1Done!=='boolean') S.ray.day1Done=true;
   $('ray').hidden=true; raySpotClear();
   S.onClock=!!s.onClock; S.shiftStart=s.shiftStart||0;
   S.workedSec=s.workedSec||0; S.billedSec=s.billedSec||0; S.shiftNo=s.shiftNo||0;
@@ -2768,6 +3234,137 @@ function renderGarage(){
     ? 'A rented car can be handed back; a financed one cannot.'
     : 'Fixed costs are charged at midnight whether you clock on or not.';
 }
+
+/* ---------------- Take-control dodge mini-game ----------------
+   Optional. stepCar's 'blocked' branch already clears the incident on its
+   own once c.blocked>=c.needs (the operator-ETA timer) — this just gives a
+   way to clear it sooner. Winning replays that exact same resolution
+   (state, log line, c.blocked reset); losing or closing does nothing, so
+   the existing incident/safety balance is untouched either way.
+
+   Lives inside the console's own map area (#dodge-incar, a sibling of #map
+   inside .map-wrap) rather than a popup modal — framed as switching the
+   centre display over to the car's own camera feed. #map itself is never
+   hidden/resized/rebuilt; the overlay just sits on top of it, so Leaflet's
+   internal state is untouched between plays. */
+let DODGE=null;
+function openDodge(carId){
+  const c=S.cars.filter(function(x){return x.id===carId})[0];
+  if(!c||c.state!=='blocked') return;   /* already resolved elsewhere */
+  const prevSpeed=S.speed;
+  setSpeed(0);   /* arrow keys drive the car, not the sim speed slider */
+  $('dodge-car-id').textContent=c.id;
+  $('dodge-result').hidden=true; $('dodge-result').textContent='';
+  $('cb-title').textContent='Camera';
+  $('cb-sub').textContent=c.id+' · take control';
+  $('app-camera').setAttribute('aria-pressed','true');
+  $('app-map').setAttribute('aria-pressed','false');
+  $('dodge-incar').hidden=false;
+  /* Sized off the element's own rendered box (now that it's visible),
+     same getBoundingClientRect-after-layout approach rayPosition() already
+     uses — the console isn't a fixed size, so a hardcoded canvas doesn't fit
+     every breakpoint. */
+  const cv=$('dodge-cv'), r=cv.getBoundingClientRect();
+  cv.width=Math.max(160,Math.round(r.width))||320;
+  cv.height=Math.max(140,Math.round(r.height))||260;
+  DODGE={car:c, lane:1, obstacles:[], t:0, dur:8, spawnAt:0.6, spawnEvery:1.05,
+    alive:true, raf:null, last:0, prevSpeed:prevSpeed};
+  dodgeDraw();
+  DODGE.last=performance.now();
+  DODGE.raf=requestAnimationFrame(dodgeTick);
+}
+function dodgeLane(dir){
+  if(!DODGE||!DODGE.alive) return;
+  DODGE.lane=clamp(DODGE.lane+dir,0,2);
+}
+function dodgeTick(now){
+  if(!DODGE||!DODGE.alive) return;
+  const dt=Math.min(0.05,(now-DODGE.last)/1000);
+  DODGE.last=now;
+  DODGE.t+=dt; DODGE.spawnAt-=dt;
+  if(DODGE.spawnAt<=0){
+    DODGE.spawnAt=DODGE.spawnEvery;
+    DODGE.obstacles.push({lane:Math.floor(Math.random()*3), y:-24});
+  }
+  const cv=$('dodge-cv'), H=cv?cv.height:300;
+  /* Fall speed scales with the canvas's own height (which varies by
+     breakpoint) so a full lane-crossing takes roughly the same ~2s
+     regardless of how tall the console's map area happens to be. */
+  const fallPx=Math.max(90,H*0.55);
+  DODGE.obstacles.forEach(function(o){ o.y+=fallPx*dt });
+  DODGE.obstacles=DODGE.obstacles.filter(function(o){ return o.y<H+24 });
+  const carY=H-40;
+  const hit=DODGE.obstacles.some(function(o){
+    return o.lane===DODGE.lane && o.y>carY-22 && o.y<carY+22;
+  });
+  if(hit){ dodgeEnd(false); return }
+  if(DODGE.t>=DODGE.dur){ dodgeEnd(true); return }
+  dodgeDraw();
+  DODGE.raf=requestAnimationFrame(dodgeTick);
+}
+function dodgeDraw(){
+  const cv=$('dodge-cv'); if(!cv||!cv.getContext) return;
+  /* jsdom (headless tests) has no real <canvas> backend and returns null
+     from getContext — degrade to a no-op draw rather than throw. */
+  const ctx=cv.getContext('2d'); if(!ctx) return;
+  const W=cv.width, H=cv.height, laneW=W/3, carY=H-40;
+  ctx.fillStyle='#0c0d10'; ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='rgba(255,255,255,.16)'; ctx.setLineDash([10,10]); ctx.lineWidth=2;
+  [1,2].forEach(function(i){
+    ctx.beginPath(); ctx.moveTo(laneW*i,0); ctx.lineTo(laneW*i,H); ctx.stroke();
+  });
+  ctx.setLineDash([]);
+  const obstacles=DODGE?DODGE.obstacles:[];
+  ctx.fillStyle='#e5574b';
+  obstacles.forEach(function(o){
+    const x=laneW*o.lane+laneW/2;
+    ctx.fillRect(x-16,o.y-11,32,22);
+  });
+  if(DODGE){
+    const x=laneW*DODGE.lane+laneW/2;
+    ctx.fillStyle='#3b82f6';
+    ctx.fillRect(x-14,carY-18,28,36);
+    const pct=Math.min(1,DODGE.t/DODGE.dur);
+    ctx.fillStyle='rgba(255,255,255,.15)'; ctx.fillRect(0,H-6,W,6);
+    ctx.fillStyle='#3ddc84'; ctx.fillRect(0,H-6,W*pct,6);
+  }
+}
+function dodgeEnd(won){
+  if(!DODGE) return;
+  DODGE.alive=false;
+  if(DODGE.raf) cancelAnimationFrame(DODGE.raf);
+  const c=DODGE.car, prevSpeed=DODGE.prevSpeed;
+  if(won&&c.state==='blocked'){
+    c.state=c.ride?(c.reached?'onTrip':'dispatched'):'idle';
+    log(c.id,'cleared — you drove it around',0);
+    c.blocked=0;
+    $('dodge-result').textContent='Cleared. Nice driving.';
+  } else if(won){
+    $('dodge-result').textContent='Already cleared on its own — no harm done.';
+  } else {
+    $('dodge-result').textContent='Hit something. Still waiting on the operator ETA — try again or close.';
+  }
+  $('dodge-result').hidden=false;
+  render();
+  setSpeed(prevSpeed);
+  DODGE=null;
+  /* Camera view stays up so the result is readable; closeDodge() (the ×
+     button, or clicking a still-blocked alert again to retry) hands the
+     display back to the map. */
+}
+function closeDodge(){
+  if(DODGE&&DODGE.alive){
+    if(DODGE.raf) cancelAnimationFrame(DODGE.raf);
+    setSpeed(DODGE.prevSpeed);
+  }
+  DODGE=null;
+  $('dodge-incar').hidden=true;
+  $('cb-title').textContent='Main fleet view';
+  $('cb-sub').textContent='Robotaxi IRL';
+  $('app-camera').setAttribute('aria-pressed','false');
+  $('app-map').setAttribute('aria-pressed','true');
+}
+
 function openGarage(){
   $('garage').hidden=false; renderGarage();
   /* The very first thing a new player sees is this screen, so Ray introduces
@@ -2850,8 +3447,22 @@ $('sv-close').addEventListener('click',function(){ $('savemgr').hidden=true });
 $('savemgr').addEventListener('click',function(e){
   if(e.target===$('savemgr')) $('savemgr').hidden=true;
 });
+/* Clicking any blocked-car alert opens the dodge mini-game for that car;
+   the safety-score alert (no data-car) is inert, same as before. */
+$('inc-list').addEventListener('click',function(e){
+  const a=e.target.closest('.alert.blocked[data-car]');
+  if(a) openDodge(a.dataset.car);
+});
+$('dodge-left').addEventListener('click',function(){ dodgeLane(-1) });
+$('dodge-right').addEventListener('click',function(){ dodgeLane(1) });
+$('dodge-close').addEventListener('click',closeDodge);
 document.addEventListener('keydown',function(e){
+  if(!$('dodge-incar').hidden){
+    if(e.key==='ArrowLeft'){ dodgeLane(-1); return }
+    if(e.key==='ArrowRight'){ dodgeLane(1); return }
+  }
   if(e.key!=='Escape') return;
+  if(!$('dodge-incar').hidden){ closeDodge(); return }
   if(!$('savemgr').hidden){ $('savemgr').hidden=true; return }
   if(!$('report').hidden){ $('report').hidden=true; render(); rayCheck(); return }
   if(!$('resume').hidden){ $('resume').hidden=true; return }
@@ -2927,20 +3538,51 @@ $('rp-go').addEventListener('click',function(){ autosave('day-end') });
 
 /* A new fleet always starts at the beginning: no car, the garage open, and
    the tutorial from beat 1. Previously 'New fleet' only cleared the save. */
+/* Paolo's cold-open video: full view, once, before beat 1. Watching it to
+   the end and skipping it both land on the same next() — the rest of boot
+   (garage + tutorial) doesn't need two code paths for the two ways out. */
+function showIntro(next){
+  const el=$('intro'), v=$('intro-video');
+  function done(){
+    el.hidden=true; v.pause();
+    v.removeEventListener('ended',done);
+    $('intro-skip').removeEventListener('click',done);
+    next();
+  }
+  v.currentTime=0;
+  el.hidden=false;
+  /* The `autoplay` attribute alone can't be trusted here — the element
+     sits under a `hidden` ancestor at page load, and browsers vary on
+     whether a video gets an autoplay attempt once it becomes visible
+     later rather than at parse time. Muted autoplay is allowed everywhere
+     without a user gesture; the visible mute button lets the player turn
+     sound on. If it's still blocked for some reason, the poster + native
+     play button are right there regardless. */
+  v.muted=true;
+  const p=v.play();
+  if(p&&p.catch) p.catch(function(){});
+  v.addEventListener('ended',done);
+  $('intro-skip').addEventListener('click',done);
+}
+
 function newFleet(){
   S.cars=[]; S.rides=[]; S.offers=[]; S.log=[];
   S.cash=3000; S.t=CFG.dayStart; S.day=1; S.seq=0; S.sel=null;
   S.onClock=false; S.shiftNo=0; S.workedSec=0; S.billedSec=0;
   S.surge=1.0; S.over=false; S.safety=80; S.fareMult=1.0;
+  S.city='austin';
   S.unlocked=['garage'];
-  S.ray={seen:[],cur:null,skipped:false,idleFor:0};
+  /* Every new fleet gets the guided day-1 walkthrough: a fixed path through
+     a subset of Ray's beats, with the offer/incident/low-charge events
+     forced the moment their prerequisites are met rather than left to
+     chance. See DAY1_ORDER. */
+  S.ray={seen:[],cur:null,skipped:false,idleFor:0,guided:true,dayIdx:0,day1Done:false};
   PLATFORMS.forEach(function(p){ p.on=false; p.offered=0; p.accepted=0 });
   newDay();
   if(map){ for(const id in carLayer){ map.removeLayer(carLayer[id]); delete carLayer[id] } }
   $('ray').hidden=true; raySpotClear();
   setSpeed(0); render();
-  openGarage();
-  rayCheck();
+  showIntro(function(){ openGarage(); rayCheck() });
 }
 
 /* ---------------- boot ---------------- */
@@ -2950,6 +3592,11 @@ $('ver').textContent='v'+VERSION;
 $('ray').hidden=true; raySpotClear();
 document.title='Deadhead v'+VERSION+' — robotaxi fleet simulator';
 syncOps(); initMap(); render(); drawMap();
+/* Real weather doesn't need to be checked on the sim tick — it barely
+   changes hour to hour. Fetch once at boot, then every 15 real minutes;
+   render() picks up whatever WX holds regardless of game speed or pause. */
+fetchWeather();
+setInterval(fetchWeather,15*60*1000);
 let acc=0;
 setInterval(function(){
   if(S.ffwd){
