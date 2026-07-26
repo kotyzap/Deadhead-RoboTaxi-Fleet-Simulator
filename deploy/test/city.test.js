@@ -331,6 +331,59 @@ async function run(file) {
   check('no map means no stale overlays either',
     () => A.zoneLayer().length === 0 && A.chLayer().length === 0);
 
+  // ---- 6d. temperature belongs to the units layer ---------------------
+  // Reported: switching to miles left the temperature in Celsius. WX.temp is
+  // Celsius because that is what Open-Meteo is asked for, so uTemp() is the
+  // single conversion point — showing "35°" next to "mi" was the units toggle
+  // doing half its job.
+  check('imperial reads Fahrenheit', () => {
+    S.units = 'imperial';
+    return A.uTemp(35) === '95°F' && A.uTemp(0) === '32°F';
+  });
+  check('metric reads Celsius', () => {
+    S.units = 'metric';
+    return A.uTemp(35) === '35°C' && A.uTemp(0) === '0°C';
+  });
+  check('sub-zero converts and rounds correctly', () => {
+    S.units = 'imperial';
+    const f = A.uTemp(-5.4);          // -5.4C = 22.28F
+    S.units = 'metric';
+    return f === '22°F' && A.uTemp(-5.4) === '-5°C';
+  });
+  check('no reading shows a dash in the right unit', () => {
+    S.units = 'imperial';
+    const i = A.uTemp(null);
+    S.units = 'metric';
+    // NaN and undefined must not render as "NaN°C" — the whole reason the
+    // fetch guard exists in the first place.
+    return i === '—°F' && A.uTemp(undefined) === '—°C' && A.uTemp(NaN) === '—°C';
+  });
+  check('the units button repaints the temperature', () => {
+    S.units = 'metric'; A.render();
+    w.document.getElementById('units').click();
+    const t = w.document.getElementById('c-temp').textContent;
+    return S.units === 'imperial' && t.indexOf('°F') >= 0;
+  });
+
+  // ---- 6e. a clear sky must not grey the map --------------------------
+  // Reported: "it looks like sky is gray... please do not gray map".
+  // The overlay painted whenever cover exceeded 0.02, and 'Clear' falls back
+  // to 5% — so a clear sky laid three grey gradients over the map while the
+  // status strip said Clear.
+  check('the cloud floor sits above Partly cloudy', () => {
+    // Partly cloudy is 35% in condFallback; the floor must exclude it.
+    return A.WX_CLOUD_MIN > 0.35;
+  });
+  check('Clear and Partly cloudy paint nothing', () => {
+    return 0.05 <= A.WX_CLOUD_MIN && 0.35 <= A.WX_CLOUD_MIN;
+  });
+  check('genuine overcast still paints something', () => 0.85 > A.WX_CLOUD_MIN);
+  check('the veil ramps from the floor, not from zero', () => {
+    // Just above the floor must be near-invisible, or overcast would snap on.
+    const t = (A.WX_CLOUD_MIN + 0.01 - A.WX_CLOUD_MIN) / (1 - A.WX_CLOUD_MIN);
+    return t * 0.085 < 0.005;
+  });
+
   // ---- 7. per-city save keys -----------------------------------------
   check('the autosave key carries the city', () => {
     const before = S.city;

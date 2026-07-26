@@ -1669,7 +1669,7 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
     <section class="console" aria-label="Robotaxi IRL console"><div class="t-inner">
 
       <div class="t-status">
-        <div class="grp" id="wx-grp" title="Real current weather in the city"><span id="c-temp">&mdash;&deg;C</span><span class="cond" id="c-cond"></span></div>
+        <div class="grp" id="wx-grp" title="Real current weather in the city"><span id="c-temp">&mdash;</span><span class="cond" id="c-cond"></span></div>
         <div class="mid"><span class="mk">Nova</span><span id="c-clock" title="Real local time in the city"></span></div>
         <div class="grp"><svg class="ms"><use href="#i-bt"/></svg><span>LTE</span><svg class="ms"><use href="#i-signal"/></svg><span class="ok" id="c-fleet">Fleet 0 active</span></div>
       </div>
@@ -2030,8 +2030,8 @@ const money2=function(v){return '$'+v.toFixed(2)};
    ============================================================ */
 const MI_PER_KM=0.621371, KM_PER_MI=1.609344;
 const UNITS={
-  imperial:{tag:'mi', dist:'mi', eff:'Wh/mi',      per:'/mi'},
-  metric:  {tag:'km', dist:'km', eff:'kWh/100 km', per:'/km'}
+  imperial:{tag:'mi', dist:'mi', eff:'Wh/mi',      per:'/mi', temp:'°F'},
+  metric:  {tag:'km', dist:'km', eff:'kWh/100 km', per:'/km', temp:'°C'}
 };
 function uSys(){ return UNITS[S.units]||UNITS.imperial }
 function uImp(){ return S.units!=='metric' }
@@ -2054,6 +2054,15 @@ function uEff(kwhPerKm){
 /* A cost the sim holds per MILE, rendered per the player's distance unit. */
 function uPerDist(costPerMi){
   return money2(uImp()?costPerMi:costPerMi*MI_PER_KM)+uSys().per;
+}
+/* Temperature. Open-Meteo is asked for Celsius and WX.temp holds Celsius, so
+   this is the one place the conversion happens — a player on miles expects
+   Fahrenheit, and showing 35 degrees next to "mi" was the units toggle only
+   doing half its job. Rounded, because a robotaxi dashboard quoting 34.7
+   degrees is precision nobody asked for. */
+function uTemp(c){
+  if(typeof c!=='number'||!isFinite(c)) return '—'+uSys().temp;
+  return Math.round(uImp()?c*9/5+32:c)+uSys().temp;
 }
 /* Range left in a car, in km, from state of charge. */
 function rangeKm(c){
@@ -4804,6 +4813,18 @@ function initMapGestures(){
    redrawn on its own requestAnimationFrame loop, independent of the sim
    tick, so rain motion stays smooth even when the game itself is paused. */
 let wxCtx=null,wxParticles=[];
+/* Cloud cover below this paints NOTHING. It used to be 0.02, which meant a
+   CLEAR sky still laid three grey radial gradients over the map — 'Clear'
+   falls back to 5% cover, and the hourly forecast for a bright day is often
+   30-40%. The result was a permanently overcast-looking map under a status
+   strip that said "Clear". 0.45 is above 'Partly cloudy' (35%), so a veil now
+   means genuine overcast rather than a nice day with some cloud in it. */
+const WX_CLOUD_MIN=0.45;
+/* And when it does paint, cloud LIGHTENS. The old colour was a dark slate
+   (120,128,140) which read as gloom or a dirty screen rather than weather —
+   real overcast over a light map is a bright veil, not a shadow. Storms keep a
+   cooler, deeper tint because there the menace is the point. */
+const WX_VEIL='226,231,238', WX_VEIL_STORM='158,167,182';
 const WXOV={cloud:0,targetCloud:0,precip:0,targetPrecip:0,storm:false,flashUntil:0};
 function initWxOverlay(){
   const cv=$('wxcanvas');
@@ -4874,16 +4895,23 @@ function wxFrame(ts){
   WXOV.precip+=(WXOV.targetPrecip-WXOV.precip)*0.05;
   if(Math.abs(prevPrecip-WXOV.precip)>0.4) seedWxParticles();
   wxCtx.clearRect(0,0,cv.width,cv.height);
-  if(WXOV.cloud>0.02){
+  if(WXOV.cloud>WX_CLOUD_MIN){
+    /* Ramped from the threshold, not from zero, so overcast fades in instead
+       of appearing at full strength the moment it crosses the line. Three
+       gradients overlap, so the per-pass ceiling is deliberately low: 0.085
+       each lands near 0.24 combined at total cover, which reads as weather
+       without making the map look switched off. */
+    const t=(WXOV.cloud-WX_CLOUD_MIN)/(1-WX_CLOUD_MIN);
+    const rgb=WXOV.storm?WX_VEIL_STORM:WX_VEIL;
     wxCtx.save();
-    wxCtx.globalAlpha=Math.min(WXOV.cloud*0.45,0.42);
+    wxCtx.globalAlpha=Math.min(t*0.085,0.085);
     const drift=(ts/40000)%1;
     for(let i=0;i<3;i++){
       const cx=cv.width*((drift+i/3)%1), cy=cv.height*0.22+i*cv.height*0.18;
       const r=Math.max(cv.width,cv.height)*0.5;
       const g=wxCtx.createRadialGradient(cx,cy,0,cx,cy,r);
-      g.addColorStop(0,'rgba(120,128,140,0.9)');
-      g.addColorStop(1,'rgba(120,128,140,0)');
+      g.addColorStop(0,'rgba('+rgb+',0.9)');
+      g.addColorStop(1,'rgba('+rgb+',0)');
       wxCtx.fillStyle=g;
       wxCtx.fillRect(0,0,cv.width,cv.height);
     }
@@ -5089,7 +5117,7 @@ function render(){
   const wxg=$('wx-grp'), wxOff=WX.temp==null;
   wxg.classList.toggle('wx-off',wxOff);
   wxg.title=wxOff?'Weather offline — retrying every 15 min':'Real current weather in the city';
-  $('c-temp').textContent=wxOff?'—°C':WX.temp+'°C';
+  $('c-temp').textContent=wxOff?uTemp(null):uTemp(WX.temp);
   $('c-cond').textContent=wxOff?'wx offline':WX.cond;
   const act=S.cars.filter(function(c){return c.state!=='idle'}).length;
   $('c-fleet').textContent='Fleet '+act+' active';
@@ -5740,7 +5768,7 @@ const SLOTS=['slot1','slot2','slot3'];
    SAVE_V above is the STATE SHAPE version and moves only when the
    snapshot format changes — the two are deliberately independent, so
    shipping 0.9.0 does not invalidate 0.8.0 saves. */
-const VERSION='0.23.3';
+const VERSION='0.23.4';
 
 function snapshot(){
   return {
@@ -7144,6 +7172,7 @@ window.DH_ACT1={
   cityList:cityList,cityUnlocked:cityUnlocked,switchCity:switchCity,
   gateMet:gateMet,gateHint:gateHint,progGates:progGates,
   bgTileUrl:bgTileUrl,centerCity:centerCity,buildCityLayers:buildCityLayers,
+  uTemp:uTemp,WX_CLOUD_MIN:WX_CLOUD_MIN,WXOV:WXOV,
   zoneLayer:function(){ return zoneLayer },chLayer:function(){ return chLayer },
   physKey:physKey,PROG:function(){ return PROG },cityK:cityK,
   renderCityTabs:renderCityTabs,
