@@ -4974,7 +4974,12 @@ function switchCity(id){
        rather than showing Austin's temperature over a Dallas map. */
     WX={temp:null,cond:'',ok:false,byHour:null};
     if(typeof fetchWeather==='function') fetchWeather();
-    return Store.get('auto');
+    /* A storage failure must read as "no save for this city", not as an error.
+       Without this catch, a browser with IndexedDB blocked (private windows,
+       hardened settings) left the switch HALF DONE: S.city, the tables and the
+       tone had all moved to Dallas while the cars, cash and permit were still
+       the Austin run's. Better to open a clean Dallas than a chimera. */
+    return Store.get('auto').catch(function(){ return null });
   }).then(function(sv){
     setSpeed(0);
     if(sv&&sv.s){
@@ -4982,15 +4987,22 @@ function switchCity(id){
         restore(sv);
         log('System','resumed '+to+' — day '+S.day,0);
       }catch(err){
-        console.warn('city resume failed — starting fresh',err); newFleet();
+        console.warn('city resume failed — starting fresh',err); newFleet(S.city);
       }
     } else {
-      newFleet();
+      newFleet(S.city);
     }
     const c=currentCity();
     if(map&&typeof map.setView==='function') map.setView([c.lat,c.lon],12);
     renderCityTabs(); render(); drawMap(); paintUnits();
-  }).catch(function(err){ toast('Could not open '+to+' — '+err.message,true) });
+  }).catch(function(err){
+    /* Last resort. Anything still throwing here happened after S.city moved,
+       so the only safe landing is a fresh run in the city we were opening —
+       leaving the half-switched state on screen is the worse outcome. */
+    console.warn('city switch failed — starting '+to+' fresh',err);
+    try{ newFleet(S.city) }catch(e){ console.warn('fresh start failed too',e) }
+    toast('Started '+to+' fresh — '+err.message,true);
+  });
 }
 document.addEventListener('click',function(e){
   const b=e.target.closest?e.target.closest('.citytab'):null;
@@ -5682,7 +5694,7 @@ const SLOTS=['slot1','slot2','slot3'];
    SAVE_V above is the STATE SHAPE version and moves only when the
    snapshot format changes — the two are deliberately independent, so
    shipping 0.9.0 does not invalidate 0.8.0 saves. */
-const VERSION='0.23.1';
+const VERSION='0.23.2';
 
 function snapshot(){
   return {
@@ -6931,18 +6943,31 @@ function showIntro(next){
   $('intro-skip').addEventListener('click',done);
 }
 
-function newFleet(){
+/* A fresh run. `cityId` is which scenario it belongs to, and it MATTERS: this
+   used to hardcode S.city='austin', which meant switching to Dallas set
+   S.city='dallas' and then newFleet() quietly set it straight back. The city
+   tab appeared to do nothing except replay the intro video. */
+function newFleet(cityId){
   S.cars=[]; S.rides=[]; S.offers=[]; S.log=[];
   S.cash=CFG.startCash; S.t=CFG.dayStart; S.day=1; S.seq=0; S.sel=null;
   S.onClock=false; S.shiftNo=0; S.workedSec=0; S.billedSec=0;
   S.surge=1.0; S.over=false; S.safety=80; S.fareMult=1.0;
-  S.city='austin';
+  S.city=(cityId&&CITIES[cityId])?cityId:cityList()[0];
+  /* The scenario's licence, not the last city's. Dallas is unsupervised from
+     hour one; without this it inherited Austin's 'Supervised' and the topbar
+     lied about the one thing that makes Dallas Dallas. */
+  S.permit=currentCity().permit||'Supervised';
   S.unlocked=['garage'];
-  /* Every new fleet gets the guided day-1 walkthrough: a fixed path through
-     a subset of Ray's beats, with the offer/incident/low-charge events
-     forced the moment their prerequisites are met rather than left to
-     chance. See DAY1_ORDER. */
-  S.ray={seen:[],cur:null,skipped:false,idleFor:0,guided:true,dayIdx:0,day1Done:false};
+  /* THE FIRST city gets the guided walkthrough — the intro video and the
+     scripted DAY1_ORDER beats. Every city after it does not, and the reason is
+     the same for both: a player opening city #2 has already clocked off a
+     shift here. They know what a geofence is. Re-teaching it, or making them
+     sit through the intro again, is the software being pleased with itself.
+     day1Done is set true for those runs so Paolo drops straight into
+     contextual advice instead of waiting for a tutorial that will never run. */
+  const tutorial=(S.city===cityList()[0]);
+  S.ray={seen:[],cur:null,skipped:false,idleFor:0,
+         guided:tutorial,dayIdx:0,day1Done:!tutorial};
   PLATFORMS.forEach(function(p){ p.on=false; p.offered=0; p.accepted=0 });
   /* ZONES[].on and spawnAcc are player/sim state living outside S (see the
      snapshot()/restore() note above) — a fresh game must not inherit the
@@ -6958,7 +6983,21 @@ function newFleet(){
   if(map){ for(const id in carLayer){ map.removeLayer(carLayer[id]); delete carLayer[id] } }
   $('ray').hidden=true; raySpotClear();
   setSpeed(0); render();
-  showIntro(function(){ openGarage(); rayCheck() });
+  /* The garage opens either way — you still cannot run a city without buying
+     a car. Only the video is conditional. */
+  const start=function(){ openGarage(); rayCheck() };
+  if(tutorial){
+    showIntro(start);
+  } else {
+    /* Assert it closed rather than assume. The overlay is full-screen and the
+       markup carries `hidden`, so in practice it is already down by the time a
+       second city can be opened — but "in practice" is how the card that got
+       stuck on screen shipped once before (see the boot assertion for #ray). */
+    const el=$('intro'), v=$('intro-video');
+    el.hidden=true;
+    if(v&&typeof v.pause==='function') v.pause();
+    start();
+  }
 }
 
 /* ---------------- boot ---------------- */
@@ -7008,7 +7047,7 @@ setInterval(function(){
     renderCityTabs();
     return Store.get('auto');
   }).then(function(sv){
-    if(!sv||!sv.meta){ newFleet(); return }
+    if(!sv||!sv.meta){ newFleet(S.city); return }
     const m=sv.meta;
     $('rs-body').innerHTML=
       '<div class="rp-row"><span>Day</span><span>'+m.day+' · '+m.clock+'</span></div>'+
@@ -7025,9 +7064,9 @@ setInterval(function(){
       $('resume').hidden=true; setSpeed(1); render(); paintUnits(); syncSoundBtn();
     });
     $('rs-new').addEventListener('click',function(){
-      $('resume').hidden=true; Store.del('auto'); newFleet();
+      $('resume').hidden=true; Store.del('auto'); newFleet(S.city);
     });
-  }).catch(function(){ newFleet() });
+  }).catch(function(){ newFleet(S.city) });
 })();
 
 window.DH=S;

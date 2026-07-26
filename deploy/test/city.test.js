@@ -248,6 +248,46 @@ async function run(file) {
   check('cityList() is ordered by CITIES[].order',
     () => A.cityList().join(',') === 'austin,dallas');
 
+  // ---- 6b. a second city is not a first city --------------------------
+  // The reported bug: clicking Dallas replayed the intro video and stayed on
+  // Austin. Both had one cause — newFleet() hardcoded S.city='austin', so the
+  // switch set the city and newFleet immediately set it back, leaving a run
+  // that looked like a brand-new Austin game and therefore played the intro.
+  check('newFleet(city) honours the city it is given', () => {
+    A.newFleet('dallas');
+    return S.city === 'dallas';
+  });
+  check('newFleet takes the permit from the scenario', () => {
+    A.newFleet('dallas');
+    return S.permit === A.CITIES.dallas.permit && S.permit === 'Unsupervised';
+  });
+  check('a city beyond the first runs no guided tutorial', () => {
+    A.newFleet('dallas');
+    return S.ray.guided === false && S.ray.day1Done === true;
+  });
+  check('a city beyond the first does not show the intro', () => {
+    A.newFleet('dallas');
+    return w.document.getElementById('intro').hidden === true;
+  });
+  check('the first city still gets the tutorial and the intro', () => {
+    A.newFleet('austin');
+    return S.ray.guided === true && S.ray.day1Done === false;
+  });
+  check('newFleet() with no argument still means the first city', () => {
+    A.newFleet();
+    return S.city === A.cityList()[0];
+  });
+  check('newFleet(nonsense) falls back to the first city, not undefined', () => {
+    A.newFleet('atlantis');
+    return S.city === A.cityList()[0];
+  });
+  check('every new run starts on the scenario cash, never carrying over', () => {
+    A.newFleet('dallas');
+    const a = S.cash;
+    A.newFleet('austin');
+    return a === S.cash && a === A.CFG.startCash;
+  });
+
   // ---- 7. per-city save keys -----------------------------------------
   check('the autosave key carries the city', () => {
     const before = S.city;
