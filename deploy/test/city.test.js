@@ -461,6 +461,57 @@ async function run(file) {
     });
   });
 
+  // ---- 5x. the tab strip when it does not fit -------------------------
+  // The reported bug at 1449px: the strip was squeezed to a stub and cut the
+  // ACTIVE tab in half with the scrollbar hidden, so it read as broken. jsdom
+  // does no layout, so the geometry is stubbed on the element itself — what is
+  // under test is the decision, not the browser's box model.
+  const stubStrip = (clientWidth, scrollWidth, tabs) => {
+    const el = w.document.getElementById('citytabs');
+    Object.defineProperty(el, 'clientWidth', { value: clientWidth, configurable: true });
+    Object.defineProperty(el, 'scrollWidth', { value: scrollWidth, configurable: true });
+    el.scrollLeft = 0;
+    [].forEach.call(el.querySelectorAll('.citytab'), (b, i) => {
+      Object.defineProperty(b, 'offsetLeft', { value: tabs.at * i, configurable: true });
+      Object.defineProperty(b, 'offsetWidth', { value: tabs.at, configurable: true });
+    });
+    return el;
+  };
+  check('a strip that fits is not marked as overflowing', () => {
+    S.city = 'austin'; A.renderCityTabs();
+    const el = stubStrip(400, 400, { at: 80 });
+    A.keepCityTabInView();
+    return el.classList.contains('ovf') === false && el.scrollLeft === 0;
+  });
+  check('an overflowing strip fades its cut edge', () => {
+    const el = stubStrip(200, 400, { at: 80 });
+    A.keepCityTabInView();
+    return el.classList.contains('ovf') === true;
+  });
+  check('the active tab is never the one left clipped', () => {
+    // Orlando is last of five: at 200px of strip showing 400px of tabs, its
+    // right edge (400) is off screen, so the strip has to scroll to it.
+    S.city = 'orlando'; A.loadCityTables(); A.renderCityTabs();
+    const el = stubStrip(200, 400, { at: 80 });
+    A.keepCityTabInView();
+    const live = el.querySelector('.citytab[aria-pressed="true"]');
+    return el.scrollLeft > 0 &&
+           live.offsetLeft + live.offsetWidth <= el.scrollLeft + el.clientWidth;
+  });
+  check('scrolling back for the first city works too', () => {
+    S.city = 'austin'; A.loadCityTables(); A.renderCityTabs();
+    const el = stubStrip(200, 400, { at: 80 });
+    el.scrollLeft = 200;                    // as if the player had scrolled right
+    A.keepCityTabInView();
+    return el.scrollLeft === 0;
+  });
+  check('no layout at all is survivable, not a throw', () => {
+    const el = w.document.getElementById('citytabs');
+    delete el.clientWidth; delete el.scrollWidth;
+    A.keepCityTabInView();                  // jsdom: every measurement is 0
+    return true;
+  });
+
   // ---- 6a. the gate CHAIN ---------------------------------------------
   // Austin opens Dallas, Dallas opens Miami. The bare 'shift1' gate could not
   // express this: it reads the live run only and cannot tell which city the

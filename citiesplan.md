@@ -703,12 +703,41 @@ clock and speed control being pushed off the topbar, with tighter padding at ≤
 it throws away the padlocked tab — and a lock you can *see* is a goal, which is most of why the
 Dallas gate worked in the first place.
 
+### The clipped tab strip — v0.25.1
+
+Reported at 1449px: `Austin | Dallas | Mia` and then nothing, with the active Miami tab sliced
+down the middle. The v0.25.0 fix was worse than no scrolling at all — `min-width:0` +
+`overflow-x:auto` did stop the strip pushing the clock off the topbar, but it let flex squeeze
+the strip to a stub, hid the scrollbar, and then cut the **active** tab. Three things were
+missing, all the same idea: *if content is going to overflow, the overflow has to be legible and
+it must never hide the thing you are looking at.*
+
+1. **A `min-width` floor** (132px, about two tabs) so flex cannot collapse the strip to a stub.
+2. **`keepCityTabInView()`** scrolls the pressed tab into view on every rebuild and on resize.
+   It writes `scrollLeft` directly rather than calling `scrollIntoView()`, which scrolls every
+   scrollable ancestor — in a fixed 32:9 cockpit that shoves the whole layout sideways. Same
+   trap `bringIntoView()` already documents, in a smaller box.
+3. **`.ovf`**, toggled from JS when `scrollWidth > clientWidth`, fades the right edge, so a
+   half-visible tab reads as "there is more" instead of as a rendering fault.
+
+Also: **the skew now gives up at 1499px, not 1199px.** Five overlapping parallelograms need the
+most horizontal room of any form this control can take, and 1499 is already a tier boundary in
+this file (T4). Padding steps down again at 1199px (9px) and 760px (8px).
+
+Five checks cover it, with the geometry stubbed on the element because jsdom does no layout —
+what is under test is the decision, not the box model. Mutation-tested: deleting the two
+`scrollLeft` lines fails two of them.
+
 ### Open
 
-- **Tampa and Orlando road geometry not baked** — `roadsFor()` returns `{}` for both, so the
-  map draws straight lines there (a supported state, not a bug).
-- Miami road geometry not yet baked (see above).
-- Zone centroids not yet nudged (script written, needs a network run).
+- Zone centroids not yet nudged (`nudge-zones.js` written and unit-tested, needs a network run;
+  re-bake the roads for whatever moves).
+
+### Done since — road geometry, all five cities
+
+Baked and thinned: **Austin 110 pairs, Dallas 114, Miami 114, Tampa 114, Orlando 75** — 527
+pairs, ~12,000 points, `deadhead.html` at 612 KB. Orlando averages 34 points per route against
+~19 elsewhere, which is the corridor being genuinely longer rather than a thinning miss.
 - `DESIGN.md` §5 and §6.1 — **corrected in v0.24.0.** §5 now carries the real launch dates,
   Dallas's compact geofence and Miami's exclusion list; §6.1 states the real time scale
   (`simPerReal:1`, speeds 0/1/4/20, 18 real hours at 1× and 54 minutes at 20×).
