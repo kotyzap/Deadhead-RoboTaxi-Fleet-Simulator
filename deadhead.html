@@ -1118,6 +1118,14 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border:0;border-radiu
   cursor:pointer;transition:background var(--dur-fast),color var(--dur-fast)}
 .chip.on{background:rgba(var(--accent-rgb),.13);border-color:transparent;color:var(--accent)}
 .empty{font-size:12px;color:var(--text-4);padding:6px 0}
+/* The offer-rate readout under the geofence chips. Deliberately quiet type: it
+   is a diagnostic for "why is nothing happening", not a headline. .thin turns
+   it amber when the rate is low enough that the shift will feel broken —
+   the same threshold Paolo advises on, so the two never disagree. */
+.zrate{font-size:11px;color:var(--text-4);padding:1px 0 7px;line-height:1.45}
+.zrate b{font-weight:500;color:var(--text-3)}
+.zrate.thin b{color:var(--s-attn)}
+.zrate.off b{color:var(--s-crit)}
 .infoline{width:100%;margin-top:9px;height:32px;border:0!important;background:var(--inset);
   border-radius:var(--r-ctl);font:inherit;font-size:11px;font-weight:400;color:var(--text-3);
   cursor:default;opacity:1!important;display:flex;align-items:center;justify-content:center}
@@ -1880,6 +1888,7 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
           <div class="p-head"><svg class="ms"><use href="#i-route"/></svg><h2>Offers</h2><span class="tag" id="rq-tag">0 waiting</span><button class="ihelp" data-help="panel-offers" tabindex="0" aria-label="What is this section?">i</button></div>
           <div class="p-body" id="pb-rq">
             <div class="chips" id="zone-chips"></div>
+            <div class="zrate" id="rq-rate"></div>
             <div id="waiting-list"></div>
             <div id="offer-list"></div>
           </div>
@@ -2498,17 +2507,25 @@ const ZONES_BY_CITY={
      geography, accurate to a block or so, which is all a demand zone needs.
      Do not treat them as surveyed the way the charger list is.
 
-     Three live by default, matching Austin's convention: the two that carry
-     the work/night curve plus one night district. Love Field, SMU, the Park
-     Cities and all three breweries are opt-in via the geofence — an
-     unsupervised city is not the place to hand a new player nine zones. */
+     Three live by default, matching Austin's convention AND its curve mix:
+     two work zones plus one night district. That mix is not decoration. The
+     day opens at 06:00 (CFG.dayStart), where the work curve is 1.0 and the
+     night curve is 0.2 — so a city whose defaults are work/night/night has
+     two thirds of its opening demand asleep. Dallas originally shipped
+     Downtown + Uptown + Deep Ellum, i.e. exactly that, and measured 12.8
+     offers/hour against Austin's 18.3 at the moment a player arrives: one
+     offer every 4.7 real minutes, which reads as a broken game rather than a
+     hard one. SMU campus in place of Deep Ellum fixes it with no new zones.
+     Love Field, Deep Ellum, the Park Cities and all three breweries stay
+     opt-in via the geofence — an unsupervised city is not the place to hand a
+     new player nine zones. */
   dallas:[
     {n:'Downtown core',  lat:32.7800,lng:-96.7970, base:13, p:'work',    on:true},
     {n:'Uptown',         lat:32.7960,lng:-96.8020, base:10, p:'night',   on:true},
-    {n:'Deep Ellum',     lat:32.7840,lng:-96.7830, base:8,  p:'night',   on:true},
+    {n:'Deep Ellum',     lat:32.7840,lng:-96.7830, base:8,  p:'night',   on:false},
     {n:'Victory Park',   lat:32.7905,lng:-96.8105, base:6,  p:'leisure', on:false},
     {n:'Highland Park',  lat:32.8215,lng:-96.7885, base:6,  p:'leisure', on:false},
-    {n:'SMU campus',     lat:32.8412,lng:-96.7845, base:7,  p:'work',    on:false},
+    {n:'SMU campus',     lat:32.8412,lng:-96.7845, base:7,  p:'work',    on:true},
     {n:'Preston Center', lat:32.8620,lng:-96.8040, base:5,  p:'work',    on:false},
     {n:'Bishop Arts',    lat:32.7508,lng:-96.8285, base:5,  p:'leisure', on:false},
     /* Love Field, not DFW. DFW sits well outside the real service area, and
@@ -3026,12 +3043,24 @@ function winProb(m){
   return m<=1.15 ? clamp(0.97+(1.15-m)*0.06*sens,0.05,0.99)
                  : clamp(0.97-(m-1.15)*1.5*sens,0.08,0.99);
 }
-let spawnAcc=0;
-function spawnRides(dt){
-  /* No feeds connected, or clocked off, means no offers. Demand does not
-     wait for you — it simply goes to someone else. */
+/* Offers per SIM-HOUR right now — the live geofence against this hour of the
+   demand curve, times the share your connected feeds actually see.
+   Note CFG.simPerReal is 1, so at 1x speed this is also offers per REAL hour.
+   That is the number that decides whether a shift feels alive: at 12 an offer
+   arrives every five minutes, at 40 every ninety seconds.
+
+   ONE definition, three consumers: the simulation below, the readout in the
+   Offers panel, and Paolo's advice. The panel used to have no way to say this,
+   which is why a quiet shift was indistinguishable from a broken one. */
+/* Below this many offers per hour a shift reads as broken rather than merely
+   quiet: 18/hour is one every 3m20s. Austin's default geofence clears it at
+   every hour except dawn; Dallas's original defaults cleared it at none.
+   Declared here rather than beside its reader in nextTask(), which used it
+   from above and only worked because nothing calls nextTask() at parse time. */
+const THIN_RATE=18;
+function offersPerHour(){
   const live=livePlatforms();
-  if(!S.onClock||!live.length) return;
+  if(!live.length) return 0;
   const h=hour();
   let rate=0;
   activeZones().forEach(function(z){ rate+=z.base*CURVES[z.p][h] });
@@ -3042,7 +3071,16 @@ function spawnRides(dt){
   /* A permit under review is a real consequence, not just a threatening
      label — the platforms send you less work until the score recovers. */
   if(S.permit==='Under review') share*=0.5;
-  spawnAcc+=rate*share*dt/3600;
+  return rate*share;
+}
+let spawnAcc=0;
+function spawnRides(dt){
+  /* No feeds connected, or clocked off, means no offers. Demand does not
+     wait for you — it simply goes to someone else. */
+  const live=livePlatforms();
+  if(!S.onClock||!live.length) return;
+  const h=hour();
+  spawnAcc+=offersPerHour()*dt/3600;
   while(spawnAcc>=1){
     spawnAcc-=1;
     if(S.offers.length>=CFG.offerCap) continue;
@@ -3832,6 +3870,19 @@ function nextTask(){
       :S.offers.length+' offers waiting — take the best one.',
     why:'Three numbers on every offer: what the meter says, what you actually '+
         'get paid, and how far you drive empty to reach them. Watch the third.',
+    spot:'panel-offers'};
+  /* Before the second-feed advice, because it is worth more. With three of
+     twelve zones live, opening the map roughly triples the offer rate while a
+     second feed adds about 40%. Only raised when the rate is actually thin —
+     at rush hour three zones is plenty and this stays quiet. */
+  const liveZ=activeZones().length, allZ=ZONES.length, rate=offersPerHour();
+  if(liveZ<allZ&&rate>0&&rate<THIN_RATE) return {key:'zones',
+    now:'Quiet — only '+liveZ+' of '+allZ+' zones are live. Open more of the map.',
+    why:'About '+Math.round(rate)+' offers an hour at this time of day, so '+
+        'roughly one every '+Math.max(1,Math.round(60/rate))+' minutes. Every '+
+        'zone you switch on is more of the city allowed to call you — and the '+
+        'curve matters as much as the count. Nobody is going out at six in '+
+        'the morning from a bar district.',
     spot:'panel-offers'};
   const off=PLATFORMS.filter(function(p){return !p.on})[0];
   if(off) return {key:'plat2',
@@ -5276,6 +5327,24 @@ function render(){
 
   $('rq-tag').textContent=S.offers.length+' offers'+
     (waitingRides.length?' · '+waitingRides.length+' waiting':'');
+  /* Why a shift is quiet, in one line. Without this, "no offers for four
+     minutes" and "the game is broken" look identical to the player. */
+  const rqR=$('rq-rate');
+  if(rqR){
+    const liveZ=activeZones().length, allZ=ZONES.length, rate=offersPerHour();
+    rqR.className='zrate'+(rate<=0?' off':(rate<THIN_RATE?' thin':''));
+    if(!livePlatforms().length){
+      rqR.innerHTML='<b>No feed connected</b> — no offers will arrive.';
+    } else if(rate<=0){
+      rqR.innerHTML='<b>No live zones</b> — switch one on above.';
+    } else {
+      const every=60/rate;
+      rqR.innerHTML=liveZ+' of '+allZ+' zones live · <b>~'+Math.round(rate)+
+        ' offers/hour</b> at '+hhmm(Math.floor(S.t/3600)*3600)+
+        ' · about one every '+(every<1?'minute':(every<10?every.toFixed(1):Math.round(every))+' min')+
+        (S.onClock?'':' once you clock on');
+    }
+  }
   $('zone-chips').innerHTML=ZONES.map(function(z,i){
     return '<button class="chip'+(z.on!==false?' on':'')+'" data-zone="'+i+'">'+z.n+'</button>';
   }).join('');
@@ -5768,7 +5837,7 @@ const SLOTS=['slot1','slot2','slot3'];
    SAVE_V above is the STATE SHAPE version and moves only when the
    snapshot format changes — the two are deliberately independent, so
    shipping 0.9.0 does not invalidate 0.8.0 saves. */
-const VERSION='0.23.4';
+const VERSION='0.23.5';
 
 function snapshot(){
   return {
@@ -7173,6 +7242,8 @@ window.DH_ACT1={
   gateMet:gateMet,gateHint:gateHint,progGates:progGates,
   bgTileUrl:bgTileUrl,centerCity:centerCity,buildCityLayers:buildCityLayers,
   uTemp:uTemp,WX_CLOUD_MIN:WX_CLOUD_MIN,WXOV:WXOV,
+  offersPerHour:offersPerHour,THIN_RATE:THIN_RATE,activeZones:activeZones,
+  volumeMult:volumeMult,nextTask:nextTask,
   zoneLayer:function(){ return zoneLayer },chLayer:function(){ return chLayer },
   physKey:physKey,PROG:function(){ return PROG },cityK:cityK,
   renderCityTabs:renderCityTabs,

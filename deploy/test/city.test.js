@@ -384,6 +384,69 @@ async function run(file) {
     return t * 0.085 < 0.005;
   });
 
+  // ---- 6f. a shift must not open at a dead hour -----------------------
+  // Reported: "in Dallas it is like 4 minutes nothing". CFG.simPerReal is 1, so
+  // offers per sim-hour ARE offers per real hour at 1x. The day opens at 06:00,
+  // where the work curve is 1.0 and the night curve is 0.2 — so a city whose
+  // three default zones are work/night/night has two thirds of its opening
+  // demand asleep. Dallas shipped exactly that and measured 12.8/hour against
+  // Austin's 18.3: one offer every 4.7 real minutes.
+  const OPEN_HOUR = Math.floor(A.CFG.dayStart / 3600);
+  function rateAt(city, hr, feeds) {
+    A.newFleet(city);
+    A.PLATFORMS.forEach((p) => { p.on = false; p.offered = 0; p.accepted = 0; });
+    for (let i = 0; i < feeds; i++) A.PLATFORMS[i].on = true;
+    S.t = hr * 3600;
+    return A.offersPerHour();
+  }
+  check('no feed connected means exactly zero, not a trickle',
+    () => rateAt('dallas', OPEN_HOUR, 0) === 0);
+  check('every city clears the thin threshold on its opening hour', () =>
+    Object.keys(A.CITIES).every((id) => rateAt(id, OPEN_HOUR, 1) >= A.THIN_RATE * 0.9));
+  check('no city opens more than 20% quieter than the first one', () => {
+    const first = rateAt(A.cityList()[0], OPEN_HOUR, 1);
+    return Object.keys(A.CITIES).every((id) =>
+      rateAt(id, OPEN_HOUR, 1) >= first * 0.8);
+  });
+  // The mix, not just the total: this is the property that broke, and a future
+  // city could reproduce it while still hitting a plausible-looking base sum.
+  check('every city opens with at least two day-profile zones', () =>
+    Object.keys(A.ZONES_BY_CITY).every((id) =>
+      A.ZONES_BY_CITY[id].filter((z) => z.on !== false &&
+        (z.p === 'work' || z.p === 'leisure' || z.p === 'airport')).length >= 2));
+  check('opening the whole map is a real lever, not a rounding error', () => {
+    const closed = rateAt('dallas', OPEN_HOUR, 2);
+    A.zones().forEach((z) => { z.on = true; });
+    return A.offersPerHour() > closed * 1.8;
+  });
+
+  // The readout that explains a quiet shift, and Paolo's advice about it, must
+  // read from the same number the simulation uses or they can contradict it.
+  check('the offers panel states the rate', () => {
+    rateAt('dallas', OPEN_HOUR, 1); A.render();
+    const el = w.document.getElementById('rq-rate');
+    return /zones live/.test(el.textContent) && /offers\/hour/.test(el.textContent);
+  });
+  check('a thin rate is flagged as thin', () => {
+    rateAt('dallas', OPEN_HOUR, 1);
+    A.zones().forEach((z) => { z.on = z.p === 'brewery'; });   // deliberately dire
+    A.render();
+    return /thin|off/.test(w.document.getElementById('rq-rate').className);
+  });
+  check('no feed says so instead of showing a rate', () => {
+    rateAt('dallas', OPEN_HOUR, 0); A.render();
+    return /No feed connected/.test(w.document.getElementById('rq-rate').textContent);
+  });
+  check('Paolo names the geofence when the rate is thin', () => {
+    rateAt('dallas', OPEN_HOUR, 1);
+    A.zones().forEach((z) => { z.on = z.n === 'Uptown'; });     // one night zone at dawn
+    S.ray.guided = false; S.ray.day1Done = true;
+    A.acquire('cybercab', 'finance');
+    S.onClock = true;
+    const t = A.nextTask();
+    return t.key === 'zones' && /zones are live/.test(t.now);
+  });
+
   // ---- 7. per-city save keys -----------------------------------------
   check('the autosave key carries the city', () => {
     const before = S.city;
