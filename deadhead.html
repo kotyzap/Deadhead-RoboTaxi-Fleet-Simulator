@@ -2125,6 +2125,20 @@ const CFG={
      multiplied by the economy scalar K — see THE CATALOGUE. */
   fixedPerCarDay:82,
   leaseAdd:54, financeDaily:19.8,
+  /* Loan term in days — 48 months, the standard car note. It exists so a
+     financed car can have a BALANCE, which nothing in this game used to track:
+     financing was a down payment plus a daily charge that ran forever, no
+     principal and no payoff, and selling returned the car's full resale value.
+     A Cybercab was $4,500 down, sell for $27,000, repeat. An infinite money
+     glitch, and it also contradicted the garage's own copy ("a financed one
+     cannot" be handed back).
+
+     Checked against the catalogue rather than picked: principal/1460 is 88% of
+     every model's daily payment (Cybercab 17.47 of 19.80, Model 3 21.53 of
+     24.41, Model Y 28.52 of 32.33). So one term gives a consistent ~12%
+     interest share across the whole range, because those daily figures were
+     already proportional to price. */
+  financeDays:1460,
   /* Minimum cash a lender insists you keep back. Was referenced by the
      garage before it existed here, which made every affordability test
      compare against NaN and silently disabled all three Finance buttons. */
@@ -2954,6 +2968,10 @@ function addCar(model,hold){
     lat:z.lat+(Math.random()-.5)*.01,lng:z.lng+(Math.random()-.5)*.014,
     state:'idle',soc:70+Math.random()*25,odo:0,earn:0,route:[],ride:null,
     blocked:0,needs:0,idleFor:0,ch:null,
+    /* The loan. Only meaningful while hold==='finance'; owedOn() reads 0 for
+       anything else. Set from the catalogue rather than passed in, so a car
+       can never be created financed-but-debt-free. */
+    owed:(hold==='finance')?Math.max(0,(v?(v.price||0)-(v.down||0):0)):0,
     /* Map-only bookkeeping: the endpoint this car last sat at, and where its
        current leg began. See roadFix(). The simulation never reads either. */
     at:z.n,p0:null,hdg:0});
@@ -2998,6 +3016,17 @@ function jit(z){ return [z.lat+(Math.random()-.5)*.008, z.lng+(Math.random()-.5)
 function staffed(){ return 0 /* Act 1 */ }
 function insPerMile(){
   return (S.cars.length>=CFG.insFleetAt?CFG.insFleet:CFG.cpm.ins)*cityK('insK');
+}
+/* What a financed car still owes the lender. 0 for owned and rented cars —
+   a rental builds no equity and has no balance to settle. */
+function owedOn(c){
+  return (c&&c.hold==='finance'&&typeof c.owed==='number')?Math.max(0,c.owed):0;
+}
+/* The principal slice of one day's payment. The rest is interest, which buys
+   nothing and is exactly the point of the Act 1 lesson. */
+function principalPerDay(c){
+  const sp=spec(c), price=sp.price||35000, down=sp.down||0;
+  return Math.max(0,(price-down)/CFG.financeDays);
 }
 /* Owned  -> just the base. Financed -> base + the loan's daily slice.
    Rented -> base + the rental day rate, and you never build equity. */
@@ -3313,23 +3342,41 @@ function sellValue(c){
    idle or already-charging are the same two "not busy" states sendToCharge
    uses. A rented car isn't owned, so there's nothing to sell — see
    canReturn/returnCar below for that case instead. */
+/* What a sale actually puts in your pocket: the car's resale value less
+   whatever the lender is still owed. On day one that is deeply unflattering,
+   and correctly so — a Cybercab is worth $27,000 against $25,500 outstanding,
+   so $4,500 down comes back as about $1,500. Driving a new car off the lot
+   costs you three thousand dollars, and this is where the game says so. */
+function sellNet(c){ return sellValue(c)-owedOn(c) }
 function canSell(c){
   if(!c) return {ok:false,why:'No vehicle selected.'};
   if(c.hold==='rent') return {ok:false,why:'Rented, not owned — see Return instead.'};
   if(c.state!=='idle'&&c.state!=='charging') return {ok:false,why:'Only idle or charging vehicles can be sold.'};
+  /* Underwater: the lender is owed more than the car will fetch, so settling
+     takes cash out rather than putting it in. Allowed — walking away from a
+     bad asset is a real decision — but only if you can actually cover it. */
+  const net=sellNet(c);
+  if(net<0&&S.cash<-net){
+    return {ok:false,why:'Owes '+money(owedOn(c))+' against '+money(sellValue(c))+
+      ' — you would need '+money(-net)+' to settle.'};
+  }
   return {ok:true,why:''};
 }
 function sellCar(carId){
   const c=S.cars.filter(function(x){ return x.id===carId })[0];
   if(!canSell(c).ok) return null;
-  const amt=sellValue(c);
+  /* Net of the payoff, which may be negative. */
+  const amt=sellNet(c), owed=owedOn(c);
   S.cash+=amt;
   S.cars=S.cars.filter(function(x){ return x!==c });
   /* carLayer has no removal precedent anywhere else — newFleet()/restore()
      only ever clear it wholesale — so this is the one place a single car's
      marker has to be torn down individually. */
   if(map&&carLayer[c.id]){ map.removeLayer(carLayer[c.id]); delete carLayer[c.id] }
-  log(c.id,'sold for '+money2(amt)+' · '+uKm(c.odo,0)+' on the odometer',0);
+  log(c.id,(owed>0
+    ? 'sold for '+money(sellValue(c))+', '+money(owed)+' settled — '+
+      (amt>=0?money(amt)+' back':money(-amt)+' out of pocket')
+    : 'sold for '+money(amt))+' · '+uKm(c.odo,0)+' on the odometer',0);
   if(S.sel===c.id) S.sel=S.cars.length?S.cars[0].id:null;
   render(); drawMap();
   /* Zero cars is the game's own designed starting state, not a special case
@@ -3586,6 +3633,20 @@ function billMidnight(){
   let fix=0;
   S.cars.forEach(function(c){ fix+=fixedPerCar(c) });
   S.d.fixed+=fix; S.d.cost+=fix; S.cash-=fix;
+  /* The payment just charged above included a principal slice, so retire it.
+     Done after billing, not before, so the last payment is still taken.
+
+     And when the balance reaches zero the car becomes OWNED. Without this the
+     daily payment ran for the rest of the game on a loan that had been repaid
+     several times over — the other half of having no balance to track. */
+  S.cars.forEach(function(c){
+    if(c.hold!=='finance') return;
+    c.owed=Math.max(0,owedOn(c)-principalPerDay(c));
+    if(c.owed<=0){
+      c.hold='own';
+      log(c.id,'loan settled — owned outright',0);
+    }
+  });
   S.day++;
   log('Books','midnight — '+money2(fix)+' fixed costs due',fix>0?1:0);
 }
@@ -5456,15 +5517,21 @@ function render(){
     sbL.textContent='Return vehicle';
     sn.textContent=chk.ok?uKm(sel.odo,0)+' on the odometer · ends the rent':chk.why;
   } else {
-    const chk=canSell(sel);
+    const chk=canSell(sel), owed=owedOn(sel), net=sellNet(sel);
     sb.disabled=!chk.ok;
     /* money(), not money2(). money2 is the two-decimal form for per-unit
        prices — a kilowatt-hour, a mile — and rendering a car's sale price
        through it produced '$27000.00': cents nobody can pay and no thousands
        separator. money() gives '$27,000', which is also shorter, and shorter
-       matters now that the odometer shares the line. */
-    sbL.textContent='Sell for '+money(sellValue(sel));
-    sn.textContent=chk.ok?uKm(sel.odo,0)+' on the odometer':chk.why;
+       matters now that the odometer shares the line.
+
+       The label quotes what you WALK AWAY WITH, not the sticker. Quoting the
+       resale value of a car you do not own yet is the exact misreading that
+       made this look like free money. */
+    sbL.textContent=(net<0?'Settle for ':'Sell for ')+money(Math.abs(net));
+    sn.textContent=!chk.ok?chk.why
+      :(owed>0?money(sellValue(sel))+' less '+money(owed)+' owed'
+              :uKm(sel.odo,0)+' on the odometer');
   }
   /* Recomputed every frame from live state — see nextTask(). */
   const task=nextTask();
@@ -5687,9 +5754,16 @@ $('sel-sell').addEventListener('click',function(){
     returnCar(c.id);
   } else {
     if(!canSell(c).ok) return;
-    const amt=sellValue(c);
-    if(!window.confirm('Sell '+c.id+' for '+money2(amt)+'? '+
-      uKm(c.odo,0)+' on the odometer. This cannot be undone.')) return;
+    /* The dialog quotes the payoff explicitly. Confirming a sale on a number
+       that turns out to be the gross, when a lender takes most of it, is the
+       kind of surprise that makes a player distrust every other figure. */
+    const owed=owedOn(c), net=sellNet(c);
+    const q=owed>0
+      ? 'Sell '+c.id+'? Worth '+money(sellValue(c))+', but '+money(owed)+
+        ' is still owed on it, so you '+
+        (net>=0?'walk away with '+money(net):'pay '+money(-net)+' to settle')+'. '
+      : 'Sell '+c.id+' for '+money(net)+'? ';
+    if(!window.confirm(q+uKm(c.odo,0)+' on the odometer. This cannot be undone.')) return;
     sellCar(c.id);
   }
 });
@@ -5853,14 +5927,14 @@ tbtn.addEventListener('click',function(){
    ZONES[i].on and spawnAcc are player/sim state living outside S,
    so they ride along explicitly.
    ============================================================ */
-const SAVE_V=7;
+const SAVE_V=8;
 const SLOTS=['slot1','slot2','slot3'];
 
 /* Build version, shown in the top bar and stamped into every save.
    SAVE_V above is the STATE SHAPE version and moves only when the
    snapshot format changes — the two are deliberately independent, so
    shipping 0.9.0 does not invalidate 0.8.0 saves. */
-const VERSION='0.23.6';
+const VERSION='0.23.7';
 
 function snapshot(){
   return {
@@ -6016,6 +6090,32 @@ function migrate(save){
     }
     if(!s.city) s.city='austin';
     save.v=7;
+  }
+  if(save.v<8){
+    /* v7 and earlier tracked no loan at all: financing was a down payment plus
+       a daily charge that never ended, and a financed car could be sold for its
+       full resale value. Those saves have financed cars with no balance, so one
+       has to be invented — and leaving it undefined would read as 0, i.e. every
+       existing financed car instantly owned outright, which is the exploit
+       preserved rather than closed.
+
+       Credit for payments already made, estimated from S.day, because that is
+       the only record of elapsed time a v7 save has. A player who financed on
+       day 30 gets credited 30 days they may not have paid on that car; the
+       alternative is charging them for a loan they had already been servicing
+       all game. Erring towards the player is the right way round here. */
+    const days=Math.max(0,(s.day||1)-1);
+    (s.cars||[]).forEach(function(c){
+      if(c.hold!=='finance'){ c.owed=0; return }
+      const v=catalog(c.model);
+      const principal=v?Math.max(0,(v.price||0)-(v.down||0)):0;
+      const paid=principal>0?(principal/CFG.financeDays)*days:0;
+      c.owed=Math.max(0,principal-paid);
+      /* Already through the term: the loan is done, so make it owned rather
+         than leaving a zero-balance 'finance' still paying daily. */
+      if(c.owed<=0) c.hold='own';
+    });
+    save.v=8;
   }
   save.v=SAVE_V;
   return save;
@@ -7266,6 +7366,8 @@ window.DH_ACT1={
   bgTileUrl:bgTileUrl,centerCity:centerCity,buildCityLayers:buildCityLayers,
   uTemp:uTemp,WX_CLOUD_MIN:WX_CLOUD_MIN,WXOV:WXOV,
   offersPerHour:offersPerHour,THIN_RATE:THIN_RATE,activeZones:activeZones,
+  owedOn:owedOn,sellNet:sellNet,sellValue:sellValue,canSell:canSell,sellCar:sellCar,
+  principalPerDay:principalPerDay,billMidnight:billMidnight,
   volumeMult:volumeMult,nextTask:nextTask,
   zoneLayer:function(){ return zoneLayer },chLayer:function(){ return chLayer },
   physKey:physKey,PROG:function(){ return PROG },cityK:cityK,

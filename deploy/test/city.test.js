@@ -135,8 +135,9 @@ async function run(file) {
     SV.restore(snap);
     return A.zones().filter((z) => z.n === air)[0].on === true;
   });
-  check('SAVE_V is 7', () => SV.V === 7);
   check('migrate() converts a v6 positional geofence to names', () => {
+    // v6 -> v8 in one pass: migrate() cascades, so this also runs the v7 and
+    // v8 blocks. That is the point of the ascending order.
     const v6 = { v: 6, s: JSON.parse(JSON.stringify(SV.snapshot().s)) };
     // index 7 in Austin's authored order is the airport, and only it is on
     v6.s.zones = A.ZONES_BY_CITY.austin.map((z, i) => i === 7);
@@ -445,6 +446,104 @@ async function run(file) {
     S.onClock = true;
     const t = A.nextTask();
     return t.key === 'zones' && /zones are live/.test(t.now);
+  });
+
+  // ---- 6g. financing has a balance -----------------------------------
+  // Reported as "the price is nice, but I financed the car for 3k
+  // downpayments, so I should not be able to sell financed car for a full
+  // price". It was an infinite money glitch: no loan balance existed anywhere,
+  // so $4,500 down on a Cybercab and an immediate sale returned $27,000.
+  // It also contradicted the garage's own copy, "a financed one cannot" be
+  // handed back — canSell() only ever blocked rentals.
+  function financed() {
+    A.newFleet('austin');
+    S.ray.skipped = true;
+    A.acquire('cybercab', 'finance');
+    return S.cars[0];
+  }
+  check('financing opens a balance of price minus deposit', () => {
+    const c = financed();
+    const v = A.CATALOG.filter((x) => x.id === 'cybercab')[0];
+    return A.owedOn(c) === v.price - v.down;
+  });
+  check('an owned car owes nothing', () => {
+    A.newFleet('austin'); S.ray.skipped = true; S.cash = 1e6;
+    A.acquire('cybercab', 'buy');
+    return A.owedOn(S.cars[0]) === 0;
+  });
+  check('a rental owes nothing — it builds no equity', () => {
+    A.newFleet('austin'); S.ray.skipped = true;
+    A.acquire('cybercab', 'rent');
+    return A.owedOn(S.cars[0]) === 0;
+  });
+  check('selling a financed car nets equity, not the sticker', () => {
+    const c = financed();
+    return A.sellNet(c) === A.sellValue(c) - A.owedOn(c) &&
+           A.sellNet(c) < A.sellValue(c);
+  });
+  // The regression that matters: flipping must LOSE money.
+  check('buy-and-flip is no longer free money', () => {
+    const c = financed();
+    const before = S.cash;
+    A.sellCar(c.id);
+    return S.cash < A.CFG.startCash && S.cash === before + A.sellNet(c);
+  });
+  check('the payoff retires with each midnight', () => {
+    const c = financed();
+    const owed0 = A.owedOn(c);
+    S.cash += 1e6; A.billMidnight();
+    const owed1 = A.owedOn(S.cars[0]);
+    return owed1 < owed0 &&
+           Math.abs((owed0 - owed1) - A.principalPerDay(c)) < 0.01;
+  });
+  // The other half of having no balance: the daily payment used to run forever.
+  check('a settled loan becomes owned and stops charging', () => {
+    const c = financed();
+    const withLoan = A.fixedPerCar(c);
+    for (let i = 0; i < A.CFG.financeDays + 1 && S.cars[0].hold === 'finance'; i++) {
+      S.cash += 1e6; A.billMidnight();
+    }
+    const x = S.cars[0];
+    return x.hold === 'own' && A.owedOn(x) === 0 && A.fixedPerCar(x) < withLoan;
+  });
+  check('underwater is blocked without the cash to settle', () => {
+    const c = financed();
+    c.odo = 200000;                    // worn down below what it owes
+    S.cash = 100;
+    const chk = A.canSell(c);
+    return A.sellNet(c) < 0 && !chk.ok && /settle/.test(chk.why);
+  });
+  check('underwater is allowed once you can cover it', () => {
+    const c = financed();
+    c.odo = 200000; S.cash = 30000;
+    return A.canSell(c).ok;
+  });
+  check('SAVE_V is 8', () => SV.V === 8);
+  check('the balance survives a save round trip', () => {
+    const c = financed();
+    const owed = A.owedOn(c);
+    const snap = SV.snapshot();
+    S.cars[0].owed = 1;
+    SV.restore(snap);
+    return A.owedOn(S.cars[0]) === owed;
+  });
+  check('v7 saves get a balance, credited for days already paid', () => {
+    financed();
+    const snap = SV.snapshot();
+    snap.v = 7; snap.s.day = 200;
+    snap.s.cars.forEach((x) => { delete x.owed; });
+    const m = SV.migrate(snap);
+    const v = A.CATALOG.filter((x) => x.id === 'cybercab')[0];
+    const principal = v.price - v.down;
+    // Must not be 0 — that would preserve the exploit rather than close it.
+    return m.s.cars[0].owed > 0 && m.s.cars[0].owed < principal;
+  });
+  check('a v7 loan past its term migrates to owned', () => {
+    financed();
+    const snap = SV.snapshot();
+    snap.v = 7; snap.s.day = A.CFG.financeDays + 500;
+    snap.s.cars.forEach((x) => { delete x.owed; });
+    return SV.migrate(snap).s.cars[0].hold === 'own';
   });
 
   // ---- 7. per-city save keys -----------------------------------------
