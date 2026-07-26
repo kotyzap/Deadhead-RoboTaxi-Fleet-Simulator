@@ -181,17 +181,28 @@ scenarios form a chain rather than a menu.
 | **Austin, TX** | Tutorial | Permissive regulation, cheap power, short hops. Brutal summer heat drains range via A/C. Real fleet stalled near 17–20 cars — so the scenario caps at 17. | **Shipped** (v0.22) |
 | **Dallas, TX** | Expansion | Unsupervised from day one, and a **compact** geofence — downtown, Uptown, the Park Cities, Highland Park — tighter than Austin's. Difficulty comes from wear (`depK` 1.22), insurance (`insK` 1.18) and having no supervised grace period, not from sprawl. Charging is the *easiest* in the game: S Riverfront is 34 stalls at 325 kW. | **Shipped** (v0.23) |
 | **Miami, FL** | Constraint | Unsupervised. The real geofence is 10–14 sq mi of *western* Miami-Dade and excludes downtown, Brickell, Miami Beach and MIA — so it is the first city with **no airport run and no CBD**. Fares are smaller (`fareK` 0.94), insurance is the worst in the country (`insK` 1.35), FPL's on-peak window covers **nine hours** (noon–21:00 at 26¢/kWh), and the Supercharger belt is legacy 72 kW hardware mostly outside the box. Aggressive traffic plus daily storms raise incident risk (`incK` 1.30). | **Shipped** (v0.24) |
-| **Orlando / Tampa, FL** | Tourism | Airport and theme-park demand. Extremely peaky, long airport runs, strong seasonality. Wants a new demand-curve profile, which is why it is not next. | Planned |
+| **Tampa, FL** | Night shift | The exact mirror of Miami: **all core, no suburbs.** Downtown, Ybor City, Tampa Heights, West Tampa, Hyde Park, part of East Tampa; no TPA, no South Tampa. Shortest trips in the game (`fareK` 0.92), and the money is after dark — 25.1 offers/h at 21:00 against 17.7 at the 06:00 open, rising to **46.0/h with the three Ybor taprooms live**, the highest hour any city reaches. Both in-geofence Superchargers are 150 kW; both 250 kW sites are out of town. TECO's off-peak is the cheapest power at night (7.5¢). | **Shipped** (v0.25) |
+| **Orlando, FL** | Thin corridor | A strip along Semoran Blvd / Lee Vista Blvd that **runs past MCO without including it**, with Disney and Universal 20+ km away. Second city with no airport zone and the first with **no brewery zone at all** — Orlando's beer scene is 8–14 km outside the box. Thinnest demand in the game (18.2/h at open, 31.5/h ceiling with every zone live), so a big fleet starves; cap 14. Compensations are real: OUC is municipal and has the **cheapest power** of any city, and Lee Vista Blvd is 8 stalls at **325 kW** — the fastest hardware, and the only site inside the geofence. | **Shipped** (v0.25) |
 | **SF Bay Area, CA** | Hard mode | Safety monitor mandatory — payroll from hour one. Highest fares, worst congestion, most expensive power, steep hills hurting range, Meridian entrenched, hostile regulator. **The monitor IS Act 2's payroll mechanic**, so this city cannot ship before Act 2. | Blocked on Act 2 |
 
-Earlier drafts of this table guessed at the cities from a distance and got two things wrong,
-both corrected above: Dallas's launch geofence was *smaller* than Austin's rather than
-"enormous geography", and Miami's headline is not flooding and hurricanes — no such events
-exist — it is how much of Miami the service area leaves out. Where reportage and a nice
-design idea disagreed, the code followed the reportage.
+Earlier drafts of this table guessed at the cities from a distance and got **three** things
+wrong, all corrected above:
+
+1. Dallas's launch geofence was *smaller* than Austin's, not "enormous geography".
+2. Miami's headline is not flooding and hurricanes — no such events exist — it is how much of
+   Miami the service area leaves out.
+3. Orlando and Tampa were down as the "tourism" scenario, with airport and theme-park demand
+   and strong seasonality. **Neither launch area contains an airport or a theme park.**
+
+Where reportage and a nice design idea disagreed, the code followed the reportage every time.
+That is also why three of the five shipped cities have no airport run: it turns out that is
+what Tesla's early geofences look like, and it makes the one long fare in Austin feel like the
+luxury it was.
 
 Real launch dates, for the record: Austin June 2025 (supervised), Dallas and Houston
-18 April 2026 (unsupervised), Miami 3 July 2026, Orlando and Tampa 21 July 2026.
+18 April 2026 (unsupervised), Miami 3 July 2026, Orlando and Tampa 21 July 2026. Tesla did not
+state whether the Tampa and Orlando launches carry a monitor; sources conflict, and both
+scenarios follow the well-documented Miami case as unsupervised.
 
 ---
 

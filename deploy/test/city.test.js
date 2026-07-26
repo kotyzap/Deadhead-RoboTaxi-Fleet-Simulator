@@ -328,6 +328,69 @@ async function run(file) {
            isFinite(A.incidentRisk());
   });
 
+  // ---- 5t. Tampa and Orlando ------------------------------------------
+  // Tampa's whole argument is the evening, and it is measured rather than
+  // asserted by eye: the rate at 21:00 against the rate at the 06:00 open, on
+  // the authored defaults. Miami must fail this test and Tampa must pass it —
+  // that inversion IS the pair of cities.
+  const rateAtHour = (city, hour) => {
+    S.city = city; A.loadCityTables();
+    A.PLATFORMS.forEach((p) => { p.on = false; });
+    const p = A.PLATFORMS[0];
+    p.on = true; p.accepted = p.offered = 10;   // model a player who accepts
+    S.t = hour * 3600;
+    return A.offersPerHour();
+  };
+  check('Tampa pays after dark and Miami pays in the morning', () => {
+    const t = rateAtHour('tampa', 21) / rateAtHour('tampa', 6);
+    const m = rateAtHour('miami', 21) / rateAtHour('miami', 6);
+    return t > 1.2 && m < 0.8;
+  });
+  check('the Ybor taprooms are the biggest evening lever in the game', () => {
+    const before = rateAtHour('tampa', 21);
+    A.zones().forEach((z) => { if (z.p === 'brewery') z.on = true; });
+    const after = A.offersPerHour();
+    A.loadCityTables();
+    return after > before * 1.6;
+  });
+  check('Tampa charges slowly inside the box and fast outside it', () => {
+    // Both in-geofence sites are 150 kW; both 250 kW sites are out of town.
+    // Asserted through distance from the default anchor zone rather than a
+    // hardcoded name, so re-baking or renaming a site cannot fake a pass.
+    S.city = 'tampa'; A.loadCityTables();
+    const z = A.activeZones()[0];
+    const near = A.chargers().filter((c) => A.dist(z.lat, z.lng, c.lat, c.lng) < 3);
+    return near.length > 0 && near.every((c) => c.kw <= 150);
+  });
+  check('Orlando has no airport and no brewery', () => {
+    const zs = A.ZONES_BY_CITY.orlando;
+    return zs.filter((z) => z.p === 'airport').length === 0 &&
+           zs.filter((z) => z.p === 'brewery').length === 0;
+  });
+  check('Orlando is the thinnest city in the game', () => {
+    const ceil = (city) => {
+      rateAtHour(city, 21);
+      A.zones().forEach((z) => { z.on = true; });
+      const r = A.offersPerHour();
+      A.loadCityTables();
+      return r;
+    };
+    const o = ceil('orlando');
+    return A.cityList().filter((c) => c !== 'orlando').every((c) => ceil(c) > o * 1.4);
+  });
+  check('Orlando has the cheapest power and Austin the dearest', () => {
+    const peak = (c) => A.CITIES[c].power.peak;
+    return A.cityList().every((c) => c === 'orlando' || peak(c) > peak('orlando')) &&
+           A.cityList().every((c) => c === 'austin' || peak(c) < peak('austin'));
+  });
+  // A city with no brewery zone must not break anything that assumes one, and
+  // the Geofence panel has to render an empty category rather than throwing.
+  check('a city with no taproom still renders its geofence', () => {
+    S.city = 'orlando'; A.loadCityTables(); A.render();
+    const el = w.document.getElementById('rq-rate');
+    return !!el && el.textContent.length > 0;
+  });
+
   check('every city declares a fleet cap and a goal',
     () => Object.keys(A.CITIES).every((id) =>
       typeof A.CITIES[id].fleetCap === 'number' &&
@@ -384,7 +447,19 @@ async function run(file) {
       return n.indexOf('shift1@') === 0 && !!A.CITIES[n.slice(7)];
     }));
   check('cityList() is ordered by CITIES[].order',
-    () => A.cityList().join(',') === 'austin,dallas,miami');
+    () => A.cityList().join(',') === 'austin,dallas,miami,tampa,orlando');
+  // The chain has to be a CHAIN: every scenario after the first gates on the
+  // one immediately before it in tab order. A city gating on something earlier
+  // would let a player skip a scenario; two gating on the same city would fork
+  // it. One assertion covers both, and it holds for any future city.
+  check('each city gates on the one before it in tab order', () => {
+    const ids = A.cityList();
+    return ids.every((id, i) => {
+      const n = A.CITIES[id].needs;
+      if (i === 0) return !n;
+      return n === 'shift1@' + ids[i - 1];
+    });
+  });
 
   // ---- 6a. the gate CHAIN ---------------------------------------------
   // Austin opens Dallas, Dallas opens Miami. The bare 'shift1' gate could not

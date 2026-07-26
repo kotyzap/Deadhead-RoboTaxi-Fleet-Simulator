@@ -577,19 +577,136 @@ anything that needs the network is his to run:
 
 ```
 cd deploy
-node scripts/bake-roads.js miami --write        # Miami has no geometry yet
 node scripts/nudge-zones.js all                 # dry run first — read the gaps
 node scripts/nudge-zones.js all --write
-node scripts/bake-roads.js austin --write       # re-bake whatever moved
-node scripts/bake-roads.js dallas --write
+node scripts/bake-roads.js miami   --write      # no geometry yet
+node scripts/bake-roads.js tampa   --write      # no geometry yet
+node scripts/bake-roads.js orlando --write      # no geometry yet
+node scripts/bake-roads.js austin  --write      # re-bake whatever the nudge moved
+node scripts/bake-roads.js dallas  --write
 npm test && npm run check-parity
 ```
+
+Nudge before baking, always: a moved zone is a moved route endpoint. Baking five cities is
+~550 OSRM routes at one request every 350 ms, so budget five minutes and expect the file to
+grow by roughly 200 KB after thinning.
 
 Until the Miami bake lands, `roadsFor('miami')` is `{}` and the map draws straight lines there —
 a supported state (`roadPath()` returns null and the caller falls back), not a bug.
 
+---
+
+## Cities #4 and #5 — Tampa and Orlando — v0.25.0
+
+Chain is now **Austin → Dallas → Miami → Tampa → Orlando**, five scenarios, each gated on one
+shift clocked off in the one before it. `cityList()` order is asserted, and so is the chain
+itself: every city's `needs` must be `'shift1@' + the previous city`, which catches both a city
+that skips a link and two cities gating on the same one.
+
+### The tourism premise was wrong — for the third time
+
+`DESIGN.md` §5 had these two down as "airport and theme-park demand, extremely peaky, long
+airport runs, strong seasonality", and that was the stated reason they needed a new demand
+curve. What actually launched on 21 July 2026:
+
+- **Orlando** is a corridor along Semoran Blvd (SR-436) and Lee Vista Blvd that runs past MCO
+  and *does not include it*. Disney and Universal are 20+ km southwest.
+- **Tampa** is downtown, Ybor City, Tampa Heights, West Tampa, Hyde Park and part of East
+  Tampa — and excludes TPA, South Tampa and every suburb.
+
+So no new curve was needed after all, and three of the five shipped cities now have no airport
+zone. Third time reportage has overruled the design note (after Dallas's "enormous geography"
+and Miami's hurricanes), which is starting to look like the rule rather than the exception:
+**Tesla's early geofences are small, arbitrary, and exclude the landmarks.**
+
+### Tampa — the mirror of Miami
+
+Miami got the suburbs and no core; Tampa is nothing but core. That is what earned it a slot
+ahead of Houston, and the inversion is measurable rather than thematic:
+
+| | 06:00 | 21:00 | evening/morning | 21:00, taprooms live |
+|---|---|---|---|---|
+| Austin | 18.3/h | 24.0/h | 1.31 | 42.4/h |
+| Dallas | 16.9/h | 24.6/h | 1.45 | 43.0/h |
+| Miami | 20.2/h | 11.9/h | **0.59** | 30.2/h |
+| **Tampa** | 17.7/h | 25.1/h | **1.42** | **46.0/h** |
+| Orlando | 18.2/h | 14.8/h | **0.81** | 14.8/h |
+
+Miami and Orlando are morning cities — their 21:00 rate is *below* their 06:00 rate. Tampa is
+the opposite and its evening is the largest single hour in the game, because Ybor City is a
+real nightlife district inside the geofence and the three Ybor-area taprooms stack the brewery
+curve (2.2 at 19:00) on top of the night curve (2.0 at 21:00).
+
+The lesson is not "evenings are good" — Austin and Dallas already reward those. It is that a
+player arriving straight from Miami's morning rhythm has to unlearn it, and that the Geofence
+panel is worth reopening in every city rather than set once and forgotten.
+
+**Charging inverts too.** Both Superchargers inside the service area are 150 kW (West Swann
+10 stalls, N 50th 8 stalls); both 250 kW sites are outside it (N Dale Mabry 4.5 km, E Bearss
+15.6 km). Tampa's trade is therefore not "fast or far" but "stay in the box and charge slowly,
+or leave the box and lose the evening you came for". TECO's off-peak is 7.5¢/kWh, the cheapest
+night power in the game — real relief, available at exactly the hours you want to be working.
+
+`fareK` 0.92 is the lowest of the five: a small dense core means the shortest trips in the game.
+Tampa earns on volume and on the night, never on the individual fare.
+
+### Orlando — the thinnest city, next to an airport it cannot serve
+
+The geofence borders one of the busiest airports in the United States and every one of those
+fares belongs to somebody else. What is actually inside is a hotel belt on Semoran, an office
+park at Lee Vista, retail at Goldenrod and a lot of apartment complexes.
+
+- **First city with no brewery zone at all.** Orlando's beer scene is real and good — Ivanhoe
+  Park, Ten10, Broken Strings, Orlando Brewing — and all of it is 8–14 km northwest of this
+  corridor. Adding a taproom zone would be inventing service area, so the Geofence panel has
+  nothing to switch on. The number that shows it: opening every zone buys a +74% to +155%
+  evening in every other city and **+0%** here.
+- **Thinnest demand in the game**: 18.2/h at open (just over the `THIN_RATE` amber line, on
+  purpose), 14.8/h at 21:00, and a 31.5/h ceiling with the whole corridor live — half of
+  Tampa's, less than half of Dallas's. A big fleet starves, hence cap 14 and the lowest goal.
+- **Genuine compensations**: OUC is a municipal utility with the cheapest power of any scenario
+  (~11.8¢ average, shallow peak), and Lee Vista Blvd is 8 stalls at **325 kW** — tied with
+  Dallas for the fastest hardware and the only site inside the geofence. With 8 stalls against
+  a fleet of up to 14, the charger queue penalty finally bites: past eight cars the alternative
+  is a 14.5 km deadhead out of the corridor.
+
+### Two provenance notes worth keeping
+
+1. **tesla.com can be wrong.** The Lee Vista Boulevard Supercharger page embeds a static map
+   centred on 39.97,-83.00 — Columbus, Ohio, 1,500 km from the site — in every locale variant.
+   Its stalls, power and host are transcribed as usual; the coordinate is placed from the
+   street address and labelled as such in the file. If a future city's coordinates look
+   implausible, check the embedded map against the address before trusting the trick.
+2. **Orlando's zone spread is real geography, not sloppiness.** Its centroids cover ~14 km of
+   latitude where Tampa's fit inside 7 km, because one city is an arterial corridor and the
+   other is a core.
+
+### Tone: Orlando takes the purple that was reserved for SF Bay
+
+The palette table above assigned `#6D3FD4` to SF Bay. SF cannot ship before Act 2 (its
+mandatory safety monitor *is* the payroll mechanic), so Orlando takes the violet slot and SF
+picks a new hue when it becomes real. Both new tones clear the AA rules from v0.24.0 — fills
+≥4.5:1 against white in both themes, gradient top stops ≥4.0:1:
+
+| City | `--accent` day | night | `--city-tint` |
+|---|---|---|---|
+| Tampa | `#0D7687` (5.31:1) | `#0E8092` (4.64:1) | `#18D7F6` |
+| Orlando | `#7F4DD5` (5.35:1) | `#895BD9` (4.60:1) | `#A47CE9` |
+
+### The tab bar at five cities
+
+`min-width:0` plus `overflow-x:auto` on `.citytabs`, so the strip is what gives rather than the
+clock and speed control being pushed off the topbar, with tighter padding at ≤1199px (10px, and
+11.5px labels) and ≤760px (8px, 11px). Deliberately the boring fix.
+
+**Considered and rejected: collapsing to a dropdown past three cities.** It scales forever and
+it throws away the padlocked tab — and a lock you can *see* is a goal, which is most of why the
+Dallas gate worked in the first place.
+
 ### Open
 
+- **Tampa and Orlando road geometry not baked** — `roadsFor()` returns `{}` for both, so the
+  map draws straight lines there (a supported state, not a bug).
 - Miami road geometry not yet baked (see above).
 - Zone centroids not yet nudged (script written, needs a network run).
 - `DESIGN.md` §5 and §6.1 — **corrected in v0.24.0.** §5 now carries the real launch dates,

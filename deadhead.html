@@ -332,10 +332,27 @@ body{
    segmented control. Four overlapping parallelograms in a fixed 32:9 cockpit
    is exactly the shape that has already produced a hairline Platforms panel
    and an invisible "Take control" on this layout.
+
+   FIVE CITIES (v0.25.0). The strip has to hold a growing list without ever
+   pushing the clock and the speed control off the topbar, and the fix is
+   deliberately the boring one: `min-width:0` + `overflow-x:auto` so the strip
+   is the thing that gives, plus tighter padding at each breakpoint. Considered
+   and rejected: collapsing to a dropdown past three cities, which scales
+   forever but throws away the padlocked tab — a lock you can SEE is a goal, and
+   that visibility is most of why the Dallas gate worked.
    ============================================================ */
-.citytabs{display:flex;align-items:flex-end;gap:0;margin-right:4px}
+/* min-width:0 lets the strip be squeezed by its flex parent instead of forcing
+   the whole topbar wider, and overflow-x:auto means the fifth city scrolls into
+   reach rather than pushing the clock off the end. scrollbar-width:none because
+   a visible scrollbar under a 30px tab strip is worse than the scroll being
+   discoverable by drag/wheel — the tabs are also reachable by keyboard, which
+   is the accessible path. */
+.citytabs{display:flex;align-items:flex-end;gap:0;margin-right:4px;
+  min-width:0;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none;
+  padding-bottom:0}
+.citytabs::-webkit-scrollbar{display:none}
 .citytab{position:relative;border:0;background:none;padding:0;font:inherit;cursor:pointer;
-  margin-right:-9px}
+  margin-right:-9px;flex:0 0 auto}
 .citytab:last-child{margin-right:0}
 .citytab .sk{display:block;height:30px;padding:0 20px 0 14px;
   transform:skewX(-14deg);transform-origin:bottom left;
@@ -359,11 +376,22 @@ body{
   .citytabs{gap:0}
   .citytab{margin-right:0}
   .citytab+.citytab .sk{border-left:1px solid var(--brd-2)}
+  /* Tighter padding below T3, because five cities in a segmented control is
+     the case this tier now has to hold: 20px+14px per tab bought nothing here
+     once the skew was gone, and 10px keeps five labels on screen at 1199px
+     without the strip needing to scroll at all. */
   .citytab .sk{transform:none;border-radius:0;border-bottom:1px solid var(--glass-brd);
-    padding:0 12px}
+    padding:0 10px}
   .citytab:first-child .sk{border-radius:var(--r-ctl) 0 0 var(--r-ctl)}
   .citytab:last-child .sk{border-radius:0 var(--r-ctl) var(--r-ctl) 0}
-  .citytab .lb{transform:none}
+  .citytab .lb{transform:none;font-size:11.5px}
+}
+/* Phone tier: the label is what has to give. A five-city strip cannot fit a
+   32:9 cockpit's topbar at 760px, and the padlock glyph plus a short name is
+   still enough to know where you are and what is locked. */
+@media (max-width:760px){
+  .citytab .sk{padding:0 8px}
+  .citytab .lb{font-size:11px;gap:4px}
 }
 .ghost{display:flex;align-items:center;gap:7px;background:var(--inset);box-shadow:var(--hi-1);border:1px solid var(--glass-brd);
   border-radius:var(--r-ctl);height:30px;padding:0 12px;font:inherit;font-size:12px;font-weight:500;
@@ -2379,6 +2407,127 @@ const CITIES={
     tone:{
       day:  {accent:'#B5257E', hi:'#C93690', a2:'#8E1C62', tint:'#F2559F'},
       night:{accent:'#D4308D', hi:'#D63A92', a2:'#8E1C62', tint:'#F87FBB'}
+    }},
+
+  /* ---- TAMPA -----------------------------------------------------------
+     Launched 21 July 2026 alongside Orlando. Tampa is the EXACT MIRROR OF
+     MIAMI, which is why it earned a slot rather than being a fourth Florida
+     re-skin: Miami got the suburbs and no core, Tampa is nothing but core.
+     The published area is downtown plus Ybor City, Tampa Heights, West Tampa
+     and Hyde Park, with parts of East Tampa — and it excludes TPA airport,
+     South Tampa and every suburb.
+
+     THE CLOCK IS INVERTED — against MIAMI, which is the comparison that
+     matters, not against the game as a whole. Measured, one feed, defaults:
+
+       evening/morning ratio:  Tampa 1.42   Miami 0.59   Orlando 0.81
+                               (Austin 1.31, Dallas 1.45)
+
+     Miami and Orlando are morning cities: their 21:00 rate is BELOW their 06:00
+     rate. Tampa is the opposite, and in absolute terms its evening is the
+     largest in the game — 25.1 offers/h at 21:00 on the three default zones,
+     and **46.0/h with the three Ybor taprooms live**, higher than any hour any
+     other city reaches. Ybor is a real nightlife district sitting inside the
+     geofence, so the brewery curve (peak 2.2 at 19:00) stacks straight on top
+     of the night curve (2.0 at 21:00).
+
+     So the lesson Tampa teaches is not "evenings are good" — Austin and Dallas
+     already reward them. It is that a player who has just spent a city learning
+     Miami's morning rhythm has to throw that away, and that the Geofence panel
+     is worth reopening in every city rather than set once.
+
+     TRIPS ARE THE SHORTEST IN THE GAME — it is a small dense core — so fareK
+     is 0.92, the lowest of any city. Tampa earns on volume and on the night,
+     never on the individual fare.
+
+     PERMIT, HONESTLY. Tesla did not state whether Tampa launched supervised;
+     Electrek noted that markets beyond Austin have typically carried an
+     employee in the car, while Tesla Oracle reported the Florida launches as
+     having no safety personnel aboard. Miami is the well-documented Florida
+     case and it was unsupervised, so both Tampa and Orlando follow it. If that
+     turns out to be wrong it is a one-word change here, and the sources
+     disagreeing is recorded rather than hidden. */
+  tampa:{name:'Tampa', short:'Tampa', lat:27.9475, lon:-82.4590, tz:'America/New_York',
+    permit:'Unsupervised', fleetCap:14,
+    fareK:0.92, depK:1.05, insK:1.30, incK:1.20,
+    /* Tampa Electric time-of-day: summer on-peak is 14:00-20:00, and its
+       off-peak is the CHEAPEST POWER IN THE GAME at 7.5c/kWh (TECO's published
+       January 2026 off-peak energy rate). So Tampa hands you the one thing
+       Miami refuses: a genuinely cheap overnight charge. The catch is that the
+       cars want to be out working exactly when power is dear. */
+    power:{peak:0.22, mid:0.13, off:0.075, peakFrom:14, peakTo:20, offFrom:23, offTo:7},
+    goal:{cash:45000, text:'Clear $45,000 out of a city that only pays after dark.'},
+    order:3,
+    needs:'shift1@miami',
+    /* Bay teal. Furthest hue from the bronze/magenta pair and cool enough not
+       to read as Austin's blue at a glance. Day fill 5.31:1 against white. */
+    tone:{
+      day:  {accent:'#0D7687', hi:'#0F8A9E', a2:'#094D58', tint:'#18D7F6'},
+      night:{accent:'#0E8092', hi:'#0F8A9D', a2:'#094D58', tint:'#24DAF6'}
+    }},
+
+  /* ---- ORLANDO ---------------------------------------------------------
+     Also 21 July 2026. And this is the city that most needed the reportage
+     rule, because DESIGN.md had it down as the TOURISM scenario — airport and
+     theme-park demand, long airport runs, strong seasonality. None of that
+     launched. The real geofence is a corridor in central/southeast Orlando
+     along Semoran Boulevard (SR-436) and Lee Vista Boulevard, and:
+
+       - it runs right past MCO and DOES NOT INCLUDE IT, and
+       - Disney and Universal are 20+ km southwest, nowhere near it.
+
+     So Orlando is the second city with no airport zone, and the first where
+     that is actively taunting: the geofence borders one of the busiest
+     airports in the United States and the fares are all somebody else's. What
+     is actually inside is a hotel belt on Semoran, an office park at Lee Vista,
+     retail at Goldenrod and a lot of apartment complexes.
+
+     IT IS ALSO THE FIRST CITY WITH NO BREWERY ZONES, and that is deliberate
+     rather than an oversight. Orlando's beer scene is real and good — Ivanhoe
+     Park, Ten10, Broken Strings, Orlando Brewing — and every bit of it is 8 to
+     14 km northwest of this corridor, outside the box. Putting them in as
+     zones would be inventing service area, which is the one thing the city
+     tables do not do.
+
+     WHAT MAKES IT PLAYABLE rather than merely bleak: OUC is a municipal
+     utility and Orlando has the CHEAPEST POWER of any scenario, and Lee Vista
+     Boulevard is 8 stalls at 325 kW — tied with Dallas for the fastest
+     hardware in the game, and the only site inside the geofence. Cheap
+     electrons, fast charging, thin demand, long arterial deadheads.
+
+     THE NUMBERS, measured, one feed: 18.2 offers/h at the 06:00 open — just
+     over the THIN_RATE amber line, deliberately — falling to 14.8/h at 21:00,
+     and a ceiling of 31.5/h with every zone in the corridor live. That ceiling
+     is half of Tampa's and less than half of Dallas's, and it is the real
+     difficulty: Orlando is the one city where a big fleet starves, which is why
+     its cap is 14 and its goal is the lowest of the five.
+
+     One consequence of having no taprooms, worth stating because it shows up as
+     a number: opening every zone in every other city buys a +74% to +155%
+     evening. In Orlando it buys **+0%**. There is no lever here that turns the
+     night on. */
+  orlando:{name:'Orlando', short:'Orlando', lat:28.4700, lon:-81.3000, tz:'America/New_York',
+    permit:'Unsupervised', fleetCap:14,
+    /* Corridor trips are the LONGEST since Austin's airport run, hence fareK
+       above 1 — SR-436 is an arterial and the zones are strung along it rather
+       than packed together. depK follows: arterial speeds wear a car harder
+       than Tampa's stop-start core. */
+    fareK:1.05, depK:1.10, insK:1.28, incK:1.15,
+    /* Orlando Utilities Commission, a municipal utility averaging about
+       11.8c/kWh in 2026 — cheaper than FPL, TECO or Austin Energy, and with a
+       shallower peak because OUC's time-of-use (PeakSHIFT) is only now being
+       phased in. The cheapest power in the game. */
+    power:{peak:0.15, mid:0.115, off:0.085, peakFrom:16, peakTo:21, offFrom:23, offTo:7},
+    goal:{cash:42000, text:'Clear $42,000 beside an airport you are not allowed to serve.'},
+    order:4,
+    needs:'shift1@tampa',
+    /* Violet. citiesplan.md had reserved this hue for SF Bay; SF cannot ship
+       before Act 2 (its mandatory safety monitor IS the payroll mechanic), so
+       Orlando takes it and SF picks a new one when it exists. Recorded so the
+       palette table in citiesplan.md is not silently contradicted. */
+    tone:{
+      day:  {accent:'#7F4DD5', hi:'#9167DB', a2:'#642EC1', tint:'#A47CE9'},
+      night:{accent:'#895BD9', hi:'#9167DC', a2:'#642EC1', tint:'#A47BEA'}
     }}
 };
 /* Scenario order for the city tabs — by `order`, so the table can grow in any
@@ -2739,6 +2888,72 @@ const ZONES_BY_CITY={
     {n:'Biscayne Bay Brewing', lat:25.8080,lng:-80.3230, base:5, p:'brewery', on:false},
     {n:'The Tank Brewing',     lat:25.8290,lng:-80.3170, base:4, p:'brewery', on:false},
     {n:'Titanic Brewing',      lat:25.7360,lng:-80.2790, base:5, p:'brewery', on:false}
+  ],
+  /* ---- TAMPA -----------------------------------------------------------
+     All core, no suburbs — the published area is downtown, Ybor City, Tampa
+     Heights, West Tampa, Hyde Park and part of East Tampa, and it stops before
+     TPA and South Tampa. Everything below is inside that.
+
+     The three defaults are Downtown + Univ of Tampa (both work) and Ybor City
+     (night), which is the same work/work/night mix Austin uses. Ybor is on from
+     the start even though the night curve is 0.2 at the 06:00 open, because
+     Ybor IS the city's argument: leave it live and by 21:00 it is carrying more
+     demand than downtown ever does. The three taprooms are the accelerant on
+     top of that, and they are opt-in like every other city's.
+
+     Same honesty note as Dallas and Miami: the Superchargers in
+     CHARGERS_BY_CITY.tampa are transcribed from Tesla's pages; these zone
+     coordinates are neighbourhood centroids placed from street geography.
+     'Univ of Tampa' rather than 'UT campus' — Austin already has a 'UT campus'
+     meaning the University of Texas, and while zone names only have to be
+     unique WITHIN a city, two different universities sharing an abbreviation in
+     one codebase is a trap for whoever reads the ROADS keys later. */
+  tampa:[
+    {n:'Downtown Tampa', lat:27.9475,lng:-82.4590, base:13, p:'work',    on:true},
+    {n:'Ybor City',      lat:27.9605,lng:-82.4370, base:10, p:'night',   on:true},
+    {n:'Univ of Tampa',  lat:27.9450,lng:-82.4650, base:8,  p:'work',    on:true},
+    {n:'Channelside',    lat:27.9420,lng:-82.4470, base:7,  p:'leisure', on:false},
+    {n:'Hyde Park',      lat:27.9390,lng:-82.4720, base:8,  p:'leisure', on:false},
+    {n:'Tampa Heights',  lat:27.9670,lng:-82.4620, base:6,  p:'leisure', on:false},
+    {n:'West Tampa',     lat:27.9540,lng:-82.4820, base:6,  p:'home',    on:false},
+    {n:'East Tampa',     lat:27.9760,lng:-82.4260, base:5,  p:'home',    on:false},
+    {n:'Seminole Heights',lat:28.0000,lng:-82.4600, base:5, p:'home',    on:false},
+    /* Real Tampa taprooms, and the reason this city plays differently after
+       dark. Coppertail and Zydeco are both in Ybor; Cigar City sits on West
+       Spruce Street near the edge of the area, which is where it actually is. */
+    {n:'Coppertail Brewing', lat:27.9585,lng:-82.4335, base:6, p:'brewery', on:false},
+    {n:'Zydeco Brew Werks',  lat:27.9605,lng:-82.4400, base:4, p:'brewery', on:false},
+    {n:'Cigar City Brewing', lat:27.9585,lng:-82.5060, base:6, p:'brewery', on:false}
+  ],
+  /* ---- ORLANDO ---------------------------------------------------------
+     The Semoran Boulevard / Lee Vista corridor, strung along an arterial
+     rather than packed into a core — which is why the coordinates below spread
+     over ~14 km of latitude while Tampa's fit inside 7 km.
+
+     WHAT IS NOT HERE: MCO. The geofence runs along the airport's northern edge
+     and stops. There is no p:'airport' entry, on purpose and for the second
+     time (see Miami) — and here it is the whole joke of the city.
+
+     ALSO NOT HERE: a single brewery. Orlando has a good beer scene and all of
+     it is 8-14 km northwest of this corridor, outside the published area.
+     Adding a taproom zone would be inventing service Tesla does not offer, so
+     Orlando is the first city where the Geofence panel has no brewery to
+     switch on. If the corridor ever expands north to the Milk District,
+     Broken Strings and Ten10 are the two to add.
+
+     Defaults are Lee Vista + Goldenrod (work) and the Semoran hotel belt
+     (leisure), so all three carry real weight at the 06:00 open. */
+  orlando:[
+    {n:'Lee Vista',       lat:28.4520,lng:-81.2900, base:12, p:'work',    on:true},
+    {n:'Semoran hotels',  lat:28.4390,lng:-81.3080, base:9,  p:'leisure', on:true},
+    {n:'Goldenrod',       lat:28.5580,lng:-81.2840, base:8,  p:'work',    on:true},
+    {n:'Conway',          lat:28.4870,lng:-81.3400, base:7,  p:'home',    on:false},
+    {n:'Azalea Park',     lat:28.5390,lng:-81.2960, base:7,  p:'home',    on:false},
+    {n:'Ventura',         lat:28.5110,lng:-81.2860, base:6,  p:'home',    on:false},
+    {n:'Curry Ford East', lat:28.5000,lng:-81.2600, base:5,  p:'home',    on:false},
+    {n:'Belle Isle',      lat:28.4600,lng:-81.3540, base:5,  p:'home',    on:false},
+    {n:'Vista East',      lat:28.4720,lng:-81.2380, base:5,  p:'home',    on:false},
+    {n:'Lake Nona edge',  lat:28.4110,lng:-81.2700, base:7,  p:'work',    on:false}
   ]
 };
 /* Fresh objects every call — see the `on` note above. Never return the
@@ -2880,6 +3095,61 @@ const CHARGERS_BY_CITY={
      lat:25.7326890, lng:-80.3042484, stalls:12, kw:250},
     {n:'S Dixie Hwy',    site:'Dadeland Station',
      lat:25.6934800, lng:-80.3046400, stalls:12, kw:72}
+  ],
+  /* ---- TAMPA -----------------------------------------------------------
+     Four real sites, transcribed. The shape here is the inverse of Miami's and
+     it was not designed either — it is what Tampa has:
+
+       West Swann Ave    in-zone (Hyde Park)   10 stalls  150 kW
+       N 50th Street     in-zone (East Tampa)   8 stalls  150 kW
+       N Dale Mabry Hwy  ~2 km W of downtown    8 stalls  250 kW
+       E Bearss Avenue   ~16 km N, far outside  8 stalls  250 kW
+
+     Both sites INSIDE the service area are 150 kW; both 250 kW sites are
+     outside it. So Tampa's trade is not "fast or far" the way Austin's was —
+     it is "stay in the box and charge slowly, or leave the box and lose the
+     evening you came here for". Given the whole city is built around Ybor
+     after dark, a 20-minute round trip to Dale Mabry at 21:00 costs real
+     money, and that is the decision this list exists to force. */
+  tampa:[
+    {n:'West Swann Ave', site:'Aldi',
+     lat:27.9360912, lng:-82.4813188, stalls:10, kw:150},
+    {n:'N 50th Street',  site:'Wawa',
+     lat:27.9651766, lng:-82.4022035, stalls:8,  kw:150},
+    {n:'N Dale Mabry',   site:'Wawa',
+     lat:27.9490077, lng:-82.5048837, stalls:8,  kw:250},
+    {n:'E Bearss Ave',   site:'Wawa',
+     lat:28.0885236, lng:-82.4519187, stalls:8,  kw:250}
+  ],
+  /* ---- ORLANDO ---------------------------------------------------------
+     Three sites, and the honesty note here is more specific than usual.
+
+     Stall counts, power and host sites are transcribed from Tesla's own pages
+     as always. The COORDINATES for Lee Vista Boulevard are NOT: that page's
+     embedded static map is broken and points at 39.97,-83.00, which is
+     Columbus, Ohio. Rather than transcribe a coordinate that is 1,500 km
+     wrong, Lee Vista is placed from its street address (9955 Lee Vista Blvd,
+     32829) and is accurate to a block, like a zone centroid. The other two are
+     transcribed normally. Worth knowing that tesla.com can be wrong this way
+     if a fourth city ever needs the same trick.
+
+       Lee Vista Blvd    IN the geofence     8 stalls  325 kW
+       Millenia Plaza   ~14 km W           12 stalls  250 kW
+       Winter Park      ~17 km N           12 stalls  250 kW
+
+     Lee Vista is tied with Dallas's S Riverfront for the fastest hardware in
+     the game, and it is the ONLY site inside the service area — with 8 stalls
+     against a fleet cap of 18. The queue penalty (see chargeEta) is therefore a
+     real constraint here for the first time: past eight cars charging at once,
+     the alternative is a 14 km deadhead out of the corridor. Cheap power, fast
+     charger, one door. */
+  orlando:[
+    {n:'Lee Vista Blvd', site:'Wawa',
+     lat:28.4478, lng:-81.2650, stalls:8,  kw:325},
+    {n:'Millenia Plaza', site:'Target',
+     lat:28.4932073, lng:-81.4308171, stalls:12, kw:250},
+    {n:'Winter Park',    site:'Wawa',
+     lat:28.6049180, lng:-81.3659782, stalls:12, kw:250}
   ]
 };
 function chargersFor(city){ return CHARGERS_BY_CITY[city]||CHARGERS_BY_CITY.austin }
@@ -6272,7 +6542,7 @@ const SLOTS=['slot1','slot2','slot3'];
    SAVE_V above is the STATE SHAPE version and moves only when the
    snapshot format changes — the two are deliberately independent, so
    shipping 0.9.0 does not invalidate 0.8.0 saves. */
-const VERSION='0.24.0';
+const VERSION='0.25.0';
 
 function snapshot(){
   return {
