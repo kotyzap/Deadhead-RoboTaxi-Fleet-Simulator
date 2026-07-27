@@ -1,0 +1,74 @@
+0.33.1 — fix: the Trophies icon was invisible on a new save, and hard to
+find even when it wasn't
+
+THE BUG
+
+The nav lock pass matched gate names to buttons BY POSITION:
+
+  const gate=['fleet','offers','energy','books','ops','fleet','fleet'];
+  apps[i].classList.toggle('locked', !unlocked(gate[i]||'fleet'));
+
+Seven entries for seven buttons. Trophies was the eighth, so gate[7] was
+undefined, `||'fleet'` locked it behind owning a car, and
+`.t-app.locked{opacity:.3;pointer-events:none}` made it a barely-visible
+dead pixel on a dark bar. Pavel reported it as missing; it turned up in a
+later screenshot only because his Miami save had long since satisfied the
+fleet gate. Every new player — which on a Reddit launch is everyone —
+would have got the invisible version.
+
+Appending was the lucky case. Inserting a button anywhere else would have
+shifted every gate after it onto the wrong icon, and since the PANELS gate
+correctly on their own, only the dimming would have been wrong. That is
+the kind of bug that survives several releases.
+
+THE FIX
+
+Each button names its own gate: `data-gate="fleet"`, order-independent and
+self-describing, the same shape as the `data-panel` attribute sitting
+beside it. No data-gate means never locked, and Trophies is the first of
+those — an achievement can be earned in the first minute, so there is
+nothing to withhold.
+
+Every value is exactly what the positional array resolved to, so nothing
+else changes. That includes Map being gated on 'offers', which reads oddly
+next to its own aria-pressed="true" and is preserved as found rather than
+quietly "fixed" inside a bug-fix commit. Worth a look separately.
+
+DISCOVERABILITY (Pavel: "it is really hidden")
+
+Four signposts, all driven by one earned-vs-seen split (PROG.achvSeen)
+rather than three separate ideas of "new":
+
+- An unread count on the nav icon, gold, with a single pop animation the
+  first time something lands so the icon changes on its own instead of
+  waiting to be noticed. Cleared by opening the panel, because opening is
+  what counts as seeing.
+- A "Trophies · 2 new" button in the shift report, shown only when there
+  is something to see. The report is the moment a player is already asking
+  how the shift went, which is the only moment a board means anything.
+  Secondary styling; Close is still the action almost everyone wants.
+- Paolo says where to look, once ever, on the first achievement of the
+  player's life. The flag rides in PROG so a new city does not make him
+  repeat it.
+- A "Trophies 5/21" readout in the topbar, marked tb-opt so the narrow
+  layout drops it first — a trophy count is the most expendable thing in
+  that strip.
+
+TESTS
+
+Seven new checks. Three guard the bug itself: the icon must exist, must be
+unlocked on a fresh fleet, and every data-gate must name a real STAGES id
+(a typo would lock an icon forever with nothing to catch it). One proves
+the fix is attribute-driven by reordering the nav strip and re-rendering —
+a positional array now gates the wrong icons. The rest cover the badge
+counting unread rather than total, clearing on open, staying clear on
+reopen, and Paolo speaking exactly once. Verified to fail against the old
+code: reverting the lock pass fails two of them.
+
+STILL OPEN
+- Both D1 migrations are still unrun. 002 must go BEFORE the next deploy
+  (the admin Achievements view 503s until it does — that error message is
+  working as intended); 001 goes after.
+- The Cloudflare rate limiting rule on /api/stat.
+- The DISPATCH OFFLINE banner.
+- deploy/public/Inside_The_Brutal…mp4, 9.8 MB, referenced by nothing.

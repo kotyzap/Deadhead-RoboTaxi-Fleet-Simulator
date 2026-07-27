@@ -169,7 +169,42 @@ function loadableScript(html) {
   check('#trophy is closed at boot', !!tm && tm.hidden === true);
   check('#trophy uses the .modal class that carries the [hidden] guard',
     !!tm && tm.classList.contains('modal'));
-  check('the trophy nav icon exists', !!w.document.getElementById('app-trophy'));
+  /* THE BUG THAT SHIPPED IN 0.33.0. The nav lock pass used a positional
+     array of gate names indexed against the buttons. An eighth button ran
+     off the end, `gate[i]||'fleet'` locked it behind owning a car, and
+     .t-app.locked is opacity:.3 + pointer-events:none — so the icon was
+     invisible and dead on a fresh save, which reads as "it never shipped".
+
+     Three assertions, because the fix has three ways to rot: the icon must
+     exist, it must be unlocked on a brand-new fleet (nothing has been
+     earned yet at this point in the test), and every OTHER icon must name
+     a gate that is a real STAGES id — a typo'd data-gate would lock an
+     icon forever with nothing to catch it. */
+  const trophyBtn = w.document.getElementById('app-trophy');
+  check('the trophy nav icon exists', !!trophyBtn);
+  check('the trophy icon is not locked on a fresh fleet',
+    !!trophyBtn && !trophyBtn.classList.contains('locked'));
+  check('the trophy icon declares no data-gate',
+    !!trophyBtn && !trophyBtn.dataset.gate);
+
+  const stageIds = (A.STAGES || []).map((s) => s.id);
+  const badGates = [...w.document.querySelectorAll('.t-apps .t-app')]
+    .map((b) => b.dataset.gate)
+    .filter((g) => g && !stageIds.includes(g));
+  check('every data-gate names a real STAGES id', badGates.length === 0,
+    'unknown gates: ' + badGates.join(', '));
+
+  /* The lock pass must be driven by the attribute, not by position. Proven
+     by moving a button and re-running it: a positional array would now
+     gate the wrong icons. */
+  const nav = w.document.querySelector('.t-apps');
+  const moved = nav.firstElementChild;
+  nav.appendChild(moved);                 // Fleet moves to the end
+  A.render();
+  check('gating survives reordering the nav strip',
+    moved.classList.contains('locked') === !A.unlocked(moved.dataset.gate)
+      && !w.document.getElementById('app-trophy').classList.contains('locked'));
+  nav.insertBefore(moved, nav.firstElementChild);   // put it back
 
   /* Opening must not throw even with the network down — the board half is
      allowed to be absent, the achievements half is not. */
@@ -181,11 +216,45 @@ function loadableScript(html) {
   check('the achievement grid rendered',
     w.document.getElementById('tr-list').children.length === A.ACHV.length);
 
+  /* DISCOVERABILITY. The icon shipped invisible once already; these guard
+     the four signposts added afterwards, all of which are driven by the
+     earned-vs-seen split rather than by three separate ideas of "new". */
+  A.awardAchv('fleet-3');                       // something unread
+  const badge = w.document.querySelector('#app-trophy .badge');
+  check('the nav badge exists and is showing', !!badge && badge.hidden === false);
+  check('the badge counts unread, not total',
+    !!badge && badge.textContent === String(A.achvUnread().length),
+    badge && `badge="${badge.textContent}" unread=${A.achvUnread().length}`);
+  check('the topbar readout shows held over total',
+    w.document.getElementById('tb-achv').textContent
+      === A.achvList().length + '/' + A.ACHV.length);
+
+  /* Opening is what counts as seeing. The badge must clear, and reopening
+     must not resurrect it. */
+  A.openTrophies();
+  check('opening clears the unread badge',
+    A.achvUnread().length === 0 && badge.hidden === true);
+  w.document.getElementById('trophy').hidden = true;
+  A.openTrophies();
+  check('reopening leaves the badge clear', badge.hidden === true);
+  w.document.getElementById('trophy').hidden = true;
+
+  /* Paolo's pointer is once ever, not once per achievement — the flag lives
+     in PROG so it survives a new city too. */
+  const paoloLines = () => w.DH.log.filter(
+    (l) => l.who === 'Paolo' && /trophy on the app bar/.test(l.what)).length;
+  check('Paolo pointed at the icon exactly once', paoloLines() === 1,
+    'got ' + paoloLines());
+  A.awardAchv('fleet-5');
+  check('Paolo does not repeat himself on later achievements',
+    paoloLines() === 1, 'got ' + paoloLines());
+
   /* Let openTrophies()'s loadBoard() chain settle BEFORE tearing the window
      down. Without this the rejected fetch's .then() lands on a document
      that no longer exists and prints a stack after the summary — noise
      today, and a nonzero exit on any Node that decides to treat a late
-     unhandled rejection as fatal. */
+     unhandled rejection as fatal. Must stay LAST: anything below the
+     close() below runs against a dead document. */
   await new Promise((r) => setTimeout(r, 30));
 
   /* The game installs a setInterval sim tick at boot, so the jsdom window

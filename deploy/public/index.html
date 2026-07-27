@@ -1762,6 +1762,35 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
 .tr-row .sub{flex:0 0 auto;color:var(--text-4);font-size:11px;font-variant-numeric:tabular-nums}
 .tr-row.me .who{color:var(--accent);font-weight:500}
 .tr-row.first .rk{color:var(--gold)}
+
+/* The unread badge on the Trophies nav icon. The ring is position:static by
+   default, so it gets position:relative here rather than the button — the
+   badge should hang off the circle, not off the label below it. */
+#app-trophy .ring{position:relative;overflow:visible}
+#app-trophy .badge{position:absolute;top:-3px;right:-5px;min-width:16px;height:16px;
+  padding:0 4px;border-radius:8px;background:var(--gold);color:#1A1206;
+  font-size:10px;font-weight:600;line-height:16px;text-align:center;
+  box-shadow:0 1px 4px rgba(0,0,0,.45)}
+/* An author display beats the [hidden] attribute's UA style — the same trap
+   that made "Take control" look dead. .badge is not display:block by
+   default, but it IS absolutely positioned, so spell the guard out anyway
+   rather than rely on the default staying inline. */
+#app-trophy .badge[hidden]{display:none}
+/* A held-back pulse the first time something lands, so the icon changes on
+   its own rather than waiting to be noticed. One cycle, then still. */
+#app-trophy.has-new .ring{animation:trophy-pop 1.2s var(--ease) 1}
+@keyframes trophy-pop{
+  0%,100%{transform:scale(1)}
+  30%{transform:scale(1.12)}
+  60%{transform:scale(.98)}
+}
+/* The shift report's secondary action. Mirrors #gar-close rather than
+   #rp-go: this must read as the quieter of the two buttons. */
+.rp-alt{height:32px;padding:0 15px;margin-right:8px;font:inherit;font-size:12.5px;
+  cursor:pointer;background:var(--inset);border:1px solid var(--brd);
+  border-radius:var(--r-ctl);color:var(--text-2)}
+.rp-alt:hover{border-color:var(--gold);color:var(--gold)}
+.rp-alt[hidden]{display:none}
 .gar-sub{font-size:12px;color:var(--text-3);line-height:1.5;margin-bottom:14px}
 .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
 @media (max-width:820px){.cards{grid-template-columns:1fr}}
@@ -1955,6 +1984,9 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
     <div class="tb-item"><label>Clock</label><b id="tb-clock">06:00</b></div>
     <div class="tb-item tb-cash" id="tb-cash-box"><label>Cash</label><b id="tb-cash">$0</b></div>
     <div class="tb-item tb-opt"><label>Permit</label><b id="tb-permit">Supervised</b></div>
+    <!-- tb-opt, like Permit: the narrow-layout media query hides these first,
+         and a trophy count is the most expendable thing in this strip. -->
+    <div class="tb-item tb-opt"><label>Trophies</label><b id="tb-achv">0/0</b></div>
     </div><!-- /.tb-info -->
 
     <!-- SHIFT leads the control line rather than trailing the readouts, so the
@@ -2044,13 +2076,19 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
       </div>
 
       <nav class="t-apps">
-        <button class="t-app" data-c="blue"  aria-pressed="false" data-panel="panel-fleet"><span class="ring"><svg class="ms"><use href="#i-list"/></svg></span><label>Fleet</label></button>
-        <button class="t-app" id="app-map" data-c="green" aria-pressed="true"><span class="ring"><svg class="ms"><use href="#i-nav"/></svg></span><label>Map</label></button>
-        <button class="t-app" data-c="orange" aria-pressed="false" data-panel="panel-rapid"><span class="ring"><svg class="ms"><use href="#i-bolt"/></svg></span><label>Energy</label></button>
-        <button class="t-app" data-c="blue"  aria-pressed="false" data-panel="panel-books"><span class="ring"><svg class="ms"><use href="#i-receipt"/></svg></span><label>Books</label></button>
-        <button class="t-app" data-c="red"   aria-pressed="false" data-panel="panel-platforms"><span class="ring"><svg class="ms"><use href="#i-agent"/></svg></span><label>Ops</label></button>
-        <button class="t-app" id="app-camera" data-c="green" aria-pressed="false"><span class="ring"><svg class="ms"><use href="#i-cam"/></svg></span><label>Camera</label></button>
-        <button class="t-app" data-c="blue"  aria-pressed="false" data-panel="panel-comms"><span class="ring"><svg class="ms"><use href="#i-call"/></svg></span><label>Comms</label></button>
+        <!-- data-gate names the unlock stage that lights this icon up; see
+             the note in the lock pass in render(). Values are exactly what
+             the old positional array resolved to, so nothing here changes
+             behaviour — including Map being gated on 'offers', which reads
+             oddly next to aria-pressed="true" but is preserved as found
+             rather than quietly "fixed" in a bug-fix commit. -->
+        <button class="t-app" data-c="blue"  aria-pressed="false" data-gate="fleet"  data-panel="panel-fleet"><span class="ring"><svg class="ms"><use href="#i-list"/></svg></span><label>Fleet</label></button>
+        <button class="t-app" id="app-map" data-c="green" aria-pressed="true" data-gate="offers"><span class="ring"><svg class="ms"><use href="#i-nav"/></svg></span><label>Map</label></button>
+        <button class="t-app" data-c="orange" aria-pressed="false" data-gate="energy" data-panel="panel-rapid"><span class="ring"><svg class="ms"><use href="#i-bolt"/></svg></span><label>Energy</label></button>
+        <button class="t-app" data-c="blue"  aria-pressed="false" data-gate="books"  data-panel="panel-books"><span class="ring"><svg class="ms"><use href="#i-receipt"/></svg></span><label>Books</label></button>
+        <button class="t-app" data-c="red"   aria-pressed="false" data-gate="ops"    data-panel="panel-platforms"><span class="ring"><svg class="ms"><use href="#i-agent"/></svg></span><label>Ops</label></button>
+        <button class="t-app" id="app-camera" data-c="green" aria-pressed="false" data-gate="fleet"><span class="ring"><svg class="ms"><use href="#i-cam"/></svg></span><label>Camera</label></button>
+        <button class="t-app" data-c="blue"  aria-pressed="false" data-gate="fleet"  data-panel="panel-comms"><span class="ring"><svg class="ms"><use href="#i-call"/></svg></span><label>Comms</label></button>
         <!-- Opens a modal rather than flashing a panel, so it needs its own
              id and a branch in the nav handler alongside app-map/app-camera
              — the generic `data-panel` path would have nothing to flash. -->
@@ -2277,6 +2315,11 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
   <div class="rep" tabindex="-1">
     <h3 id="report-title">Shift <span id="rp-day">1</span> complete <small id="rp-driver" style="font-weight:400;opacity:.6"></small></h3>
     <div id="rp-body"></div>
+    <!-- The shift report is the moment a player is already asking "how did
+         that go", which is the only moment a board and a new achievement
+         mean anything. Secondary styling so it never competes with Close,
+         which is still the action almost everyone wants. -->
+    <button id="rp-trophy" class="rp-alt" hidden>Trophies <span id="rp-trophy-n"></span></button>
     <button id="rp-go">Close <span id="rp-next" hidden></span></button>
   </div>
 </div>
@@ -5281,6 +5324,18 @@ function shiftReport(){
     /* The line the whole act is built to deliver. */
     row('Hours worked',workedH.toFixed(1)+' h')+
     row('Hours billed',billedH.toFixed(1)+' h — the car owes '+money2(fixedPerCar(S.cars[0]||{}))+' a day whether you work or not');
+  /* The second door into Trophies. Only shown when there is something to
+     see — a player who has earned nothing does not need a button to be told
+     so, and an always-present one would just be another thing to ignore.
+     The count is unread-first, falling back to the total held, so it reads
+     as "2 new" right after a shift that earned two and as a plain tally
+     otherwise. */
+  const unread=achvUnread().length, held=achvList().length;
+  const tb=$('rp-trophy');
+  if(tb){
+    tb.hidden=held===0;
+    $('rp-trophy-n').textContent=unread?'· '+unread+' new':(held?'· '+held:'');
+  }
   $('report').hidden=false;
 }
 function row(a,b){ return '<div class="rp-row"><span>'+a+'</span><span>'+b+'</span></div>' }
@@ -7338,7 +7393,7 @@ const SLOTS=['slot1','slot2','slot3'];
    SAVE_V above is the STATE SHAPE version and moves only when the
    snapshot format changes — the two are deliberately independent, so
    shipping 0.9.0 does not invalidate 0.8.0 saves. */
-const VERSION='0.33.0';
+const VERSION='0.33.1';
 
 function snapshot(){
   return {
@@ -7716,12 +7771,29 @@ function paintLocks(){
         '<span>Locked · <b>'+stageWhat(m.stage)+'</b></span>';
     } else if(bar){ bar.parentNode.removeChild(bar) }
   });
-  /* Dock apps follow the same gates. */
-  const apps=document.querySelectorAll('.t-apps .t-app');
-  const gate=['fleet','offers','energy','books','ops','fleet','fleet'];
-  for(let i=0;i<apps.length;i++){
-    if(apps[i].classList) apps[i].classList.toggle('locked',!unlocked(gate[i]||'fleet'));
-  }
+  /* Dock apps follow the same gates.
+
+     EACH BUTTON NAMES ITS OWN GATE. This used to be a positional array —
+     ['fleet','offers','energy','books','ops','fleet','fleet'] — matched to
+     the buttons by index. Adding an eighth icon (Trophies) ran off the end,
+     and `gate[i]||'fleet'` quietly locked it behind owning a car, at 30%
+     opacity with pointer-events:none. It looked like the icon had never
+     shipped.
+
+     Appending was the lucky case. Inserting a button anywhere but the end
+     would have shifted every gate after it onto the wrong icon, with
+     nothing to catch it — the panels would still gate correctly, so only
+     the dimming would be wrong, which is exactly the kind of bug that
+     survives a release. data-gate is order-independent and self-describing,
+     the same shape as data-panel right beside it.
+
+     No data-gate means never locked. Trophies is the first of those: an
+     achievement can be earned in the first minute, so there is nothing to
+     withhold. */
+  document.querySelectorAll('.t-apps .t-app').forEach(function(b){
+    const g=b.dataset.gate;
+    if(b.classList) b.classList.toggle('locked',!!g&&!unlocked(g));
+  });
 }
 
 /* keep S.speed, the segmented control and the slider in agreement */
@@ -7757,11 +7829,18 @@ function setSpeed(v){
 function physKey(k){ return k==='auto'?('auto:'+S.city):k }
 
 const PROG_V=4;
-let PROG={unlocked:{austin:true}, results:{}, last:'austin', eggs:{}, achv:{}};
+let PROG={unlocked:{austin:true}, results:{}, last:'austin', eggs:{}, achv:{},
+  /* Which achievements the player has actually LOOKED at, which is not the
+     same as which they hold — that difference is the whole unread badge.
+     Additive on a v4 record: a returning player with achievements and no
+     achvSeen map reads as "all unread", which is true, they have never seen
+     the badge. `achvTold` is the one-time "the icon is over there" line. */
+  achvSeen:{}, achvTold:false};
 function progSave(){
   return Store.put('progress',{v:PROG_V, unlocked:PROG.unlocked,
     results:PROG.results, last:PROG.last, eggs:PROG.eggs,
-    achv:PROG.achv}).catch(function(){});
+    achv:PROG.achv, achvSeen:PROG.achvSeen, achvTold:PROG.achvTold})
+    .catch(function(){});
 }
 /* ---- EASTER EGGS ------------------------------------------------------
    Things that are IN the game but not ON the strip until somebody goes looking.
@@ -7898,6 +7977,47 @@ function achvById(id){
 }
 function achvHeld(id){ return !!(PROG.achv&&PROG.achv[id]) }
 function achvList(){ return Object.keys(PROG.achv||{}) }
+/* Earned but never looked at. Drives the nav badge, the topbar readout's
+   emphasis and the shift-report button — one definition, three readers,
+   rather than three slightly different ideas of "new". */
+function achvUnread(){
+  const seen=PROG.achvSeen||{};
+  return achvList().filter(function(id){ return !seen[id] });
+}
+/* Called when the panel is opened, which is the only thing that counts as
+   having seen them. Writes once and only if something actually changed —
+   opening the modal repeatedly must not spam progSave(). */
+function achvMarkSeen(){
+  if(!PROG.achvSeen) PROG.achvSeen={};
+  let changed=false;
+  achvList().forEach(function(id){
+    if(!PROG.achvSeen[id]){ PROG.achvSeen[id]=true; changed=true }
+  });
+  if(changed) progSave();
+  return changed;
+}
+/* The nav badge and the pulse. Separate from render() on purpose — render()
+   owns everything derived from S, and this is derived from PROG, which
+   render() has no other reason to touch. Called from the same places that
+   change either: award, open, and boot. */
+function paintAchvBadge(){
+  const btn=$('app-trophy');
+  if(!btn) return;
+  const ring=btn.querySelector('.ring');
+  if(!ring) return;
+  let b=ring.querySelector('.badge');
+  if(!b){
+    b=document.createElement('span');
+    b.className='badge';
+    ring.appendChild(b);
+  }
+  const n=achvUnread().length;
+  b.textContent=n>9?'9+':String(n);
+  b.hidden=n===0;
+  btn.classList.toggle('has-new',n>0);
+  const t=$('tb-achv');
+  if(t) t.textContent=achvList().length+'/'+ACHV.length;
+}
 /* The ka-ching's older, statelier cousin — a four-note rise, deliberately
    longer than sndPaid() so an unlock cannot be mistaken for a fare. */
 function sndAchv(){
@@ -7915,9 +8035,20 @@ function awardAchv(id){
   if(!PROG.achv) PROG.achv={};
   if(PROG.achv[id]) return false;
   PROG.achv[id]=Date.now();
+  /* Paolo says where to look, ONCE, ever — on the first achievement of the
+     player's life, before the log line it refers to so the two read in
+     order. After that the badge does the pointing and a repeat would just
+     be nagging. The flag rides in PROG, so it survives starting a new city
+     the same way the achievement itself does. */
+  if(!PROG.achvTold){
+    PROG.achvTold=true;
+    log('Paolo','you picked something up — the trophy on the app bar keeps '+
+      'them, and the city boards.',0);
+  }
   progSave();
   log('Console','achievement — '+a.name,0);
   sndAchv();
+  paintAchvBadge();
   /* Point at the nav icon, not the modal — the modal is closed, and the
      icon is the one part of the route to it that exists in every layout
      tier. flashNav() handles bringIntoView() for us. */
@@ -7959,6 +8090,8 @@ function progLoad(){
     if(r.last&&CITIES[r.last]) PROG.last=r.last;
     if(r.eggs&&typeof r.eggs==='object') PROG.eggs=r.eggs;
     if(r.achv&&typeof r.achv==='object') PROG.achv=r.achv;
+    if(r.achvSeen&&typeof r.achvSeen==='object') PROG.achvSeen=r.achvSeen;
+    PROG.achvTold=!!r.achvTold;
     PROG.unlocked.austin=true;      /* the tutorial city is never locked */
     /* v1 -> v2: results records had no `shiftDone`, because the gate that
        needs it ('shift1@<city>') did not exist yet. Reading a missing flag as
@@ -7996,6 +8129,11 @@ function progLoad(){
       if(ranAShift&&!PROG.achv['first-shift']) PROG.achv['first-shift']=Date.now();
       progSave();
     }
+    /* PROG loads async, and the badge is the only thing on screen derived
+       from it — so it has to be painted here, once the record is actually
+       in memory, rather than from the boot path that runs before this
+       resolves. render() cannot do it: render() is driven by S. */
+    paintAchvBadge();
   }).catch(function(){});
 }
 
@@ -8992,6 +9130,10 @@ function renderTrophies(){
 }
 function openTrophies(){
   $('trophy').hidden=false;
+  /* Opening IS seeing — mark before the first paint so the grid does not
+     flash a "new" state the player is in the act of clearing. */
+  achvMarkSeen();
+  paintAchvBadge();
   renderTrophies();                       /* paint what we have immediately */
   loadBoard().then(function(){
     /* Only repaint if the modal is still open — a player who closed it
@@ -9043,6 +9185,12 @@ function paoloBoardCall(){
     flashNav('app-trophy');
   }).catch(function(){});   /* decorative — never throws into shift end */
 }
+/* From the shift report. The report stays open underneath rather than being
+   dismissed: closing Trophies should put the player back where they were,
+   and the report's own Close is still the way out of the shift. Both are
+   .modal at the same z-index, so the later-in-DOM #trophy paints on top —
+   #trophy is declared after #report in the markup, which is why. */
+$('rp-trophy').addEventListener('click',openTrophies);
 $('tr-close').addEventListener('click',function(){ $('trophy').hidden=true });
 $('trophy').addEventListener('click',function(e){
   if(e.target===$('trophy')) $('trophy').hidden=true;
@@ -9465,6 +9613,7 @@ window.DH_ACT1={
   CATALOG:CATALOG,catalog:catalog,spec:spec,acquire:acquire,canAfford:canAfford,
   STAGES:STAGES,unlocked:unlocked,checkUnlocks:checkUnlocks,newFleet:newFleet,
   ACHV:ACHV,achvHeld:achvHeld,achvList:achvList,awardAchv:awardAchv,
+  achvUnread:achvUnread,achvMarkSeen:achvMarkSeen,paintAchvBadge:paintAchvBadge,
   checkAchievements:checkAchievements,renderTrophies:renderTrophies,
   openTrophies:openTrophies,loadBoard:loadBoard,
   board:function(){ return LB },   /* let-reassigned; see the ROADS note above */
