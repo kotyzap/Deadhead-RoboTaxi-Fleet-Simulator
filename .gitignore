@@ -4,3 +4,9 @@ node_modules/
 .dev.vars
 .dev.vars.*
 *.log
+
+# Admin credentials for deploy/public/admin.html. This repo is public, so
+# these never get committed — see deploy/src/admin-config.example.js for
+# the template. wrangler deploy still bundles the real file straight into
+# the Worker; .gitignore only keeps it off GitHub.
+deploy/src/admin-config.js
