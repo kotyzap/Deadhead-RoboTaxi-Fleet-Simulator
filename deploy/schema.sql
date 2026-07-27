@@ -2,9 +2,16 @@
 -- Apply with:
 --   npx wrangler d1 execute deadhead-db --remote --file=./schema.sql
 
+-- Was keyed by email; Pavel asked for that requirement dropped since the
+-- player already types a display name on the intro screen (PROFILE.name —
+-- see onboardingplan.md §2) and re-typing an email for cloud saves was one
+-- more piece of friction with no real payoff (there is no password reset
+-- and no email is ever sent, so an address bought nothing). `username` is
+-- free text like the display name, but — unlike it — must be UNIQUE, since
+-- it is still how you sign back in on another device.
 CREATE TABLE IF NOT EXISTS users (
   id         TEXT PRIMARY KEY,
-  email      TEXT NOT NULL UNIQUE,       -- stored lowercased
+  username   TEXT NOT NULL UNIQUE,       -- stored lowercased, free text
   -- Format: sha256$kdf_iters$salt_b64$hash_b64
   -- The browser runs PBKDF2 (kdf_iters) and sends the derived key; the
   -- server stores a single salted SHA-256 of it. Server-side PBKDF2 was
@@ -14,6 +21,12 @@ CREATE TABLE IF NOT EXISTS users (
   created    INTEGER NOT NULL,
   last_seen  INTEGER
 );
+-- ADDITIVE MIGRATION NOTE: on a database that already has `users.email` from
+-- before this rename, run once (SQLite/D1 support RENAME COLUMN):
+--   ALTER TABLE users RENAME COLUMN email TO username;
+--   ALTER TABLE login_attempts RENAME COLUMN email TO username;
+-- Existing rows need no other change — an email address is a perfectly
+-- valid (if unusually long) username.
 
 -- Session tokens are stored as SHA-256 hashes, never in the clear, so a
 -- leaked database dump cannot be replayed as a login.
@@ -40,10 +53,127 @@ CREATE TABLE IF NOT EXISTS saves (
   PRIMARY KEY (user_id, slot)
 );
 
--- Failed-login throttle. Keyed by email so a distributed attacker cannot
+-- Failed-login throttle. Keyed by username so a distributed attacker cannot
 -- dodge it by rotating IPs.
 CREATE TABLE IF NOT EXISTS login_attempts (
-  email    TEXT PRIMARY KEY,
+  username TEXT PRIMARY KEY,
   fails    INTEGER NOT NULL DEFAULT 0,
   last     INTEGER NOT NULL
 );
+
+-- ============================================================
+-- Telemetry (onboardingplan.md §4) — additive, no migration of the tables
+-- above. One row per finished shift, POSTed unauthenticated from the client
+-- and keyed by the LOCAL profile uuid, not by an account: there is no login
+-- for this. player_id/name/created travel together so two players sharing a
+-- display name are told apart by `created`, the same tiebreaker the client
+-- itself uses (see PROFILE in deadhead.html).
+--
+-- ts is SERVER time, deliberately not the client's clock — a client clock is
+-- not evidence, and trusting it would let a bad row sort itself to the top
+-- of every view forever. Every other field is client-reported and unverified;
+-- see the rate limiting and clamping in src/index.js POST /api/stat. This
+-- table is a tuning signal, not a leaderboard, and must never be presented
+-- as one (three players sharing a machine or a bored prober can write
+-- anything into every numeric column here).
+-- ============================================================
+CREATE TABLE IF NOT EXISTS stats (
+  id        INTEGER PRIMARY KEY AUTOINCREMENT,
+  player_id TEXT NOT NULL,          -- the local profile uuid
+  user_id   TEXT,                   -- set only if a session cookie was present
+  name      TEXT,                   -- player-chosen, non-unique, untrusted
+  created   INTEGER,                -- profile creation ts: the duplicate-name tiebreaker
+  ts        INTEGER NOT NULL,       -- server time, NOT client time
+  city      TEXT, day INTEGER, shift_no INTEGER, permit TEXT,
+  worked_h REAL, billed_h REAL,
+  gross REAL, commission REAL, cost REAL, net REAL,
+  energy REAL, dep REAL, maint REAL, ins REAL, soft REAL, fixed REAL,
+  miles REAL, rides INTEGER, cancels INTEGER, safety REAL,
+  cash REAL, cars INTEGER,
+  models   TEXT                     -- JSON OBJECT of per-model economics for
+                                     -- this shift, e.g. '{"model3":{"gross":
+                                     -- 300,"cost":120,"miles":60,"rides":5},
+                                     -- "cybercab":{...}}' — one key per model
+                                     -- present in the fleet at shift-end,
+                                     -- built from each car's own ledger
+                                     -- (appendHistoryRow()'s perModel build
+                                     -- in deadhead.html), so a mixed fleet's
+                                     -- models get DIFFERENT numbers rather
+                                     -- than all sharing the whole shift's.
+                                     -- Was a flat array of ids (["model3",
+                                     -- "cybercab"]) before this — the admin
+                                     -- Cars query filters that legacy shape
+                                     -- out with json_type(models)='object'
+                                     -- rather than mixing the two.
+  achv     TEXT                      -- JSON ARRAY of achievement ids the
+                                     -- player holds AT THE TIME OF THIS
+                                     -- SHIFT, e.g. '["first-shift","black",
+                                     -- "fleet-3"]'. Cumulative, not a delta:
+                                     -- the list is bounded by the catalogue
+                                     -- (~20 short ids) so resending it costs
+                                     -- nothing, and it makes the admin
+                                     -- unlock-rate query a plain COUNT
+                                     -- (DISTINCT player_id) over json_each()
+                                     -- instead of a replay of every delta.
+                                     -- Whitelisted server-side against
+                                     -- ACHV_IDS in src/index.js.
+);
+CREATE INDEX IF NOT EXISTS idx_stats_player ON stats(player_id, ts);
+--
+-- THERE IS DELIBERATELY NO idx_stats_ts. It existed once and was dropped.
+--
+-- D1's free plan allows 100,000 ROWS WRITTEN per day, and an index counts
+-- as a written row of its own on every insert that touches an indexed
+-- column. idx_stats_ts therefore made every finished shift cost two rows
+-- instead of one — a 2x tax on the single hottest write path in the app,
+-- paid by every player, forever.
+--
+-- What it bought: only the admin `recent` view (ORDER BY ts DESC LIMIT
+-- 100) could use it. Every other admin view — players, funnel, economics,
+-- cars — is a GROUP BY over the whole table and full-scans regardless, so
+-- the index never helped them. Trading a scan on a page ONE person opens
+-- occasionally (against a 5,000,000 rows-read/day allowance) for half the
+-- write cost of every player's every shift is not close.
+--
+-- idx_stats_player(player_id, ts) stays: it is a real point lookup, and
+-- its leading column makes it useful in a way a bare ts index is not.
+--
+-- MIGRATION on a database that already has the old index — run once:
+--   DROP INDEX IF EXISTS idx_stats_ts;
+--
+-- ADDITIVE MIGRATION NOTE: `models` and `achv` were both added after `stats`
+-- first shipped. SQLite/D1 has no `ADD COLUMN IF NOT EXISTS`, so on a database
+-- that already has this table WITHOUT the columns, run once:
+--   ALTER TABLE stats ADD COLUMN models TEXT;
+--   ALTER TABLE stats ADD COLUMN achv TEXT;
+-- (harmless "duplicate column name" error if the column is already there —
+-- ignore it. A brand-new database gets the column from CREATE TABLE above
+-- and never needs this line.) No further migration is needed for the
+-- array-to-object reshape above: it is purely how NEW rows are written and
+-- read, and the admin Cars query already ignores old array-shaped rows.
+
+-- THE stat_attempts TABLE IS GONE. It was a per-(player_id, IP) throttle
+-- for the unauthenticated /api/stat writes, modelled on login_attempts.
+--
+-- The problem was that it defended the write budget by spending it. Every
+-- legitimate shift report did a SELECT plus an INSERT/UPDATE on this table
+-- purely to decide it was allowed — so the anti-abuse measure doubled the
+-- D1 write cost of the exact traffic it was meant to protect. Together
+-- with idx_stats_ts above, one finished shift cost four written rows; it
+-- now costs one.
+--
+-- Replaced by two things that cost no rows at all:
+--   1. An isolate-local in-memory bucket in src/index.js (statThrottled).
+--      Free, and enough to stop the realistic case this was written for —
+--      a stuck client retry loop.
+--   2. A Cloudflare Rate Limiting rule on /api/stat, which is the real
+--      backstop and runs before the Worker is even invoked, so a flood
+--      costs neither a request nor a row. Configure in the dashboard:
+--        Security > WAF > Rate limiting rules
+--        If  URI Path equals /api/stat
+--        Then Block, 60 requests per 1 minute, per IP
+--      (Free plan includes one rate limiting rule — this is what to spend
+--      it on.)
+--
+-- MIGRATION on a database that already has the table — run once:
+--   DROP TABLE IF EXISTS stat_attempts;

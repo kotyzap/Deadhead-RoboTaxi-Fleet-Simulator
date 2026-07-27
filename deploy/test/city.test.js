@@ -542,9 +542,43 @@ async function run(file) {
     const css = fs.readFileSync(file, 'utf8');
     // Narrow: info(1) Coffee(2) then the controls forced onto their own line.
     // Wide (>=2250px): the same three items with the last two swapped.
-    return /#coffee\{order:2\}/.test(css) &&
+    return /#coffee\{order:2;margin-left:auto;align-self:flex-end\}/.test(css) &&
            /\.tb-ctrls\{order:3;flex:1 0 100%/.test(css) &&
-           /@media \(min-width:2250px\)\{\s*\.tb-ctrls\{order:2;flex:0 0 auto\}\s*#coffee\{order:3\}/.test(css);
+           /@media \(min-width:2250px\)\{\s*\.tb-ctrls\{order:2;flex:0 0 auto\}\s*#coffee\{order:3;margin-left:0\}/.test(css);
+  });
+  // Coffee must never be the only thing on a line. The readout block is capped
+  // so it cannot claim the full width, which is what bumped Coffee to a line of
+  // its own at ~885px; the reservation has to shrink when the button is
+  // icon-only, or it leaves a hole instead.
+  // Two lines, and which half each thing belongs to: everything you READ on the
+  // first, everything you PRESS on the second, with the shift status opening the
+  // control line because it introduces the Clock button it belongs to.
+  check('Shift leads the control line, not the readouts', () => {
+    const info = w.document.querySelector('.tb-info');
+    const ctrls = w.document.querySelector('.tb-ctrls');
+    const shift = w.document.getElementById('tb-shift').closest('.tb-item');
+    return ctrls.contains(shift) && !info.contains(shift) &&
+           ctrls.firstElementChild === shift;
+  });
+  check('the shift readout is pushed left, the controls stay right', () => {
+    const css = fs.readFileSync(file, 'utf8');
+    return /\.tb-shiftitem\{margin-right:auto\}/.test(css) &&
+           /\.tb-ctrls\{[^}]*justify-content:flex-end/.test(css);
+  });
+  // The brand taking a whole line is what made this tier four lines deep.
+  check('the brand does not claim a line of its own above the phone tier', () => {
+    const css = fs.readFileSync(file, 'utf8');
+    const tier = css.match(/@media \(max-width:1199px\)\{[\s\S]*?\n\}/);
+    return !!tier && !/\.brand\{flex:1 0 100%/.test(tier[0]) &&
+           /@media \(max-width:760px\)\{[\s\S]*?\.brand\{flex:1 0 100%/.test(css);
+  });
+  check('the readout block reserves room for Coffee at every tier', () => {
+    const css = fs.readFileSync(file, 'utf8');
+    return /\.tb-info\{order:1;[^}]*max-width:calc\(100% - var\(--coffee-w\)\)/.test(css) &&
+           /\.topbar\{--coffee-w:116px\}/.test(css) &&
+           /@media \(max-width:1499px\)\{\s*\.topbar\{--coffee-w:56px\}/.test(css) &&
+           /@media \(max-width:1199px\)\{\s*\.topbar\{--coffee-w:112px\}/.test(css) &&
+           /@media \(min-width:2250px\)\{[^@]*\.tb-info\{max-width:none\}/.test(css);
   });
   check('the empty spacer div is gone, not just hidden', () => {
     const css = fs.readFileSync(file, 'utf8');
@@ -570,6 +604,51 @@ async function run(file) {
     S.city = 'miami'; A.loadCityTables(); A.render();
     return w.document.getElementById('tb-city') === null &&
            !!w.document.getElementById('tb-city-time');
+  });
+
+  // ---- 5s. autosave keeps its promise ---------------------------------
+  // The report: the Saves dialog said "saved 22 min ago" under a label that
+  // promised every 30 seconds. Both halves were wrong — the interval only fired
+  // while the clock was running, and the label described a cadence rather than
+  // the rule. IndexedDB does not exist in jsdom, so what is testable here is the
+  // decision (has anything changed?) and the wiring, not the write itself.
+  check('the signature moves when the clock moves', () => {
+    const a = SV.saveSig();
+    S.t += 60;
+    return SV.saveSig() !== a;
+  });
+  check('the signature moves for things done while PAUSED', () => {
+    S.speed = 0; S.running = false;
+    const a = SV.saveSig();
+    S.cash -= 100;                      // a purchase, in effect
+    const b = SV.saveSig();
+    A.zones()[3].on = true;             // a geofence edit
+    const c = SV.saveSig();
+    S.autoCharge = !S.autoCharge;       // a policy switch
+    const d = SV.saveSig();
+    return a !== b && b !== c && c !== d;
+  });
+  check('an idle paused game produces no new signature', () => {
+    const a = SV.saveSig();
+    return SV.saveSig() === a;
+  });
+  // The old guard is the thing that must not come back: `if(S.running)` meant a
+  // paused game never wrote at all.
+  check('the interval does not depend on the clock running', () => {
+    const src = fs.readFileSync(file, 'utf8');
+    return !/if\(S\.running&&!S\.over\) autosave/.test(src) &&
+           /if\(saveSig\(\)===lastSavedSig\) return;\s*autosave\('interval'\)/.test(src);
+  });
+  check('the moments a player would hate to lose are flushed', () => {
+    const src = fs.readFileSync(file, 'utf8');
+    return ["autosaveSoon('acquire')", "autosaveSoon('sell')",
+      "autosaveSoon('clock-on')", "autosaveSoon('clock-off')"]
+      .every((h) => src.indexOf(h) >= 0);
+  });
+  check('the dialog says "on every change", not a cadence it cannot keep', () => {
+    const src = fs.readFileSync(file, 'utf8');
+    return /slotRow\('auto',all\.auto,'Auto','on every change'\)/.test(src) &&
+           /const fresh=key==='auto'&&save&&save\.sig&&save\.sig===saveSig\(\)/.test(src);
   });
 
   // ---- 5p. Paolo answers a locked card --------------------------------
@@ -604,6 +683,30 @@ async function run(file) {
     lockedCard('orlando').click();
     const txt = w.document.getElementById('lockmsg').textContent;
     return txt.indexOf(A.gateHint(A.CITIES.orlando.needs)) >= 0;
+  });
+  // The bubble must be a BLOCK. A multi-line inline box paints its background
+  // and padding per line fragment, which is why the first version spilled its
+  // text past the grey and dropped the avatar to the floor. And the requirement
+  // is a second bubble rather than caption text, so it is not the palest,
+  // smallest thing on screen.
+  check('the reply is built from blocks, in two bubbles', () => {
+    lockedCard('tampa').click();
+    const el = w.document.getElementById('lockmsg');
+    const bubbles = el.querySelectorAll('.bubble');
+    return bubbles.length === 2 &&
+           [].every.call(bubbles, (b) => b.tagName === 'DIV') &&
+           el.querySelector('.avatar').tagName === 'DIV' &&
+           el.querySelector('.col').tagName === 'DIV';
+  });
+  // One message style for Paolo everywhere: the bubble rules are shared between
+  // the card and the locked-city reply rather than copied, so he cannot drift
+  // between surfaces. Asserted on the source because jsdom applies no CSS.
+  check('Paolo looks the same on every surface', () => {
+    const css = fs.readFileSync(file, 'utf8');
+    return /#ray \.bubble,#lockmsg \.bubble\{display:block;/.test(css) &&
+           /#ray \.avatar,#lockmsg \.avatar\{/.test(css) &&
+           /#ray \.who,#lockmsg \.who\{/.test(css) &&
+           /html\[data-theme="night"\] #ray \.bubble,\s*html\[data-theme="night"\] #lockmsg \.bubble\{/.test(css);
   });
   check('every locked city has something to say', () => A.cityList().every((id) => {
     const line = A.cityLockLine(id);

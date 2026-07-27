@@ -3,8 +3,8 @@
 **A robotaxi fleet simulator where you never touch a steering wheel.**
 
 You are not the driver. You are the person the driver got replaced by — and the job turns
-out to be harder. Nine real Teslas, an Austin you can recognise, and a spreadsheet that
-bites. All of it happens on one screen: the car's own centre console.
+out to be harder. Nine real Teslas, five real Tesla Robotaxi geofences, and a spreadsheet
+that bites. All of it happens on one screen: the car's own centre console.
 
 > *Deadhead* — the trade word for driving with no fare aboard. It is the thing that quietly
 > kills a robotaxi fleet's margin, and the reason this game is named after it.
@@ -61,6 +61,26 @@ notice for two days.
 
 ---
 
+## Five cities, one chain
+
+Austin is the tutorial. Clock off your first shift there and Dallas unlocks; clock off in
+Dallas and Miami unlocks; then Tampa, then Orlando. Every city is a real, currently-operating
+(or just-launched) Tesla Robotaxi service area built from its actual geofence, tariff and
+permit status — not a reskin with a new coat of paint.
+
+| city | permit | fleet cap | goal | what's actually true about it |
+|---|---|---|---|---|
+| **Austin** | Supervised | 17 | $40,000 | the tutorial. Seven zones plus the airport, and Austin Energy's real five-hour evening peak |
+| **Dallas** | Unsupervised | 24 | $60,000, safety ≥ 70 | launched with no safety monitor at all. Highway-speed trips wear the car harder, but S Riverfront is 34 stalls at 325 kW — the best charging site in the game |
+| **Miami** | Unsupervised | 16 | $50,000, safety ≥ 75 | a tiny geofence with no airport and no downtown. FPL's peak runs nine straight hours, and Florida carries the harshest insurance rates in the table |
+| **Tampa** | Unsupervised | 14 | $45,000 | the exact mirror of Miami: all core, no suburbs, and an evening rush instead of a morning one — plus the cheapest overnight power in the game, if the fleet can wait for it |
+| **Orlando** | Unsupervised | 14 | $42,000 | a corridor that runs past MCO without touching it. No airport zone, no brewery zones, the thinnest demand of the five — and the cheapest power of all of them |
+
+Nothing above is tuned for difficulty after the fact. Where the real service area excludes
+downtown, the airport, or every brewery in town, the game excludes it too.
+
+---
+
 ## What you actually do
 
 **Clock on.** Cars only earn while you are watching them — you are the remote operator.
@@ -73,15 +93,20 @@ speech.
 after commission, and how far you drive empty to reach the passenger. The third decides
 whether you made money.
 
-**Play the tariff.** Power is $0.11/kWh before 07:00 and $0.34 through the evening peak —
-real Austin time-of-use pricing. Send a car to charge at four in the morning and you buy the
-same kWh for a third of the price. Five real Austin Superchargers, each a genuine trade:
-South Congress is 2.5 km away; Research Boulevard never queues because it has 18 stalls, but
-it's 27 minutes out and charges at only 72 kW.
+**Play the tariff.** Every city runs its own real utility's time-of-use pricing — Austin
+Energy, Oncor, FPL, TECO, OUC — so "charge at 4am" means something different, and is worth a
+different amount, in each one. In Austin, power is $0.11/kWh before 07:00 and $0.34 through
+the evening peak. Real Superchargers back it: South Congress is 2.5 km away; Research
+Boulevard never queues because it has 18 stalls, but it's 27 minutes out and charges at only
+72 kW. Miami flips the clock entirely — FPL's peak runs noon to 9pm, nine hours instead of
+five — and Tampa's off-peak, at 7.5c/kWh, is the cheapest power in the whole game.
 
-**Draw the map.** Seven Austin zones plus Austin-Bergstrom, each with its own demand curve
-by hour. Rainey Street pays at 2am. UT campus pays at 8am. The airport pays $30 a run and
-leaves your car 21 minutes from everything else.
+**Draw the map.** Every city has its own zones and its own demand curve by hour, and no two
+read the same way. Austin has seven zones plus Austin-Bergstrom — Rainey Street pays at 2am,
+UT campus pays at 8am, the airport pays $30 a run and leaves your car 21 minutes from
+everything else. Miami and Orlando have no airport zone at all, because the real geofences
+don't reach one. Tampa's evening is the busiest hour in the game once its three Ybor taproom
+zones are live; Orlando has no brewery zones, because the real ones sit outside its corridor.
 
 **Take control.** When a car gets wedged, the console switches to its camera feed and you
 drive it out yourself. Entirely optional — the incident clears on its own eventually.
@@ -91,11 +116,17 @@ Whether "eventually" is soon enough is your problem.
 
 ## Real data, not set dressing
 
-- **Live weather** for your city, and its real local clock
-- **Real Superchargers** with actual coordinates, stall counts and peak kW — a 72 kW site charges slower because it genuinely does
-- **Real fares** calibrated against observed Austin prices: about $18 for a downtown hop, $29–32 from the airport
+- **Five real geofences** — Austin, Dallas, Miami, Tampa, Orlando — each drawn from the
+  actual published or reported service area, not a symmetric shape dropped on the map
+- **Live weather** for whichever city you're in, and its real local clock
+- **Real Superchargers** in every city, with actual coordinates, stall counts and peak kW —
+  a 72 kW site charges slower because it genuinely does
+- **Real fares** calibrated against observed prices in each market: about $18 for a downtown
+  Austin hop, $29–32 from Austin's airport, and a different scale entirely in each other city
 - **Real MSRP** on all nine cars, with a cost side scaled to match
-- **Real time-of-use electricity**, which is why charging at 4am is a strategy and not a chore
+- **Real time-of-use electricity** from each city's actual utility — Austin Energy, Oncor,
+  FPL, TECO, OUC — which is why charging at 4am is a strategy in one city and a shrug in
+  another
 
 Everything *around* the hardware — Hitchr, Zipp, Meridian, Halo — is invented. The cars and
 the numbers are not. That line is deliberate.

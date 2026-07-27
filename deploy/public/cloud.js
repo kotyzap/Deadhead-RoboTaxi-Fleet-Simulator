@@ -35,10 +35,45 @@
 
   const MIN_PASSWORD = 10;
 
+  /* THE ANONYMOUS-VISITOR BUDGET, and why boot makes no network calls.
+
+     Static assets on Workers are free and unlimited, so the game itself
+     costs nothing no matter how much traffic arrives. The Worker's
+     100,000 requests/day allowance is spent only on /api/*. Before this
+     marker existed, mount() fired /api/me AND /api/params on every single
+     page load — so a Reddit visitor who bounced in ten seconds without
+     ever opening the Saves modal still cost two requests, and 50,000
+     bouncers alone exhausted the day's budget for the players who stayed.
+
+     Almost nobody who loads this page has an account. So: remember, in
+     this browser, whether an account has ever been used here, and skip
+     both boot calls when it has not. A first-time visitor now costs ZERO
+     Worker requests until they finish a shift (/api/stat) or actually
+     sign in. /api/params is not needed at boot at all — the defaults
+     below are correct, and submitAuth() awaits loadParams() before the
+     KDF runs, which is the only place the real values matter.
+
+     The marker is a hint, never a source of truth: the dh_session cookie
+     is HttpOnly and remains the only thing that actually authenticates.
+     If the marker is lost but the cookie survives (localStorage cleared,
+     a different profile, private-window quirks) the session is picked up
+     the first time the Saves modal opens — see probeSession(). A bouncer
+     never opens that modal, so the fallback costs nothing. */
+  const SEEN_KEY = 'dh_seen_account';
+  function hasAccountMarker() {
+    try { return localStorage.getItem(SEEN_KEY) === '1' } catch { return false }
+  }
+  function setAccountMarker(on) {
+    try {
+      if (on) localStorage.setItem(SEEN_KEY, '1');
+      else localStorage.removeItem(SEEN_KEY);
+    } catch { /* private mode / storage disabled — degrade to no marker */ }
+  }
+
   let kdfIters = 250000;          // replaced by /api/params before first use
   let saltPrefix = 'deadhead|';
   let paramsLoaded = false;
-  let signedIn = null;            // email string when signed in
+  let signedIn = null;            // username string when signed in
   let lastCloudAuto = 0;
   let pendingAuto = null;         // newest 'auto' snapshot not yet pushed
 
@@ -49,7 +84,7 @@
   const toHex = (buf) =>
     [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
 
-  async function deriveAuthKey(email, password) {
+  async function deriveAuthKey(username, password) {
     const key = await crypto.subtle.importKey(
       'raw', enc.encode(password), 'PBKDF2', false, ['deriveBits']
     );
@@ -57,7 +92,7 @@
       {
         name: 'PBKDF2',
         hash: 'SHA-256',
-        salt: enc.encode(saltPrefix + email.trim().toLowerCase()),
+        salt: enc.encode(saltPrefix + username.trim().toLowerCase()),
         iterations: kdfIters,
       },
       key,
@@ -216,6 +251,16 @@
        and local saves keep working, because they do.
      - A password field with no reveal is a guessing game on a 10-character
        minimum, so there is a show/hide toggle.
+     - USERNAME, NOT EMAIL (Pavel's request): the player already types a
+       display name on the intro screen before they ever reach this modal
+       (PROFILE.name — see onboardingplan.md §2 and window.DH_SAVE.playerName
+       below). Asking for a second, email-shaped identifier here just to
+       sync saves was friction with no real payoff — there was never a
+       password-reset email to send, so an address bought nothing. The field
+       is prefilled from that name the first time this panel is shown with
+       nothing typed yet, but stays free text: it does not have to match,
+       and unlike the display name it MUST be unique account-to-account,
+       since it is still how you sign back in on another device.
   */
   const CSS = `
 .acct{padding:0;border:1px solid var(--brd);border-radius:9px;
@@ -292,8 +337,8 @@
     </div>
     <form id="dh-form" autocomplete="on" novalidate>
       <div class="fld">
-        <input type="email" id="dh-email" placeholder="you@example.com"
-               autocomplete="username" aria-label="Email address" required>
+        <input type="text" id="dh-username" placeholder="Username" maxlength="40"
+               autocomplete="username" aria-label="Username" required>
       </div>
       <div class="fld pw">
         <input type="password" id="dh-pw" placeholder="Password"
@@ -310,7 +355,7 @@
     <div class="acct-who">
       <span class="acct-av" id="dh-av" aria-hidden="true"></span>
       <span class="acct-id"><b id="dh-who">&mdash;</b><span id="dh-sync"></span></span>
-      <button type="button" id="dh-upload" hidden>Upload local</button>
+      <button type="button" id="dh-upload" hidden>Copy saves to cloud</button>
       <button type="button" id="dh-out-btn">Sign out</button>
     </div>
   </div>
@@ -328,7 +373,7 @@
     },
     register: {
       submit: 'Create account',
-      hint: `At least ${MIN_PASSWORD} characters. There is no password reset — no email is ever sent — so keep it somewhere safe, or use Export file as a backup.`,
+      hint: `At least ${MIN_PASSWORD} characters. There is no password reset, so keep it somewhere safe, or use Export file as a backup.`,
       pwAuto: 'new-password',
     },
   };
@@ -378,10 +423,13 @@
     out.hidden = !!signedIn;
     inn.hidden = !signedIn;
     const note = $('dh-head-note');
-    if (note) note.textContent = signedIn ? 'Syncing' : 'Optional';
+    /* "Syncing" read as a progress state — as if something were happening right
+       now. It is a standing fact about the account, so say what it means. */
+    if (note) note.textContent = signedIn ? 'Saves follow this account' : 'Optional';
     if (signedIn) {
       $('dh-who').textContent = signedIn;
       $('dh-av').textContent = signedIn.trim().charAt(0).toUpperCase() || '?';
+      setSyncNote('Signed in — saves load on any device');
       /* Only offer the upload when there is actually something local to
          upload — an button that does nothing is worse than no button. */
       const L = Local();
@@ -391,7 +439,18 @@
           const b = $('dh-upload');
           if (b) {
             b.hidden = n === 0;
-            b.textContent = 'Upload ' + n + ' local';
+            /* "Upload 1 local" was read as "Save" — which is exactly wrong: it
+               copies saves that already exist in THIS browser up to the account
+               so another device can load them. Say the direction and the object,
+               and let the title spell out the rest. Nothing here creates a new
+               save; that is what the slots are for. */
+            b.textContent = n === 1
+              ? 'Copy 1 save to cloud'
+              : 'Copy ' + n + ' saves to cloud';
+            b.title = 'Copies the ' + (n === 1 ? 'save' : n + ' saves') +
+              ' already in this browser up to your account, so you can load ' +
+              (n === 1 ? 'it' : 'them') + ' on another device. It does not ' +
+              'create a new save.';
           }
         }).catch(() => {});
       }
@@ -402,28 +461,36 @@
     signedIn = null;
     window.DH_REMOTE = null;
     pendingAuto = null;
+    /* Back to costing nothing at boot. Deliberately cleared here rather
+       than only in doSignOut(): this also runs on a 401 from a dead
+       session, which is exactly when the marker has gone stale. */
+    setAccountMarker(false);
     paintAuthState();
     msg('Signed out — saves are going to this browser only.');
   }
 
-  function goOnline(email) {
-    signedIn = email;
+  function goOnline(username) {
+    signedIn = username;
     window.DH_REMOTE = RemoteStore;
+    setAccountMarker(true);
     paintAuthState();
     setSyncNote('');
     if (window.DH_SAVE && window.DH_SAVE.refresh) window.DH_SAVE.refresh();
   }
 
   async function submitAuth() {
-    const email = ($('dh-email').value || '').trim();
+    const username = ($('dh-username').value || '').trim();
     const pw = $('dh-pw').value || '';
 
     /* Validate in the order the fields appear, and put the cursor where the
-       problem is rather than only naming it. */
-    if (!email) { $('dh-email').focus(); return msg('Enter your email address.') }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
-      $('dh-email').focus();
-      return msg('That does not look like an email address.');
+       problem is rather than only naming it. No format check beyond length
+       — a username is free text, same as the display name it is prefilled
+       from (see checkUsername() in src/index.js, the server-side twin of
+       this same relaxed rule). */
+    if (!username) { $('dh-username').focus(); return msg('Enter a username.') }
+    if (username.length > 40) {
+      $('dh-username').focus();
+      return msg('Username is too long — 40 characters or fewer.');
     }
     if (pw.length < MIN_PASSWORD) {
       $('dh-pw').focus();
@@ -439,23 +506,23 @@
     try {
       await loadParams();
       // The slow part, and it belongs here rather than on the server.
-      const authKey = await deriveAuthKey(email, pw);
+      const authKey = await deriveAuthKey(username, pw);
       const data = await req(mode === 'register' ? API.register : API.login, {
         method: 'POST',
-        body: JSON.stringify({ email, authKey }),
+        body: JSON.stringify({ username, authKey }),
       });
       $('dh-pw').value = '';
       togglePeekOff();
-      goOnline((data && data.email) || email.toLowerCase());
+      goOnline((data && data.username) || username.toLowerCase());
       msg(mode === 'register'
         ? 'Account created. Your saves sync from now on.'
         : 'Signed in.', 'ok');
     } catch (e) {
-      /* A 409 on sign-in means the address exists but under the old scheme,
+      /* A 409 on sign-in means the username exists but under the old scheme,
          and on register it means it is already taken — point at the tab that
          actually helps instead of leaving them stuck. */
       if (e.status === 409 && mode === 'register') {
-        msg('That email is already registered — switch to Sign in.');
+        msg('That username is already taken — switch to Sign in.');
         setMode('login');
       } else {
         msg(e.message || 'Something went wrong.');
@@ -532,7 +599,7 @@
     $('dh-out-btn').addEventListener('click', doSignOut);
     $('dh-upload').addEventListener('click', uploadLocal);
     /* Clear a stale error as soon as the player starts fixing it. */
-    ['dh-email', 'dh-pw'].forEach((id) => {
+    ['dh-username', 'dh-pw'].forEach((id) => {
       $(id).addEventListener('input', () => {
         const el = $('dh-msg');
         if (el && el.className === '') msg('');
@@ -541,14 +608,68 @@
 
     paintMode();
     paintAuthState();
+    prefillUsername();
 
-    // Resume an existing session silently. A 401 here is the normal
-    // not-signed-in case, not an error worth showing.
+    /* Resume an existing session silently — but ONLY if this browser has
+       ever had an account on it. See SEEN_KEY above: skipping this for
+       first-time visitors is what takes an anonymous page load from two
+       Worker requests to zero. A 401 here is the normal expired-session
+       case, not an error worth showing.
+
+       loadParams() used to run here too and no longer does; submitAuth()
+       awaits it before deriving the key, which is the only moment the
+       server's KDF parameters are actually used. */
+    if (hasAccountMarker()) probeSession();
+
+    /* This modal is built and inserted into the DOM once at boot (see
+       above), but the player's name (PROFILE.name) is very often set
+       AFTER that — the intro screen that asks for it hasn't necessarily
+       run yet. So prefill again every time the Saves modal is actually
+       opened, not just once at mount, and only into an EMPTY field: a
+       returning player who already typed their own username should never
+       have it silently overwritten. */
+    const savemgrEl = document.getElementById('savemgr');
+    if (savemgrEl && 'MutationObserver' in window) {
+      new MutationObserver(() => {
+        if (savemgrEl.hidden) return;
+        prefillUsername();
+        /* The marker fallback. Opening this modal is the moment a stale or
+           missing SEEN_KEY would actually be visible to the player, so it
+           is the moment to check the cookie for real. probeSession() is
+           idempotent and self-limiting, so re-firing on every open is
+           free after the first. */
+        probeSession();
+      }).observe(savemgrEl, { attributes: true, attributeFilter: ['hidden'] });
+    }
+  }
+
+  /* One /api/me, at most, per page load. Restores a session from the
+     HttpOnly dh_session cookie; a 401/no-cookie answer is the ordinary
+     not-signed-in case and is swallowed. `probed` makes the boot call and
+     the modal-open fallback collapse into a single request rather than
+     racing, and stops a player who opens and closes the Saves modal ten
+     times from spending ten requests. */
+  let probed = false;
+  function probeSession() {
+    if (probed || signedIn) return;
+    probed = true;
     req(API.me)
-      .then((d) => { if (d && d.email) goOnline(d.email) })
+      .then((d) => { if (d && d.username) goOnline(d.username) })
       .catch(() => {});
+  }
 
-    loadParams();
+  /* Reads the display name the player already typed on the intro screen
+     (onboardingplan.md §2) via the one global hook deadhead.html exports
+     for it, and uses it as a starting guess for the username field — see
+     the "USERNAME, NOT EMAIL" note above the CSS block for why. Never
+     overwrites something the player already typed. */
+  function prefillUsername() {
+    const el = $('dh-username');
+    if (!el || el.value) return;
+    const name = window.DH_SAVE && typeof window.DH_SAVE.playerName === 'function'
+      ? window.DH_SAVE.playerName()
+      : '';
+    if (name) el.value = name.slice(0, 40);
   }
 
   if (document.readyState === 'loading') {

@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "scripts": {
     "dev": "wrangler dev",
-    "test": "node test/boot-smoke.test.js && node test/city.test.js && node test/bake-splice.test.js && node test/nudge-splice.test.js",
+    "test": "node test/boot-smoke.test.js && node test/city.test.js && node test/bake-splice.test.js && node test/nudge-splice.test.js && node test/cloud-budget.test.js && node test/achievements.test.js && node test/leaderboard.test.js && node test/version.test.js",
     "check-parity": "node scripts/check-parity.js",
     "predeploy": "npm run check-parity && npm test",
     "deploy": "wrangler deploy",

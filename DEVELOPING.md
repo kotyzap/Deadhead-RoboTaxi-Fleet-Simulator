@@ -12,8 +12,26 @@ Developer and operations notes. For what the game *is*, see [README.md](README.m
 - **MINOR** — a new mechanic or system, or a rebalance a player would notice.
 - **MAJOR** — reserved for 1.0.0, the first build worth handing to a stranger.
 
-The version appears in three places and they must agree: `const VERSION` in
-`deadhead.html`, the heading at the top of this file, and the git tag.
+### `const VERSION` is the only authority
+
+**Before numbering a release, read `const VERSION` in `deadhead.html`. Do not
+infer the current version from anything else.**
+
+This is written in bold because it has already gone wrong. The `COMMIT_*.txt`
+notes in the repo root are written by hand and are not written every time —
+they stopped at `COMMIT_0.26.7.txt` while the build went on to 0.31.0. Anyone
+who reads the highest filename and adds one lands *five versions in the past*
+and silently reuses a number that has already shipped. The git log is no safer:
+everything since 0.26.3 is uncommitted, so `git tag` and `git log` both
+describe a build months behind the working tree.
+
+So: the code is the source of truth, and `npm test` now enforces it —
+`test/version.test.js` fails if the newest `COMMIT_*.txt` does not match
+`const VERSION`. If you bump one without the other, the suite says so.
+
+The version must agree in `deadhead.html`, `deploy/public/index.html` (byte
+parity makes this automatic), the newest `COMMIT_*.txt` filename, and the git
+tag once it is finally cut.
 
 Note the two independent numbers. `VERSION` is the build. `SAVE_V` is the *state shape*,
 and only moves when the snapshot format changes — so shipping 0.9.0 does not invalidate

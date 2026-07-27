@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<!-- Deadhead admin — onboardingplan.md §4, plus a Cars view and a light/dark
+     theme added afterward at Pavel's request.
+
+     "Unlinked" is not access control (/admin.html is the first path anyone
+     guesses), so this page carries no secret of its own. The gate is
+     entirely server-side: GET /api/admin/stats requires an email+password
+     header match against src/admin-config.js (gitignored — this repo is
+     public) and returns 404 (not 403) without it, so a prober cannot even
+     confirm the endpoint exists — see isAdmin() in src/index.js.
+
+     This page just asks for the pair once, holds it in JS variables (never
+     localStorage — a shared-machine leak for no convenience worth having),
+     and renders five read-only views. It is a dumb viewer; every aggregate
+     (funnel, per-city economics, per-model Cars) is computed server-side
+     with GROUP BY so the payload stays small.
+
+     STYLE: deliberately echoes the game's own look — Inter, the same
+     6px/14px corner radii, the same glass-panel silhouette — so it reads as
+     "the same product's back office", not a bolted-on tool. But the accent
+     colour is its own crimson, not any of the five city tones (blue/bronze/
+     magenta/teal/violet — see CITIES in deadhead.html), specifically so a
+     screenshot of this page is never mistaken for the game itself. Theme
+     preference is NOT sensitive (unlike the credentials above it), so it is
+     the one thing on this page allowed to live in localStorage. -->
+<html lang="en" data-theme="day">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex,nofollow">
+<title>Deadhead — admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
+<style>
+:root{
+  color-scheme:light;
+  --bg:#EDEFF2; --panel:rgba(255,255,255,.7); --panel-brd:rgba(23,26,32,.10);
+  --panel-solid:#fff;
+  --text:#171A20; --text-2:#44474C; --text-3:#71747A; --text-4:#9497A0;
+  --brd:rgba(23,26,32,.10); --brd-2:rgba(23,26,32,.18);
+  --hi:inset 0 1px 0 rgba(255,255,255,.9);
+  --elev:0 16px 34px -18px rgba(23,26,32,.30);
+  /* THE ADMIN ACCENT — crimson, deliberately not any city tone. */
+  --accent:#B5342E; --accent-hi:#C2453E; --accent-2:#8E2620; --accent-rgb:181,52,46;
+  --grid:rgba(23,26,32,.14);
+  --r-ctl:6px; --r-srf:14px;
+  --input-bg:rgba(23,26,32,.04); --input-brd:rgba(23,26,32,.16);
+}
+html[data-theme="night"]{
+  color-scheme:dark;
+  --bg:#0E1013; --panel:rgba(30,32,37,.66); --panel-brd:rgba(255,255,255,.08);
+  --panel-solid:#17181c;
+  --text:#EDEEF0; --text-2:#C4C6CB; --text-3:#8A8D93; --text-4:#65686E;
+  --brd:rgba(255,255,255,.09); --brd-2:rgba(255,255,255,.16);
+  --hi:inset 0 1px 0 rgba(255,255,255,.06);
+  --elev:0 20px 40px -18px rgba(0,0,0,.55);
+  --accent:#D2504F; --accent-hi:#DB6362; --accent-2:#9A2E2E; --accent-rgb:210,80,79;
+  --grid:rgba(255,255,255,.12);
+  --input-bg:rgba(255,255,255,.06); --input-brd:rgba(255,255,255,.16);
+}
+*{box-sizing:border-box}
+body{margin:0;font:13px/1.5 'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  background:var(--bg);color:var(--text);padding:24px;transition:background .2s,color .2s}
+h1{font-size:16px;font-weight:600;margin:0 0 4px;letter-spacing:-.01em}
+.sub{color:var(--text-3);font-size:12px;margin:0 0 20px}
+#theme-btn{position:fixed;top:20px;right:22px;height:32px;padding:0 14px;border-radius:999px;
+  border:1px solid var(--brd-2);background:var(--panel-solid);color:var(--text-2);font:inherit;
+  font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;box-shadow:var(--hi);z-index:5}
+#theme-btn:hover{border-color:var(--accent);color:var(--accent)}
+#gate{max-width:420px;margin:60px auto;text-align:center}
+#gate input{width:100%;height:38px;padding:0 12px;border-radius:var(--r-ctl);
+  border:1px solid var(--input-brd);background:var(--input-bg);color:var(--text);
+  font:inherit;font-size:13px;margin:8px 0}
+#gate input::placeholder{color:var(--text-4)}
+#gate button{height:36px;padding:0 20px;border-radius:999px;border:0;margin-top:8px;
+  background:linear-gradient(180deg,var(--accent-hi),var(--accent));color:#fff;
+  font:inherit;font-weight:600;font-size:12.5px;cursor:pointer;box-shadow:var(--hi)}
+#gate button:hover{opacity:.92}
+#gate .err{color:var(--accent-hi);font-size:12px;min-height:32px;margin-top:10px;line-height:1.4}
+#app{display:none;max-width:1180px;margin:0 auto}
+nav{display:flex;gap:6px;margin-bottom:18px;flex-wrap:wrap}
+nav button{background:var(--panel-solid);border:1px solid var(--brd-2);color:var(--text-2);
+  padding:8px 14px;border-radius:999px;font:inherit;font-size:12.5px;font-weight:500;cursor:pointer;
+  box-shadow:var(--hi)}
+nav button[aria-pressed="true"]{background:linear-gradient(180deg,var(--accent-hi),var(--accent));
+  border-color:var(--accent);color:#fff}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--brd)}
+th{color:var(--text-3);font-weight:500;text-transform:uppercase;font-size:10px;letter-spacing:.06em}
+tr:hover td{background:rgba(var(--accent-rgb),.05)}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.panel{background:var(--panel);backdrop-filter:blur(20px) saturate(1.5);
+  -webkit-backdrop-filter:blur(20px) saturate(1.5);
+  border:1px solid var(--panel-brd);border-radius:var(--r-srf);
+  padding:18px;margin-bottom:16px;overflow:auto;box-shadow:var(--elev),var(--hi)}
+.funnel{display:flex;gap:0;flex-wrap:wrap}
+.funnel div{flex:1 1 140px;padding:14px;text-align:center;border-right:1px solid var(--brd)}
+.funnel div:last-child{border-right:0}
+.funnel b{display:block;font-size:26px;font-weight:600;color:var(--accent)}
+.funnel span{color:var(--text-3);font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+.note{color:var(--text-3);font-size:11.5px;margin:0 0 14px}
+.loading,.empty{color:var(--text-3);padding:24px;text-align:center}
+
+/* ---- Cars view ---- */
+.cargrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
+.carcard{background:var(--panel-solid);border:1px solid var(--brd);border-radius:var(--r-srf);
+  overflow:hidden;box-shadow:var(--hi)}
+.carcard .art{position:relative;aspect-ratio:16/10;background:#15161a;overflow:hidden}
+.carcard .art img{width:100%;height:100%;object-fit:cover;display:block}
+.carcard .art .badge{position:absolute;top:8px;left:8px;background:rgba(0,0,0,.55);
+  color:#fff;font-size:10px;font-weight:600;letter-spacing:.04em;padding:3px 7px;border-radius:5px}
+.carcard .art .scrim{position:absolute;inset:auto 0 0 0;height:46%;
+  background:linear-gradient(to top,rgba(0,0,0,.72),transparent)}
+.carcard .art .nm{position:absolute;left:8px;bottom:6px;color:#fff;font-size:12.5px;font-weight:600}
+.carcard .body{padding:12px}
+.carcard .specs{display:flex;gap:8px;flex-wrap:wrap;font-size:10.5px;color:var(--text-3);margin-bottom:8px}
+.carcard .specs span{background:var(--input-bg);border:1px solid var(--brd);border-radius:5px;padding:2px 6px}
+.carcard .radar-wrap{display:flex;justify-content:center;margin-bottom:6px}
+.carcard .stat-line{display:flex;justify-content:space-between;font-size:11px;color:var(--text-2);
+  padding:2px 0}
+.carcard .stat-line b{color:var(--text);font-weight:600}
+.carcard .nodata{text-align:center;color:var(--text-4);font-size:11px;padding:18px 0}
+/* Shared legend for the per-axis colours — learn it once above the grid,
+   every card's radar then reads without its own key. */
+.axis-legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin:0 0 14px}
+.axis-key{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--text-2)}
+.axis-key i{display:inline-block;width:9px;height:9px;border-radius:50%;flex:0 0 auto}
+</style>
+</head>
+<body>
+
+<button id="theme-btn" type="button">Night</button>
+
+<div id="gate">
+  <h1>Deadhead admin</h1>
+  <p class="sub">Sign in to view stats. Held in memory only — never stored,
+     never sent anywhere but the requests below.</p>
+  <input id="email" type="email" placeholder="Admin email" autocomplete="off">
+  <input id="password" type="password" placeholder="Admin password" autocomplete="off">
+  <div><button id="enter">Enter</button></div>
+  <p class="err" id="gate-err"></p>
+</div>
+
+<div id="app">
+  <h1>Deadhead admin</h1>
+  <p class="sub">Unauthenticated telemetry, keyed by a local profile id — a tuning signal,
+     not a leaderboard. See onboardingplan.md §4.</p>
+  <nav>
+    <button data-view="players" aria-pressed="true">Players</button>
+    <button data-view="funnel" aria-pressed="false">Progression funnel</button>
+    <button data-view="economics" aria-pressed="false">Per-city economics</button>
+    <button data-view="cars" aria-pressed="false">Cars</button>
+    <button data-view="achievements" aria-pressed="false">Achievements</button>
+    <button data-view="recent" aria-pressed="false">Recent shifts</button>
+  </nav>
+  <div class="panel" id="view"></div>
+</div>
+
+<script>
+(function(){
+  var EMAIL = null, PASSWORD = null;   // memory only — see the file header comment
+
+  /* ---- theme: the one thing here allowed in localStorage (see header) ---- */
+  var THEME_KEY = 'dh-admin-theme';
+  function applyTheme(t){
+    document.documentElement.setAttribute('data-theme', t);
+    document.getElementById('theme-btn').textContent = t==='night' ? 'Day' : 'Night';
+  }
+  (function(){
+    var saved = null;
+    try{ saved = localStorage.getItem(THEME_KEY); }catch(e){}
+    applyTheme(saved==='night' ? 'night' : 'day');
+  })();
+  document.getElementById('theme-btn').addEventListener('click', function(){
+    var next = document.documentElement.getAttribute('data-theme')==='night' ? 'day' : 'night';
+    applyTheme(next);
+    try{ localStorage.setItem(THEME_KEY, next); }catch(e){}
+  });
+
+  function esc(v){
+    return String(v==null?'':v).replace(/[&<>"']/g,function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+  function money(v){ return v==null?'—':'$'+Number(v).toFixed(0); }
+  function num(v,d){ return v==null?'—':Number(v).toFixed(d==null?0:d); }
+  function fmtTs(v){ return v?new Date(v).toLocaleString():'—'; }
+  function shortId(v){ return v?String(v).slice(0,8):'—'; }
+
+  async function api(view){
+    const res = await fetch('/api/admin/stats?view='+encodeURIComponent(view), {
+      headers: { 'x-admin-email': EMAIL, 'x-admin-password': PASSWORD }
+    });
+    if(res.status===404) throw new Error('wrong email/password, or the endpoint is not deployed');
+    if(!res.ok){
+      // Surface the server's own message (e.g. "database tables are missing —
+      // run schema.sql...") instead of a bare status code — that message is
+      // usually the actual fix, not just a symptom.
+      let detail = '';
+      try{ const body = await res.json(); if(body && body.error) detail = ' — '+body.error; }catch(e){}
+      throw new Error('server error ('+res.status+')'+detail);
+    }
+    return res.json();
+  }
+
+  function renderPlayers(data){
+    const rows = data.rows||[];
+    if(!rows.length) return '<div class="empty">No players yet.</div>';
+    return '<table><thead><tr><th>Name</th><th>Id</th><th>Created</th>'+
+      '<th>First seen</th><th>Last seen</th><th class="num">Shifts</th>'+
+      '<th class="num">Cities</th><th class="num">Best cash</th></tr></thead><tbody>'+
+      rows.map(function(r){
+        return '<tr><td>'+esc(r.name||'Player')+'</td>'+
+          '<td title="'+esc(r.player_id)+'">'+esc(shortId(r.player_id))+'</td>'+
+          '<td>'+esc(fmtTs(r.created))+'</td>'+
+          '<td>'+esc(fmtTs(r.first_seen))+'</td>'+
+          '<td>'+esc(fmtTs(r.last_seen))+'</td>'+
+          '<td class="num">'+esc(r.shifts)+'</td>'+
+          '<td class="num">'+esc(r.cities)+'</td>'+
+          '<td class="num">'+money(r.best_cash)+'</td></tr>';
+      }).join('')+'</tbody></table>';
+  }
+
+  /* Cities are NOT listed here. They used to be — two hardcoded columns,
+     Dallas and Miami — and the funnel spent two releases claiming the game
+     had three cities while Tampa and Orlando were live. The server now
+     returns data.cities, derived from the table, so city #6 appears the
+     first time anybody files a shift there and this file never needs
+     touching again. The label is just the id title-cased: the real display
+     names live in CITIES in deadhead.html and are not worth a third copy. */
+  function cityLabel(id){
+    return String(id||'').replace(/(^|[-_])(\w)/g, function(_,s,c){
+      return (s?' ':'')+c.toUpperCase();
+    });
+  }
+  function renderFunnel(data){
+    const r = data.row||{};
+    const total = r.total||0;
+    const cities = data.cities||[];
+    function pct(n){ return total?Math.round((n/total)*100)+'%':'—'; }
+    function cell(n,label){
+      return '<div><b>'+esc(n||0)+'</b><span>'+label+' · '+pct(n||0)+'</span></div>';
+    }
+    return '<p class="note">Out of '+esc(total)+' distinct players ever seen.</p>'+
+      '<div class="funnel">'+
+        cell(r.shift1,'Filed shift 1')+
+        cell(r.shift2,'Filed shift 2')+
+        cell(r.day2,'Reached day 2')+
+        cell(r.day5,'Reached day 5')+
+        cell(r.profitable,'Turned a profit')+
+        cell(r.fleet2,'Ran 2+ cars')+
+      '</div>'+
+      '<p class="note" style="margin-top:14px">Players who filed at least one shift in each city, '+
+        'most-reached first. Derived from the data, so a new city shows up here on its own.</p>'+
+      '<div class="funnel">'+
+        (cities.length
+          ? cities.map(function(c){
+              return '<div><b>'+esc(c.players)+'</b><span>'+esc(cityLabel(c.city))+' · '+
+                pct(c.players)+'</span></div>';
+            }).join('')
+          : '<div><b>0</b><span>No cities yet</span></div>')+
+      '</div>';
+  }
+
+  /* Display names for the achievement ids the server whitelists. Third copy
+     of the catalogue, after deadhead.html's ACHV (the authority) and
+     ACHV_IDS in src/index.js (the whitelist) — see the note above ACHV_IDS
+     for why a copy beats an import here. An id missing from this map renders
+     as the raw id rather than blank, so drift is visible and harmless. */
+  const ACHV_NAMES = {
+    'first-car':'Keys','first-ride':'Fare One','first-shift':'Clocked Off',
+    'black':'In the Black','net-500':'Good Day','net-1500':'Printing',
+    'cash-10k':'Five Figures','clean-sheet':'Clean Sheet','safety-95':'Spotless',
+    'under-review':'Under Review','meter-runner':'Meter Runner',
+    'fleet-3':'Small Fleet','fleet-5':'Operator','purpose-built':'Purpose Built',
+    'why-a-truck':'Why a Truck','repossessed':'Repossessed','comeback':'Comeback',
+    'out-of-austin':'Out of Austin','grand-tour':'Grand Tour',
+    'found-the-switch':'Found the Switch','hands-on':'Hands On'
+  };
+  function renderAchievements(data){
+    const rows = data.rows||[];
+    const total = data.totalPlayers||0;
+    if(!rows.length){
+      return '<div class="empty">No achievements reported yet. Rows written before '+
+        'the achievements release carry no list and are excluded rather than counted '+
+        'as zero — those players may well hold some, we just never asked.</div>';
+    }
+    function pct(n){ return total?Math.round((n/total)*100)+'%':'—'; }
+    return '<p class="note">Unlock rate across '+esc(total)+' distinct players. '+
+      'A low number on an early achievement is a funnel problem; a low number on a '+
+      'late one is just difficulty.</p>'+
+      '<table><thead><tr><th>Achievement</th><th class="num">Players</th>'+
+      '<th class="num">Rate</th></tr></thead><tbody>'+
+      rows.map(function(r){
+        return '<tr><td>'+esc(ACHV_NAMES[r.id]||r.id)+'</td>'+
+          '<td class="num">'+esc(r.players)+'</td>'+
+          '<td class="num">'+pct(r.players)+'</td></tr>';
+      }).join('')+'</tbody></table>';
+  }
+
+  function renderEconomics(data){
+    const rows = data.rows||[];
+    if(!rows.length) return '<div class="empty">No shifts recorded yet.</div>';
+    return '<p class="note">Median net per shift, by city and shift number — the '+
+      'mistuning detector.</p>'+
+      '<table><thead><tr><th>City</th><th class="num">Shift #</th>'+
+      '<th class="num">Median net</th><th class="num">Rows</th></tr></thead><tbody>'+
+      rows.map(function(r){
+        return '<tr><td>'+esc(r.city||'—')+'</td>'+
+          '<td class="num">'+esc(r.shift_no)+'</td>'+
+          '<td class="num">'+money(r.median_net)+'</td>'+
+          '<td class="num">'+esc(r.n)+'</td></tr>';
+      }).join('')+'</tbody></table>';
+  }
+
+  function renderRecent(data){
+    const rows = data.rows||[];
+    if(!rows.length) return '<div class="empty">No shifts recorded yet.</div>';
+    return '<table><thead><tr><th>When</th><th>Player</th><th>City</th>'+
+      '<th class="num">Day</th><th class="num">Shift</th><th>Permit</th>'+
+      '<th class="num">Net</th><th class="num">Cash</th><th class="num">Cars</th></tr></thead><tbody>'+
+      rows.map(function(r){
+        return '<tr><td>'+esc(fmtTs(r.ts))+'</td>'+
+          '<td title="'+esc(r.player_id)+'">'+esc(r.name||'Player')+'</td>'+
+          '<td>'+esc(r.city||'—')+'</td>'+
+          '<td class="num">'+esc(r.day)+'</td>'+
+          '<td class="num">'+esc(r.shift_no)+'</td>'+
+          '<td>'+esc(r.permit||'—')+'</td>'+
+          '<td class="num">'+money(r.net)+'</td>'+
+          '<td class="num">'+money(r.cash)+'</td>'+
+          '<td class="num">'+esc(r.cars)+'</td></tr>';
+      }).join('')+'</tbody></table>';
+  }
+
+  /* ---- Cars view ----
+     A copy of deadhead.html's CATALOG (id/name/badge/photo/spec — see
+     PHOTO_DIR and the block above CATALOG there) small enough to keep
+     inline. This page has no import path into the game engine, so keeping
+     its own copy is cheaper than building one; catalogue changes are rare
+     and only cosmetic here (name/badge/photo/spec chips), never numeric. */
+  var CARS_INFO = [
+    {id:'cybercab',    name:'Cybercab',            badge:'CC',  photo:'Cybercab.webp',            kwh:48,  rangeMi:300, seats:2, price:30000},
+    {id:'model3',      name:'Model 3',             badge:'M3',  photo:'Model3.webp',              kwh:62,  rangeMi:321, seats:5, price:36990},
+    {id:'modely',      name:'Model Y',             badge:'MY',  photo:'ModelY.webp',              kwh:70,  rangeMi:321, seats:5, price:39990},
+    {id:'model3prem',  name:'Model 3 Premium',     badge:'M3P', photo:'Model3Premium.webp',       kwh:82,  rangeMi:363, seats:5, price:42490},
+    {id:'modelyprem',  name:'Model Y Premium',     badge:'MYP', photo:'ModelYPremium.webp',       kwh:82,  rangeMi:357, seats:5, price:48990},
+    {id:'modelyl',     name:'Model Y L',           badge:'MYL', photo:'ModelYLPremium.webp',      kwh:85,  rangeMi:330, seats:6, price:52000},
+    {id:'model3perf',  name:'Model 3 Performance', badge:'M3X', photo:'Model3Performance.webp',   kwh:82,  rangeMi:309, seats:5, price:54990},
+    {id:'modelyperf',  name:'Model Y Performance', badge:'MYX', photo:'ModelYPerformance.webp',   kwh:82,  rangeMi:306, seats:5, price:57000},
+    {id:'cybertruck',  name:'Cybertruck',          badge:'CT',  photo:'Cybertruck.webp',          kwh:123, rangeMi:320, seats:5, price:80000}
+  ];
+
+  /* Six axes, each normalized 0..1 against the MAX of that axis across
+     whichever models actually have data — so shapes are comparable to each
+     other on this page load, not against some fixed absolute scale. A shift
+     that used two models at once counts toward BOTH (see the comment above
+     appendHistoryRow() in deadhead.html and the view=cars query in
+     src/index.js) — an approximation on a mixed fleet, exact on a
+     single-model one. This is a tuning signal, not a leaderboard.
+
+     One fixed colour per AXIS (not per car) — Popularity is always orange,
+     Net always green, and so on, on every card. That is what makes a single
+     shared legend (see the note above .cargrid in renderCars()) work at
+     all: learn the six colours once, and every card on the page reads
+     without hunting for its own key. The data polygon itself stays a
+     single neutral accent fill (nine overlapping colours would fight each
+     other); only the vertex dots and axis labels carry colour. */
+  var AXIS_COLORS = ['#E4572E','#2E9E5B','#3E6AE1','#D4A017','#8E44AD','#D6336C'];
+
+  function axisLegendHTML(labels){
+    return '<div class="axis-legend">'+labels.map(function(l,i){
+      return '<span class="axis-key"><i style="background:'+AXIS_COLORS[i]+'"></i>'+esc(l)+'</span>';
+    }).join('')+'</div>';
+  }
+
+  function hexRadar(values, labels, size){
+    size = size||168;
+    var cx=size/2, cy=size/2-4, R=size/2-30, n=values.length;
+    function pt(i,frac){
+      var ang = -Math.PI/2 + i*(2*Math.PI/n);
+      return [cx+R*frac*Math.cos(ang), cy+R*frac*Math.sin(ang)];
+    }
+    var rings='';
+    [0.25,0.5,0.75,1].forEach(function(frac){
+      var pts=[];
+      for(var i=0;i<n;i++) pts.push(pt(i,frac).join(','));
+      rings += '<polygon points="'+pts.join(' ')+'" fill="none" stroke="var(--grid)" stroke-width="1"/>';
+    });
+    var axes='';
+    for(var i=0;i<n;i++){
+      var p=pt(i,1);
+      var col=AXIS_COLORS[i%AXIS_COLORS.length];
+      // Spokes tinted by their own axis colour (soft), so the colour story
+      // starts at the centre, not just at the label/dot.
+      axes += '<line x1="'+cx+'" y1="'+cy+'" x2="'+p[0]+'" y2="'+p[1]+'" stroke="'+col+'" '+
+        'stroke-opacity="0.35" stroke-width="1.2"/>';
+    }
+    var dpts=[], dots='';
+    for(var i=0;i<n;i++){
+      var pd=pt(i, Math.max(0.02,Math.min(1,values[i])));
+      dpts.push(pd.join(','));
+      var col=AXIS_COLORS[i%AXIS_COLORS.length];
+      dots += '<circle cx="'+pd[0]+'" cy="'+pd[1]+'" r="3.4" fill="'+col+'" '+
+        'stroke="var(--panel-solid)" stroke-width="1.2"/>';
+    }
+    var data = '<polygon points="'+dpts.join(' ')+'" fill="var(--accent)" fill-opacity="0.20" '+
+      'stroke="var(--accent)" stroke-width="1.4" stroke-linejoin="round"/>';
+    var labelEls='';
+    for(var i=0;i<n;i++){
+      var p=pt(i,1.30);
+      var anchor = Math.abs(p[0]-cx)<4 ? 'middle' : (p[0]>cx?'start':'end');
+      var col=AXIS_COLORS[i%AXIS_COLORS.length];
+      labelEls += '<text x="'+p[0]+'" y="'+p[1]+'" font-size="8" font-family="Inter,sans-serif" '+
+        'font-weight="600" fill="'+col+'" text-anchor="'+anchor+'" dominant-baseline="middle">'+esc(labels[i])+'</text>';
+    }
+    return '<svg viewBox="0 0 '+size+' '+size+'" width="'+size+'" height="'+size+'">'+rings+axes+data+dots+labelEls+'</svg>';
+  }
+
+  function renderCars(data){
+    const rows = data.rows||[];
+    const byModel = {};
+    rows.forEach(function(r){ byModel[r.model] = r; });
+    const total = data.totalShifts||0;
+
+    // Maxima across models WITH data, for normalization — see hexRadar comment.
+    var max = {shifts:0, avg_net:0, avg_miles:0, avg_rides:0, avg_safety:0, players:0};
+    rows.forEach(function(r){
+      Object.keys(max).forEach(function(k){
+        var v = Number(r[k])||0;
+        if(v>max[k]) max[k]=v;
+      });
+    });
+
+    const cards = CARS_INFO.map(function(c){
+      const r = byModel[c.id];
+      const specs = '<span>'+c.kwh+' kWh</span><span>'+c.rangeMi+' mi</span>'+
+        '<span>'+c.seats+' seat'+(c.seats===1?'':'s')+'</span><span>$'+c.price.toLocaleString()+'</span>';
+      let body;
+      if(!r){
+        body = '<div class="radar-wrap">'+hexRadar([0,0,0,0,0,0],
+          ['Pop.','Net','Miles','Rides','Safety','Reach'])+'</div>'+
+          '<div class="nodata">No shifts reported yet</div>';
+      }else{
+        const vals = [
+          total ? r.shifts/total : 0,
+          max.avg_net ? Math.max(0, r.avg_net)/max.avg_net : 0,
+          max.avg_miles ? r.avg_miles/max.avg_miles : 0,
+          max.avg_rides ? r.avg_rides/max.avg_rides : 0,
+          max.avg_safety ? r.avg_safety/max.avg_safety : 0,
+          max.players ? r.players/max.players : 0
+        ];
+        body = '<div class="radar-wrap">'+hexRadar(vals,
+          ['Pop.','Net','Miles','Rides','Safety','Reach'])+'</div>'+
+          '<div class="stat-line"><span>Shifts</span><b>'+esc(r.shifts)+'</b></div>'+
+          '<div class="stat-line"><span>Players</span><b>'+esc(r.players)+'</b></div>'+
+          '<div class="stat-line"><span>Avg net</span><b>'+money(r.avg_net)+'</b></div>'+
+          '<div class="stat-line"><span>Avg miles</span><b>'+num(r.avg_miles,1)+'</b></div>'+
+          '<div class="stat-line"><span>Avg safety</span><b>'+num(r.avg_safety,0)+'</b></div>';
+      }
+      return '<div class="carcard">'+
+        '<div class="art"><img src="/carsimg/'+encodeURIComponent(c.photo)+'" alt="'+esc(c.name)+'" '+
+          'loading="lazy" onerror="this.style.display=\'none\'">'+
+          '<div class="scrim"></div><span class="badge">'+esc(c.badge)+'</span>'+
+          '<span class="nm">'+esc(c.name)+'</span></div>'+
+        '<div class="body"><div class="specs">'+specs+'</div>'+body+'</div>'+
+        '</div>';
+    }).join('');
+
+    return '<p class="note">Per model, across every reported shift that had it in the fleet. A '+
+      'mixed fleet counts toward every model present, so this is a tuning signal — which cars '+
+      'players actually run and how they perform — not an exact per-vehicle ledger.</p>'+
+      axisLegendHTML(['Popularity','Net','Miles','Rides','Safety','Reach'])+
+      '<div class="cargrid">'+cards+'</div>';
+  }
+
+  const RENDERERS = { players: renderPlayers, funnel: renderFunnel,
+    economics: renderEconomics, cars: renderCars, recent: renderRecent,
+    achievements: renderAchievements };
+
+  async function loadView(view){
+    const el = document.getElementById('view');
+    el.innerHTML = '<div class="loading">Loading…</div>';
+    try{
+      const data = await api(view);
+      el.innerHTML = RENDERERS[view](data);
+    }catch(err){
+      el.innerHTML = '<div class="empty">'+esc(err.message)+'</div>';
+    }
+  }
+
+  document.querySelectorAll('nav button').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      document.querySelectorAll('nav button').forEach(function(b){
+        b.setAttribute('aria-pressed', String(b===btn));
+      });
+      loadView(btn.dataset.view);
+    });
+  });
+
+  document.getElementById('enter').addEventListener('click', async function(){
+    const e = document.getElementById('email').value.trim();
+    const p = document.getElementById('password').value;
+    if(!e || !p) return;
+    EMAIL = e; PASSWORD = p;
+    // Prove the pair works before switching views, so a wrong email/password
+    // shows one clear error instead of four broken panels.
+    try{
+      await api('players');
+      document.getElementById('gate').style.display='none';
+      document.getElementById('app').style.display='block';
+      loadView('players');
+    }catch(err){
+      EMAIL = null; PASSWORD = null;
+      document.getElementById('gate-err').textContent = err.message;
+    }
+  });
+  ['email','password'].forEach(function(id){
+    document.getElementById(id).addEventListener('keydown', function(e){
+      if(e.key==='Enter') document.getElementById('enter').click();
+    });
+  });
+})();
+</script>
+</body>
+</html>

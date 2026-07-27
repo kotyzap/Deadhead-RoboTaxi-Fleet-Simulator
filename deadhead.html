@@ -18,6 +18,12 @@
    ============================================================ */
 
 :root{
+  /* Single source of truth for the console's side-column width. .ops and
+     #intro both read this — see the intro rework comment above #intro and
+     onboardingplan.md §1 — so the two layouts cannot drift apart the way
+     five duplicated pixel values would. Each responsive tier below sets
+     ONLY this custom property; neither .ops nor #intro repeats the number. */
+  --wing:520px;
   /* management surfaces */
   --canvas:#EDEFF2;
   /* GLASS 1b — thinner, deeper glass. See GLASS-STYLE.md before touching these. */
@@ -125,6 +131,15 @@
   --bgmap-filter:saturate(.18) brightness(1.04) contrast(.92);
   --bgmap-op:.55;
   --tile-filter:none;
+  /* Trophies. Declared here AND in the night block below rather than
+     written literally at the use site — the in-car card's white slab and
+     the white-on-white button are exactly what happens when a new surface
+     skips this step (see --card-s). --gold is darkened well past a true
+     metallic gold so it clears 4.5:1 as text on --sheet; --gold-bg is the
+     earned tile's fill, pale enough to take --text-1 on top. */
+  --gold:#8A6A12;
+  --gold-bg:rgba(198,160,42,.16);
+  --gold-brd:rgba(198,160,42,.42);
 }
 
 html[data-theme="night"]{
@@ -209,6 +224,11 @@ html[data-theme="night"]{
   --bgmap-filter:invert(1) hue-rotate(180deg) saturate(.25) brightness(.85);
   --bgmap-op:.40;
   --tile-filter:invert(1) hue-rotate(180deg) saturate(.7) brightness(.9);
+  /* Night flips the gold the same way --accent had to be relightened here:
+     the day value is a dark ink that vanishes on a dark sheet. */
+  --gold:#E3BE55;
+  --gold-bg:rgba(227,190,85,.14);
+  --gold-brd:rgba(227,190,85,.34);
 }
 
 *{box-sizing:border-box;margin:0;padding:0}
@@ -273,19 +293,45 @@ body{
    is what the old `.spacer` div did, and it is no longer needed); it also wraps
    internally, so a very narrow window degrades inside the group rather than
    putting the seam somewhere unplanned. */
-.tb-info{order:1;flex:1 1 auto;min-width:0;display:flex;align-items:center;
-  flex-wrap:wrap;gap:8px 22px}
-#coffee{order:2}
+/* --coffee-w is how much room the Coffee button needs at this tier, and
+   .tb-info is capped so it can never claim the full width and bump Coffee onto
+   a line of its own. That was still happening at ~885px: the readouts wrapped
+   to three lines, filled 100%, and Coffee went to line four by itself — which
+   is the same complaint as before, one wrap tier further in. Reserving the
+   space means Coffee sits beside the readout block (level with Cash) however
+   many lines that block takes. */
+.topbar{--coffee-w:116px}
+.tb-info{order:1;flex:1 1 auto;min-width:0;max-width:calc(100% - var(--coffee-w));
+  display:flex;align-items:center;flex-wrap:wrap;gap:8px 22px}
+/* align-self:flex-end lands it level with the LAST line of the readout block —
+   next to Shift when the block has wrapped, next to Cash when it has not. On a
+   single-line topbar the flex line is exactly one control tall, so this is
+   identical to centring there: safe at every width, aligned where it matters. */
+#coffee{order:2;margin-left:auto;align-self:flex-end}
 /* flex:1 0 100% is the forced break: the controls always take a full line of
    their own, right-aligned so they sit under Coffee rather than drifting left. */
 .tb-ctrls{order:3;flex:1 0 100%;display:flex;align-items:center;flex-wrap:wrap;
   justify-content:flex-end;gap:8px 12px}
+/* The shift readout opens that line on the left, so line two reads
+   "SHIFT On · 0.9 h ................ Clock off · speeds · buttons". */
+.tb-shiftitem{margin-right:auto}
 /* One line, Coffee last. 2250px is measured, not guessed: brand + five city
    cards + six readouts + Clock + four speeds + five buttons + Coffee and their
    gaps come to roughly 2200px, which is why a 2115px window wrapped. */
 @media (min-width:2250px){
   .tb-ctrls{order:2;flex:0 0 auto}
-  #coffee{order:3}
+  #coffee{order:3;margin-left:0}
+  /* One line, so there is nothing to reserve room against. */
+  .tb-info{max-width:none}
+}
+/* Icon-only tier: the button is ~40px, so reserving 116px would leave a hole. */
+@media (max-width:1499px){
+  .topbar{--coffee-w:56px}
+}
+/* Labels come back below 1200px (there is a whole line for them), so the
+   reservation goes back up with them. */
+@media (max-width:1199px){
+  .topbar{--coffee-w:112px}
 }
 /* cash is the number the whole game turns on — give it a raised chip */
 .tb-cash{padding:3px 10px;border-radius:6px;background:var(--inset);box-shadow:var(--hi-1)}
@@ -294,7 +340,16 @@ body{
 .brand b{font-weight:500;font-size:16px;letter-spacing:.14em;text-transform:uppercase}
 .brand span{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-4)}
 .brand .ver{font-style:normal;font-size:9.5px;letter-spacing:.1em;color:var(--text-4);
-  padding:1px 5px;border:1px solid var(--brd-2);border-radius:3px;align-self:center}
+  padding:1px 5px;border:1px solid var(--brd-2);border-radius:3px;align-self:center;
+  /* THE SAFARI BUG: five rapid clicks on a bare text node is exactly the
+     gesture Safari treats as "select this word, then this sentence, then
+     the whole element" — Chrome fires a plain click every time regardless,
+     but Safari's built-in click-to-select escalation can eat a click in the
+     sequence once a selection starts, so egTaps below never reaches 5.
+     user-select:none stops Safari from ever starting that selection, so
+     every click is just a click, on every browser. -webkit- prefix because
+     this element predates unprefixed support in Safari. */
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
 .clockbtn.on{background:linear-gradient(180deg,#28A05B,var(--s-charge));border-color:transparent;color:#fff}
 /* ---- platforms ---- */
 .plat{display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--brd)}
@@ -472,7 +527,7 @@ body{
 /* ============ ops grid ============
    Wings are FIXED width; the console takes every remaining pixel.
    On a 3840 canvas that gives the fleet view ~2760px.               */
-.ops{flex:1;min-height:0;display:grid;grid-template-columns:520px minmax(0,1fr) 520px;gap:10px}
+.ops{flex:1;min-height:0;display:grid;grid-template-columns:var(--wing) minmax(0,1fr) var(--wing);gap:10px}
 /* Wings are always a single column of three stacked panels. They are fixed
    width now, so splitting them two-up would squeeze each panel to ~255px. */
 .wing{display:grid;grid-template-columns:1fr;
@@ -541,37 +596,63 @@ html[data-theme="night"] .panel[data-tone="amber"]{--tone-rgb:245,185,46;--tone-
   box-shadow:0 12px 30px -12px rgba(0,0,0,.6)}
 #tip[hidden]{display:none}
 /* ---- Paolo, answering a locked city card ----
-   Same message-bubble language as #ray (avatar, name line, flattened corner
-   toward the avatar) but anchored under the card that was clicked rather than
-   parked bottom-left, because the question being answered is about THAT card.
-   Built in JS like #tip: it is transient and has no place in the markup. */
-#lockmsg{position:fixed;z-index:1290;width:290px;display:flex;gap:8px;
-  align-items:flex-end;padding:10px 11px 11px;border-radius:14px;
+   ONE MESSAGE STYLE FOR PAOLO, EVERYWHERE. The first version of this rebuilt
+   the bubble by hand and got it wrong in the way inline elements always go
+   wrong: `.bubble` had no `display`, so it stayed inline, and a multi-line
+   inline box paints its background and padding per LINE FRAGMENT rather than
+   around the paragraph. The result was text spilling past the grey and an
+   avatar that had drifted to the floor — reported as "squeezed and kinda not
+   readable", which it was.
+
+   So the bubble rules now live in ONE place and both surfaces list themselves
+   as selectors (see the shared block below). Paolo looks like Paolo whether he
+   is speaking from the card bottom-left or answering a locked city, in every
+   city, in both themes. If a third place ever needs him, add the selector — do
+   not copy the values.
+
+   This one differs from #ray only in where it sits: anchored under the card that
+   was clicked, because the question being answered is about THAT card. Built in
+   JS like #tip, since it is transient and has no place in the markup. */
+#lockmsg{position:fixed;z-index:1290;width:min(330px,calc(100vw - 24px));
+  display:flex;gap:8px;align-items:flex-end;padding:12px 13px 13px;
+  border-radius:16px;
   background:var(--panel-solid);border:1px solid var(--glass-brd);
   box-shadow:0 22px 46px -20px rgba(23,26,32,.44),var(--hi);
   backdrop-filter:blur(var(--blur)) saturate(var(--sat));
   -webkit-backdrop-filter:blur(var(--blur)) saturate(var(--sat))}
 #lockmsg[hidden]{display:none}
-#lockmsg .avatar{flex:0 0 26px;width:26px;height:26px;border-radius:50%;
-  background:linear-gradient(160deg,#9AA0AB,#6C7178);color:#fff;
-  font-size:10px;font-weight:600;display:flex;align-items:center;
-  justify-content:center}
-#lockmsg .col{flex:1;min-width:0}
-#lockmsg .who{display:flex;align-items:baseline;gap:6px;margin:0 0 4px 3px}
-#lockmsg .who b{font-size:10.5px;font-weight:500;color:var(--text-3)}
-#lockmsg .who span{font-size:9px;letter-spacing:.09em;text-transform:uppercase;
-  color:var(--text-4)}
-#lockmsg .bubble{background:#E9E9EB;border-radius:16px 16px 16px 5px;
-  padding:8px 12px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.03);
-  font-size:12.5px;line-height:1.45;color:#171A20}
-html[data-theme="night"] #lockmsg .bubble{background:#2C2C2E;color:#F2F2F4;
+/* ---- THE SHARED PAOLO MESSAGE LOOK ----
+   iMessage: grey bubble, one flattened corner toward the avatar standing in for
+   a tail, the name line above in small caps-ish grey. display:block on the
+   bubble and the column is not cosmetic — it is what makes a paragraph paint as
+   one rounded box instead of as ragged per-line fragments. */
+#ray .thread,#lockmsg .thread{display:flex;align-items:flex-end;gap:8px}
+#ray .avatar,#lockmsg .avatar{flex:0 0 30px;width:30px;height:30px;
+  border-radius:50%;background:linear-gradient(160deg,#9AA0AB,#6C7178);
+  color:#fff;font-size:11px;font-weight:600;letter-spacing:.02em;
+  display:flex;align-items:center;justify-content:center}
+#ray .ray-lines,#lockmsg .col{flex:1;min-width:0;display:block}
+#ray .who,#lockmsg .who{display:flex;align-items:baseline;gap:6px;margin:0 0 5px 3px}
+#ray .who b,#lockmsg .who b{font-size:11px;font-weight:500;letter-spacing:.02em;
+  color:var(--text-3)}
+#ray .who span,#lockmsg .who span{font-size:9px;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--text-4)}
+#ray .bubble,#lockmsg .bubble{display:block;position:relative;background:#E9E9EB;
+  border-radius:18px 18px 18px 5px;padding:9px 13px;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.03)}
+html[data-theme="night"] #ray .bubble,
+html[data-theme="night"] #lockmsg .bubble{background:#2C2C2E;
   box-shadow:inset 0 0 0 1px rgba(255,255,255,.05)}
-/* The requirement in plain words, under the flavour — the card has to teach as
-   well as talk. Tinted with the locked city's own tone so the answer and the
-   card it belongs to are visibly the same subject. */
-#lockmsg .need{display:block;margin:7px 0 0 3px;font-size:10.5px;
-  letter-spacing:.02em;color:var(--text-3)}
-#lockmsg .need b{color:var(--ct,var(--city-tint));font-weight:500}
+#ray .body,#lockmsg .bubble{font-size:13px;line-height:1.45;color:#171A20}
+html[data-theme="night"] #ray .body,
+html[data-theme="night"] #lockmsg .bubble{color:#F2F2F4}
+/* The requirement is a SECOND MESSAGE, not a caption — two bubbles in a row is
+   how a person actually texts a rule after an opinion, and it stops the sentence
+   that matters most being set in the smallest, palest type on screen (which is
+   what the tinted caption version was). Its top corner is square on the tail
+   side so the pair reads as one thread. */
+#lockmsg .bubble+.bubble{margin-top:5px;border-radius:18px 18px 18px 5px}
+#lockmsg .need{font-weight:500}
 /* On the dark in-car strip the same button needs the opposite contrast. */
 .t-ctl .ihelp,.t-cardbar .ihelp{border-color:rgba(255,255,255,.25);
   color:rgba(255,255,255,.55)}
@@ -1015,7 +1096,7 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border:0;border-radiu
 
 /* ---- T2 ---- */
 @media (max-width:2999px){
-  .ops{grid-template-columns:500px minmax(0,1fr) 500px}
+  :root{--wing:500px}
 }
 
 /* ---- T3: Full HD ---- */
@@ -1023,7 +1104,7 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border:0;border-radiu
   body{font-size:13px}
   .app{padding:8px;gap:8px}
   .ops,.wing,.stack{gap:8px}
-  .ops{grid-template-columns:472px minmax(0,1fr) 472px}
+  :root{--wing:472px}
   /* min-height, not a 44px basis — see the wrap note on .topbar. A fixed basis
      here would clip the second line the moment the row wrapped. */
   .topbar{flex:0 0 auto;min-height:44px;gap:7px 16px;padding:3px 12px}
@@ -1056,7 +1137,7 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border:0;border-radiu
 
 /* ---- T3b: 1600px and under — drop the least critical topbar fields ---- */
 @media (max-width:1699px){
-  .ops{grid-template-columns:440px minmax(0,1fr) 440px}
+  :root{--wing:440px}
   .tb-opt{display:none}
   .t-ctl .icons{gap:6px}
   .t-ctl .icons .ms{font-size:19px}
@@ -1115,10 +1196,13 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border:0;border-radiu
    nothing. */
 @media (max-width:1199px){
   .topbar{flex:0 0 auto;height:auto;flex-wrap:wrap;align-items:center;
-    gap:7px 13px;padding:8px 12px}
-  .brand{flex:1 0 100%;padding:0 0 7px;border-right:0;
-    border-bottom:1px solid var(--brd)}
-  .brand span{display:inline}
+    gap:7px 12px;padding:8px 12px}
+  /* The brand no longer claims a whole line here. It used to, which is what
+     pushed this tier to four lines — brand / cards+readouts / shift /
+     controls — when two is enough: read on the first, press on the second.
+     It still takes its own line on a phone (T5), where it genuinely must. */
+  .brand{padding-right:10px}
+  .brand span{display:none}       /* tagline: no room once it shares the line */
   .topbar .ghost>span{display:inline}
   .topbar .ghost{padding:0 12px;gap:7px}
   .topbar .seg button{min-width:42px}
@@ -1529,19 +1613,77 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
 
 /* ---------------- Welcome intro video ----------------
    The game's cold open, shown once before beat 1 ever fires (see
-   showIntro()/newFleet()). A proper 16:9 welcome video now — full-bleed
-   dark stage with the game's own wordmark above it, not the earlier
-   portrait "phone message from Paolo" framing that fit the first (9:16)
-   cut of this video but not this wider one. Autoplay is deliberately OFF:
-   the player presses play themselves, so the video's own audio can start
-   normally rather than needing muted-for-autoplay followed by an unmute
-   click — see showIntro(). */
-#intro{position:fixed;inset:0;z-index:90;display:grid;place-items:center;
+   showIntro()/newFleet()). An in-car display: by the time this shows, the
+   real console behind it is already fully painted (render()/drawMap() run
+   at boot before this ever appears) — a fresh fleet genuinely IS an empty
+   dashboard (zero cars, 06:00, no offers), so nothing here is a mock-up.
+   Three columns, matching .ops via the shared --wing custom property (see
+   :root) so the two layouts can never drift apart: a blurred-and-dimmed
+   left wing, a transparent centre holding the video + name field, and a
+   blurred-and-dimmed right wing. The player sees the real car console they
+   are about to operate, softened at the edges, live in the centre.
+
+   THE TRAP: do not put filter:blur() on .app or on #intro itself. A filter
+   on an ancestor creates a containing block, which breaks descendant
+   position:fixed elements — #ray, #intro, #dimscrim all rely on the
+   viewport as their containing block. backdrop-filter on the WING elements
+   only has no such effect; it blurs what is already painted behind them
+   without touching layout semantics. Same bug family as the tutorial-scrim
+   brightness-compensation dead end (see #dimscrim comment).
+
+   Autoplay is deliberately OFF: the player presses play themselves, so the
+   video's own audio can start normally rather than needing muted-for-
+   autoplay followed by an unmute click — see showIntro(). This means the
+   framing must look finished while paused: the poster is the first
+   impression, not the video. */
+/* THE NARROW-TIER BUG (found testing in Safari): the media query below hid
+   .intro-wing with display:none but never reset grid-template-columns away
+   from the 3-track wing/center/wing definition. display:none removes a grid
+   item from the auto-placement algorithm entirely — it does not leave its
+   track "empty and skipped", so with both wings gone the sole remaining
+   item (.intro-frame) auto-placed into TRACK 1 (sized to var(--wing), a few
+   hundred px) instead of spanning the full row. That is why the narrow
+   layout showed a small, off-centre, unlit box instead of a full-screen
+   overlay: the frame was boxed into what used to be the left wing's column.
+   Fix: the narrow tier now sets its own single-column grid-template-columns
+   (1fr) so there is only ever one track to place into, matching the one
+   visible child. */
+#intro{position:fixed;inset:0;z-index:90;display:grid;
+  background:radial-gradient(120% 120% at 50% 0%,rgba(38,42,52,.92),rgba(6,7,9,.95));
+  grid-template-columns:var(--wing) minmax(0,1fr) var(--wing)}
+#intro[hidden]{display:none}
+.intro-wing{height:100%;
   background:radial-gradient(120% 120% at 50% 0%,rgba(38,42,52,.92),rgba(6,7,9,.95));
   backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
-#intro[hidden]{display:none}
-.intro-frame{display:flex;flex-direction:column;align-items:center;gap:18px;
-  width:min(92vw,960px)}
+/* Sized off the actual centre-column width (100vw minus both wings minus
+   its own side padding), not an arbitrary vw fraction, so a wider window
+   hands the video more room automatically — capped at 1040px so it never
+   reads as absurdly oversized on an ultrawide monitor. aspect-ratio on
+   #intro-video (below) keeps 16:9 as this grows or shrinks. */
+.intro-frame{display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:18px;
+  width:min(calc(100vw - 2*var(--wing) - 64px),1040px);
+  justify-self:center;align-self:center;padding:0 16px}
+.intro-name{width:100%;display:flex;flex-direction:column;align-items:center;gap:6px}
+.intro-name label{color:rgba(255,255,255,.6);font-size:11.5px;letter-spacing:.04em}
+#intro-name-input{width:min(100%,320px);height:38px;padding:0 14px;border-radius:19px;
+  border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.08);
+  color:#fff;font:inherit;font-size:13px;text-align:center}
+#intro-name-input::placeholder{color:rgba(255,255,255,.4)}
+#intro-name-input:focus{outline:none;border-color:rgba(255,255,255,.55)}
+.intro-name small{color:rgba(255,255,255,.4);font-size:10.5px;line-height:1.4;
+  text-align:center;max-width:320px}
+/* Below the .ops single-column breakpoint there is no wing to blur (see
+   T4/1499px comment on .ops) — #intro keeps today's full-screen framing,
+   guarded in the SAME media query so the two can never disagree. Single
+   explicit column (see the bug note above #intro) so .intro-frame is the
+   only track and always spans full width, letting place-items:center
+   centre it in the viewport rather than in a leftover wing-sized track. */
+@media (max-width:1499px){
+  #intro{grid-template-columns:1fr;place-items:center}
+  .intro-wing{display:none}
+  .intro-frame{width:min(92vw,640px)}
+}
 .intro-brand{color:#fff;text-align:center}
 .intro-brand b{display:block;font-size:26px;font-weight:500;letter-spacing:.16em;
   text-transform:uppercase}
@@ -1549,10 +1691,16 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
   color:rgba(255,255,255,.55)}
 #intro-video{width:100%;aspect-ratio:16/9;border-radius:14px;background:#000;
   box-shadow:0 30px 70px -20px rgba(0,0,0,.7)}
-#intro-skip{height:38px;padding:0 18px;border:1px solid rgba(255,255,255,.28);
+.intro-btns{display:flex;gap:10px}
+#intro-skip,#intro-start{height:38px;padding:0 18px;border:1px solid rgba(255,255,255,.28);
   border-radius:19px;background:rgba(255,255,255,.08);color:#fff;font:inherit;
   font-size:12.5px;cursor:pointer;transition:background var(--dur-fast)}
 #intro-skip:hover{background:rgba(255,255,255,.16)}
+/* Start is the one path that actually leaves the overlay — see showIntro():
+   the video ending and Skip both only stop playback now, so it needs to
+   read as THE affirmative action, not a peer of Skip. */
+#intro-start.pri{background:var(--accent);border-color:var(--accent)}
+#intro-start.pri:hover{opacity:.88}
 
 /* Messages app — every beat stays readable, so nothing important is said
    only once (§9.2). */
@@ -1579,6 +1727,41 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
 #gar-close{height:32px;padding:0 15px;font:inherit;font-size:12.5px;cursor:pointer;
   background:var(--inset);border:1px solid var(--brd);border-radius:var(--r-ctl);color:var(--text-2)}
 #gar-close:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ---- trophies ----
+   Every colour here is a token; see the --gold note in :root for why a new
+   surface may not write a literal. #tr-close borrows #gar-close's rule via
+   the shared selector below rather than restating it. */
+#tr-close{height:32px;padding:0 15px;font:inherit;font-size:12.5px;cursor:pointer;
+  background:var(--inset);border:1px solid var(--brd);border-radius:var(--r-ctl);color:var(--text-2)}
+#tr-close:hover{border-color:var(--accent);color:var(--accent)}
+.tr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(178px,1fr));gap:8px;margin-bottom:6px}
+.tr-a{border:1px solid var(--brd);border-radius:var(--r-ctl);padding:9px 11px;
+  background:var(--inset);display:flex;gap:9px;align-items:flex-start}
+.tr-a .ms{font-size:17px;flex:0 0 auto;margin-top:1px;color:var(--text-4)}
+.tr-a b{display:block;font-size:12.5px;font-weight:500;color:var(--text-3)}
+.tr-a span{display:block;font-size:11px;line-height:1.35;color:var(--text-4);margin-top:2px}
+/* Earned. The gold is the only thing that changes, so an unearned tile
+   never reads as an error state — it is simply not lit yet. */
+.tr-a.got{background:var(--gold-bg);border-color:var(--gold-brd)}
+.tr-a.got .ms{color:var(--gold)}
+.tr-a.got b{color:var(--text-1)}
+.tr-a.got span{color:var(--text-2)}
+/* A secret nobody has found shows its name as a row of dashes and keeps its
+   hint back — the hint is the spoiler, not the title. */
+.tr-a.secret b{letter-spacing:.18em}
+.tr-board-city{margin:0 0 8px}
+.tr-board-city h5{font-size:11px;font-weight:500;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--text-3);margin-bottom:3px}
+.tr-row{display:flex;align-items:baseline;gap:8px;padding:3px 0;font-size:12.5px;
+  border-bottom:1px solid var(--brd-2)}
+.tr-row:last-child{border-bottom:0}
+.tr-row .rk{flex:0 0 20px;color:var(--text-4);font-size:11px}
+.tr-row .who{flex:1 1 auto;color:var(--text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tr-row .amt{font-weight:500;color:var(--text-1);font-variant-numeric:tabular-nums}
+.tr-row .sub{flex:0 0 auto;color:var(--text-4);font-size:11px;font-variant-numeric:tabular-nums}
+.tr-row.me .who{color:var(--accent);font-weight:500}
+.tr-row.first .rk{color:var(--gold)}
 .gar-sub{font-size:12px;color:var(--text-3);line-height:1.5;margin-bottom:14px}
 .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
 @media (max-width:820px){.cards{grid-template-columns:1fr}}
@@ -1742,7 +1925,7 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
 </style>
 </head>
 <body>
-<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><symbol id="i-car" viewBox="0 0 24 24"><path d="M4 14l1.9-5.4A2 2 0 017.8 7.2h8.4a2 2 0 011.9 1.4L20 14v4h-2.2M6.2 18H4v-4m0 0h16"/><circle cx="7.6" cy="18" r="1.5"/><circle cx="16.4" cy="18" r="1.5"/></symbol><symbol id="i-groups" viewBox="0 0 24 24"><circle cx="9" cy="9" r="2.6"/><path d="M3.5 19v-1.2A3.8 3.8 0 017.3 14h3.4a3.8 3.8 0 013.8 3.8V19"/><circle cx="17" cy="10" r="2"/><path d="M16 14h1.2A2.8 2.8 0 0120 16.8V18"/></symbol><symbol id="i-station" viewBox="0 0 24 24"><rect x="5" y="3.5" width="11" height="17" rx="2"/><path d="M11 7.5l-2.2 4h2.6L10.8 16l3.2-4.8h-2.6z"/><path d="M18.5 8.5v6a2 2 0 01-2 2"/></symbol><symbol id="i-receipt" viewBox="0 0 24 24"><path d="M6 3.5h12v16l-2-1.4-2 1.4-2-1.4-2 1.4-2-1.4z"/><path d="M9 8h6M9 12h5"/></symbol><symbol id="i-warning" viewBox="0 0 24 24"><path d="M12 4.5L21 19.5H3z"/><path d="M12 10v4.2M12 17h.01"/></symbol><symbol id="i-route" viewBox="0 0 24 24"><path d="M7 20.5V10a4 4 0 014-4h2.5"/><path d="M12 3.5L15 6l-3 2.5"/><path d="M17 20.5v-5.5a4 4 0 00-4-4"/></symbol><symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></symbol><symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.4 14.3A8.6 8.6 0 0110.2 3.7a7.6 7.6 0 1010.2 10.6z"/></symbol><symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 3v2m0 14v2M3 12h2m14 0h2M5.6 5.6L7 7m10 10l1.4 1.4m0-12.8L17 7M7 17l-1.4 1.4"/></symbol><symbol id="i-battery" viewBox="0 0 24 24"><rect x="3" y="8" width="15" height="8" rx="1.7"/><path d="M20.5 11v2"/><path d="M5.2 10.2h8.6v3.6H5.2z" class="f"/></symbol><symbol id="i-bt" viewBox="0 0 24 24"><path d="M12 3v18l5.4-5.4L7 8.6M12 3l5.4 5.4L7 15.4"/></symbol><symbol id="i-signal" viewBox="0 0 24 24"><path d="M4 20v-3M9 20v-6M14 20V9.5M19 20V5"/></symbol><symbol id="i-list" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2.2"/><path d="M8 9h8M8 13h8M8 17h5"/></symbol><symbol id="i-nav" viewBox="0 0 24 24"><path d="M20.5 3.5L3.5 10.8l7.6 2.1 2.1 7.6z"/></symbol><symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13.2 3L6 13.2h4.6L9.8 21l7.4-10.4h-4.6z"/></symbol><symbol id="i-agent" viewBox="0 0 24 24"><path d="M4 14v-2a8 8 0 0116 0v2"/><rect x="2.4" y="13" width="4.2" height="6.2" rx="1.7"/><rect x="17.4" y="13" width="4.2" height="6.2" rx="1.7"/><path d="M12.5 21.2H15a2 2 0 002-2"/></symbol><symbol id="i-cam" viewBox="0 0 24 24"><rect x="3" y="7" width="12" height="10" rx="2.2"/><path d="M15 11l6-3.2v8.4L15 13z"/></symbol><symbol id="i-call" viewBox="0 0 24 24"><path d="M6.4 3.6h3.1l1.5 3.9-2 1.5a11.2 11.2 0 006 6l1.5-2 3.9 1.5v3.1a1.5 1.5 0 01-1.7 1.5A16.6 16.6 0 015 5.3 1.5 1.5 0 016.4 3.6z"/></symbol><symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol><symbol id="i-expand" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-6.5 6.5M10 20H4v-6M4 20l6.5-6.5"/></symbol><symbol id="i-tune" viewBox="0 0 24 24"><path d="M4 7.5h9M19 7.5h1M4 16.5h4M14 16.5h6"/><circle cx="16" cy="7.5" r="2.2"/><circle cx="11" cy="16.5" r="2.2"/></symbol><symbol id="i-renew" viewBox="0 0 24 24"><path d="M4.8 12A7.2 7.2 0 0116.4 6.3"/><path d="M19.2 12a7.2 7.2 0 01-11.6 5.7"/><path d="M13.6 3.4l3 2.9-3.4 1.5M10.4 20.6l-3-2.9 3.4-1.5"/></symbol><symbol id="i-charging" viewBox="0 0 24 24"><rect x="3" y="8" width="15" height="8" rx="1.7"/><path d="M20.5 11v2"/><path d="M11.4 9.4L8.6 12.6h2.6L10.4 15.6l3-3.4h-2.4z"/></symbol><symbol id="i-fence" viewBox="0 0 24 24"><path d="M5 20.5V8l2-2 2 2v12.5M15 20.5V8l2-2 2 2v12.5M3 11h18M3 15.5h18"/></symbol><symbol id="i-plane" viewBox="0 0 24 24"><path d="M3 20h18"/><path d="M4.2 14.6L20 10l-2.4-3-3 1L9.4 5.2 7.2 5.8l3.9 4.6-5.1 1z"/></symbol><symbol id="i-speed" viewBox="0 0 24 24"><path d="M4.5 17.5a8.5 8.5 0 1115 0"/><path d="M12.4 13.6L16.5 10"/><circle cx="12" cy="14.4" r="1.4"/></symbol><symbol id="i-report" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.8v4.6M12 16h.01"/></symbol><symbol id="i-gavel" viewBox="0 0 24 24"><path d="M4 20.5h9"/><path d="M7.5 16.5l6.5-6.5"/><path d="M11.2 5.2l6.4 6.4-2.4 2.4-6.4-6.4z"/><path d="M15.4 3l5.6 5.6"/></symbol><symbol id="i-coffee" viewBox="0 0 24 24"><path d="M4 8h13v6a5 5 0 01-5 5H9a5 5 0 01-5-5z"/><path d="M17 9.5h1.8a2.2 2.2 0 010 4.4H17"/><path d="M7 4.6c0 .8.9.9.9 1.8M11 4.2c0 .9 1 1 1 2"/></symbol><symbol id="i-sound" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16.3 9.2a4 4 0 010 5.6M19 6.5a7.8 7.8 0 010 11"/></symbol><symbol id="i-mute" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9l5 6M21 9l-5 6"/></symbol></defs></svg>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><symbol id="i-car" viewBox="0 0 24 24"><path d="M4 14l1.9-5.4A2 2 0 017.8 7.2h8.4a2 2 0 011.9 1.4L20 14v4h-2.2M6.2 18H4v-4m0 0h16"/><circle cx="7.6" cy="18" r="1.5"/><circle cx="16.4" cy="18" r="1.5"/></symbol><symbol id="i-groups" viewBox="0 0 24 24"><circle cx="9" cy="9" r="2.6"/><path d="M3.5 19v-1.2A3.8 3.8 0 017.3 14h3.4a3.8 3.8 0 013.8 3.8V19"/><circle cx="17" cy="10" r="2"/><path d="M16 14h1.2A2.8 2.8 0 0120 16.8V18"/></symbol><symbol id="i-station" viewBox="0 0 24 24"><rect x="5" y="3.5" width="11" height="17" rx="2"/><path d="M11 7.5l-2.2 4h2.6L10.8 16l3.2-4.8h-2.6z"/><path d="M18.5 8.5v6a2 2 0 01-2 2"/></symbol><symbol id="i-receipt" viewBox="0 0 24 24"><path d="M6 3.5h12v16l-2-1.4-2 1.4-2-1.4-2 1.4-2-1.4z"/><path d="M9 8h6M9 12h5"/></symbol><symbol id="i-warning" viewBox="0 0 24 24"><path d="M12 4.5L21 19.5H3z"/><path d="M12 10v4.2M12 17h.01"/></symbol><symbol id="i-route" viewBox="0 0 24 24"><path d="M7 20.5V10a4 4 0 014-4h2.5"/><path d="M12 3.5L15 6l-3 2.5"/><path d="M17 20.5v-5.5a4 4 0 00-4-4"/></symbol><symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></symbol><symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.4 14.3A8.6 8.6 0 0110.2 3.7a7.6 7.6 0 1010.2 10.6z"/></symbol><symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 3v2m0 14v2M3 12h2m14 0h2M5.6 5.6L7 7m10 10l1.4 1.4m0-12.8L17 7M7 17l-1.4 1.4"/></symbol><symbol id="i-battery" viewBox="0 0 24 24"><rect x="3" y="8" width="15" height="8" rx="1.7"/><path d="M20.5 11v2"/><path d="M5.2 10.2h8.6v3.6H5.2z" class="f"/></symbol><symbol id="i-bt" viewBox="0 0 24 24"><path d="M12 3v18l5.4-5.4L7 8.6M12 3l5.4 5.4L7 15.4"/></symbol><symbol id="i-signal" viewBox="0 0 24 24"><path d="M4 20v-3M9 20v-6M14 20V9.5M19 20V5"/></symbol><symbol id="i-list" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2.2"/><path d="M8 9h8M8 13h8M8 17h5"/></symbol><symbol id="i-nav" viewBox="0 0 24 24"><path d="M20.5 3.5L3.5 10.8l7.6 2.1 2.1 7.6z"/></symbol><symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13.2 3L6 13.2h4.6L9.8 21l7.4-10.4h-4.6z"/></symbol><symbol id="i-agent" viewBox="0 0 24 24"><path d="M4 14v-2a8 8 0 0116 0v2"/><rect x="2.4" y="13" width="4.2" height="6.2" rx="1.7"/><rect x="17.4" y="13" width="4.2" height="6.2" rx="1.7"/><path d="M12.5 21.2H15a2 2 0 002-2"/></symbol><symbol id="i-cam" viewBox="0 0 24 24"><rect x="3" y="7" width="12" height="10" rx="2.2"/><path d="M15 11l6-3.2v8.4L15 13z"/></symbol><symbol id="i-call" viewBox="0 0 24 24"><path d="M6.4 3.6h3.1l1.5 3.9-2 1.5a11.2 11.2 0 006 6l1.5-2 3.9 1.5v3.1a1.5 1.5 0 01-1.7 1.5A16.6 16.6 0 015 5.3 1.5 1.5 0 016.4 3.6z"/></symbol><symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol><symbol id="i-expand" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-6.5 6.5M10 20H4v-6M4 20l6.5-6.5"/></symbol><symbol id="i-tune" viewBox="0 0 24 24"><path d="M4 7.5h9M19 7.5h1M4 16.5h4M14 16.5h6"/><circle cx="16" cy="7.5" r="2.2"/><circle cx="11" cy="16.5" r="2.2"/></symbol><symbol id="i-renew" viewBox="0 0 24 24"><path d="M4.8 12A7.2 7.2 0 0116.4 6.3"/><path d="M19.2 12a7.2 7.2 0 01-11.6 5.7"/><path d="M13.6 3.4l3 2.9-3.4 1.5M10.4 20.6l-3-2.9 3.4-1.5"/></symbol><symbol id="i-charging" viewBox="0 0 24 24"><rect x="3" y="8" width="15" height="8" rx="1.7"/><path d="M20.5 11v2"/><path d="M11.4 9.4L8.6 12.6h2.6L10.4 15.6l3-3.4h-2.4z"/></symbol><symbol id="i-fence" viewBox="0 0 24 24"><path d="M5 20.5V8l2-2 2 2v12.5M15 20.5V8l2-2 2 2v12.5M3 11h18M3 15.5h18"/></symbol><symbol id="i-plane" viewBox="0 0 24 24"><path d="M3 20h18"/><path d="M4.2 14.6L20 10l-2.4-3-3 1L9.4 5.2 7.2 5.8l3.9 4.6-5.1 1z"/></symbol><symbol id="i-speed" viewBox="0 0 24 24"><path d="M4.5 17.5a8.5 8.5 0 1115 0"/><path d="M12.4 13.6L16.5 10"/><circle cx="12" cy="14.4" r="1.4"/></symbol><symbol id="i-report" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.8v4.6M12 16h.01"/></symbol><symbol id="i-gavel" viewBox="0 0 24 24"><path d="M4 20.5h9"/><path d="M7.5 16.5l6.5-6.5"/><path d="M11.2 5.2l6.4 6.4-2.4 2.4-6.4-6.4z"/><path d="M15.4 3l5.6 5.6"/></symbol><symbol id="i-coffee" viewBox="0 0 24 24"><path d="M4 8h13v6a5 5 0 01-5 5H9a5 5 0 01-5-5z"/><path d="M17 9.5h1.8a2.2 2.2 0 010 4.4H17"/><path d="M7 4.6c0 .8.9.9.9 1.8M11 4.2c0 .9 1 1 1 2"/></symbol><symbol id="i-sound" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16.3 9.2a4 4 0 010 5.6M19 6.5a7.8 7.8 0 010 11"/></symbol><symbol id="i-mute" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9l5 6M21 9l-5 6"/></symbol><symbol id="i-trophy" viewBox="0 0 24 24"><path d="M8 4h8v5a4 4 0 01-8 0z"/><path d="M8 5.5H5.5v1.2A3.3 3.3 0 008.4 10M16 5.5h2.5v1.2A3.3 3.3 0 0115.6 10"/><path d="M12 13v3.5M9 20h6M10 16.5h4l.6 3.5H9.4z"/></symbol></defs></svg>
 
 <img id="bgmap" src="" alt="" aria-hidden="true">
 <div id="bgtint"></div>
@@ -1772,10 +1955,14 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
     <div class="tb-item"><label>Clock</label><b id="tb-clock">06:00</b></div>
     <div class="tb-item tb-cash" id="tb-cash-box"><label>Cash</label><b id="tb-cash">$0</b></div>
     <div class="tb-item tb-opt"><label>Permit</label><b id="tb-permit">Supervised</b></div>
-    <div class="tb-item"><label>Shift</label><b id="tb-shift">Off</b></div>
     </div><!-- /.tb-info -->
 
+    <!-- SHIFT leads the control line rather than trailing the readouts, so the
+         row settles into exactly two lines: everything you READ on the first,
+         everything you PRESS on the second, with the shift status introducing
+         the Clock button it belongs to. -->
     <div class="tb-ctrls">
+    <div class="tb-item tb-shiftitem"><label>Shift</label><b id="tb-shift">Off</b></div>
     <button class="ghost clockbtn" id="clock">Clock on</button>
     <div class="seg" id="seg" role="group" aria-label="Time speed">
       <button data-speed="0" aria-pressed="false" aria-label="Pause"><svg class="ms" style="font-size:15px;vertical-align:-3px"><use href="#i-pause"/></svg></button>
@@ -1787,6 +1974,12 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
     <button class="ghost" id="saves" aria-label="Saves"><svg class="ms"><use href="#i-list"/></svg><span>Saves</span></button>
     <button class="ghost" id="theme" aria-label="Night"><svg class="ms"><use href="#i-moon"/></svg><span>Night</span></button>
     <button class="ghost" id="sound" aria-label="Sound" aria-pressed="true"><svg class="ms"><use href="#i-sound"/></svg><span>Sound</span></button>
+    <!-- Rename the local player profile — see PROFILE/profileSave(). Sits with
+         the rest of the settings row because it is one, not a modal of its
+         own: a name change is a one-line prompt, written straight to the
+         profile record, same as every other control here writes its own
+         piece of state. -->
+    <button class="ghost" id="profile-btn" aria-label="Player name" title="Rename"><svg class="ms"><use href="#i-agent"/></svg><span id="profile-tag">Player</span></button>
     <!-- Top-right, last in the row, styled exactly like its neighbours so it
          reads as part of the console rather than an advert. It opens a Paolo
          message; it never opens itself. -->
@@ -1858,6 +2051,10 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
         <button class="t-app" data-c="red"   aria-pressed="false" data-panel="panel-platforms"><span class="ring"><svg class="ms"><use href="#i-agent"/></svg></span><label>Ops</label></button>
         <button class="t-app" id="app-camera" data-c="green" aria-pressed="false"><span class="ring"><svg class="ms"><use href="#i-cam"/></svg></span><label>Camera</label></button>
         <button class="t-app" data-c="blue"  aria-pressed="false" data-panel="panel-comms"><span class="ring"><svg class="ms"><use href="#i-call"/></svg></span><label>Comms</label></button>
+        <!-- Opens a modal rather than flashing a panel, so it needs its own
+             id and a branch in the nav handler alongside app-map/app-camera
+             — the generic `data-panel` path would have nothing to flash. -->
+        <button class="t-app" id="app-trophy" data-c="orange" aria-pressed="false"><span class="ring"><svg class="ms"><use href="#i-trophy"/></svg></span><label>Trophies</label></button>
       </nav>
 
       <div class="t-card">
@@ -2078,7 +2275,7 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
 
 <div class="modal" id="report" role="dialog" aria-modal="true" aria-labelledby="report-title" hidden>
   <div class="rep" tabindex="-1">
-    <h3 id="report-title">Shift <span id="rp-day">1</span> complete</h3>
+    <h3 id="report-title">Shift <span id="rp-day">1</span> complete <small id="rp-driver" style="font-weight:400;opacity:.6"></small></h3>
     <div id="rp-body"></div>
     <button id="rp-go">Close <span id="rp-next" hidden></span></button>
   </div>
@@ -2101,16 +2298,63 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
   </div>
 </div>
 
+<!-- Trophies: achievements + the per-city leaderboard.
+
+     A MODAL, NOT A DOCK PANEL, and that was a deliberate reversal. The
+     obvious home was a fourth .panel in #stack-right, but that stack has
+     flattened its siblings twice already (see the "2 grid tracks for 3
+     panels" note in the wide-layout CSS) and this is a surface you open
+     occasionally, not one you watch. A modal costs the grid nothing and
+     follows #garage/#savemgr exactly. -->
+<div class="modal" id="trophy" role="dialog" aria-modal="true" aria-labelledby="trophy-title" hidden>
+  <div class="rep" style="width:620px" tabindex="-1">
+    <div class="gar-head">
+      <h3 id="trophy-title">Trophies</h3>
+      <span class="gar-cash" id="tr-count">0 / 0</span>
+      <button id="tr-close">Close</button>
+    </div>
+    <h4>Achievements</h4>
+    <div class="tr-grid" id="tr-list"></div>
+    <h4>Best shift by city</h4>
+    <div id="tr-board"></div>
+    <div class="sv-foot">
+      <span class="note" id="tr-note"></span>
+    </div>
+  </div>
+</div>
+
 <!-- Welcome intro video — the game's cold open, shown once before the
      tutorial starts. 16:9, controls visible, autoplay off on purpose (see
      the CSS block above and showIntro() for why). -->
 <div id="intro" hidden>
+  <div class="intro-wing" aria-hidden="true"></div>
   <div class="intro-frame">
     <div class="intro-brand"><b>Deadhead</b><span>Robotaxi fleet simulator</span></div>
-    <video id="intro-video" controls playsinline preload="metadata"
+    <!-- preload="none", not "metadata". This element exists in the DOM from
+         first paint even though #intro starts hidden, so "metadata" made
+         every visitor open a connection to a 5 MB mp4 before they had
+         decided to watch anything — and on a phone on mobile data that
+         competes with the 650 KB of game that actually needs to arrive.
+         Cloudflare serves static assets free and unmetered, so this is not
+         about cost; it is about the first ten seconds after a cold link.
+         The poster is a separate 24 KB jpg and still renders, so the frame
+         looks identical — the video only starts fetching when the player
+         presses play. -->
+    <video id="intro-video" controls playsinline preload="none"
       poster="deadhead-intro-poster.jpg" src="Deadhead-intro-video.mp4"></video>
-    <button id="intro-skip">Skip intro</button>
+    <div class="intro-name">
+      <label for="intro-name-input">Your name</label>
+      <input id="intro-name-input" type="text" maxlength="24" autocomplete="off"
+        placeholder="Deadhead">
+      <small>Kept on this device, with a random id. Never shared with anyone but
+        this game's own stats — see the control strip to change or clear it later.</small>
+    </div>
+    <div class="intro-btns">
+      <button id="intro-skip">Skip intro</button>
+      <button id="intro-start" class="pri">Start</button>
+    </div>
   </div>
+  <div class="intro-wing" aria-hidden="true"></div>
 </div>
 
 <!-- Ray. Bottom-left, above the dock, never modal, never over the car rail.
@@ -2155,7 +2399,7 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
 <!-- save manager -->
 <div class="modal" id="savemgr" role="dialog" aria-modal="true" aria-labelledby="savemgr-title" hidden>
   <div class="rep" style="width:560px" tabindex="-1">
-    <h3 id="savemgr-title">Saved fleets</h3>
+    <h3 id="savemgr-title">Saved fleets <small id="sv-driver" style="font-weight:400;opacity:.6"></small></h3>
     <h4>Autosave</h4>
     <div id="sv-auto"></div>
     <h4>Manual slots</h4>
@@ -3564,9 +3808,20 @@ const S={
   offers:[],          /* undecided offers awaiting accept/decline */
   d:null
 };
+/* Per-car shift ledger, alongside S.d (the whole-fleet total S.d has always
+   been). Exists so admin's Cars view (onboardingplan.md §4 follow-up) can
+   attribute earnings to the vehicle that actually earned them instead of
+   spreading a whole shift's numbers across every model in the fleet — see
+   appendHistoryRow()'s perModel build below. Reset in lockstep with S.d, at
+   every newDay() (shift start), and initialised on
+   every addCar() so a car bought mid-shift starts at zero rather than
+   undefined. */
+function zeroCarD(){ return {gross:0,cost:0,dep:0,maint:0,ins:0,soft:0,fixed:0,
+  energy:0,miles:0,rides:0,cancels:0} }
 function newDay(){
   S.d={gross:0,cost:0,energy:0,payroll:0,miles:0,done:0,lost:0,unserved:0,blocked:0,
        cancels:0,dep:0,maint:0,ins:0,soft:0,commission:0,fixed:0};
+  S.cars.forEach(function(c){ c.d=zeroCarD() });
 }
 newDay();
 
@@ -3585,7 +3840,8 @@ function addCar(model,hold){
     owed:(hold==='finance')?Math.max(0,(v?(v.price||0)-(v.down||0):0)):0,
     /* Map-only bookkeeping: the endpoint this car last sat at, and where its
        current leg began. See roadFix(). The simulation never reads either. */
-    at:z.n,p0:null,hdg:0});
+    at:z.n,p0:null,hdg:0,
+    d:zeroCarD()});
 }
 /* NO CAR AT START. Superseded GameMechanics §3.2, which handed you one so
    the game would not open on a purchase decision. It now does open on that
@@ -3990,6 +4246,7 @@ function sellCar(carId){
     : 'sold for '+money(amt))+' · '+uKm(c.odo,0)+' on the odometer',0);
   if(S.sel===c.id) S.sel=S.cars.length?S.cars[0].id:null;
   render(); drawMap();
+  autosaveSoon('sell');
   /* Zero cars is the game's own designed starting state, not a special case
      to guard against — openGarage() already handles it at boot. */
   if(!S.cars.length) openGarage();
@@ -4032,6 +4289,8 @@ function drive(c,km){
   S.d.ins+=mi*insPerMile(); S.d.soft+=mi*sp.cpm.soft;
   const c4=mi*(sp.cpm.dep*depK+sp.cpm.maint+insPerMile()+sp.cpm.soft);
   S.d.cost+=c4; S.cash-=c4;
+  if(c.d){ c.d.miles+=mi; c.d.dep+=mi*sp.cpm.dep*depK; c.d.maint+=mi*sp.cpm.maint;
+    c.d.ins+=mi*insPerMile(); c.d.soft+=mi*sp.cpm.soft; c.d.cost+=c4 }
 }
 function log(who,what,kind){
   S.log.unshift({t:S.t,who:who,what:what,kind:kind||0});
@@ -4069,6 +4328,16 @@ function sndIdle(){ beep(520,0.08,'triangle',0.05) }
 function sndCharged(){ beep(660,0.07,'triangle',0.05); setTimeout(function(){beep(880,0.09,'triangle',0.05)},80) }
 function sndBlocked(){ beep(220,0.15,'square',0.06) }
 function sndClick(){ beep(1400,0.03,'square',0.03) }
+/* The "ka-ching" — a quick three-note rising sine arpeggio, brighter and
+   busier than every other cue here on purpose: this is the one moment the
+   game is supposed to feel GOOD rather than merely informative. Fires the
+   instant a fare is credited (drive(), on drop-off), never on anything
+   that merely changes a car's state. */
+function sndPaid(){
+  beep(1046.5,0.05,'sine',0.05);
+  setTimeout(function(){beep(1318.5,0.05,'sine',0.055)},50);
+  setTimeout(function(){beep(1568,0.13,'sine',0.06)},100);
+}
 
 /* ---------------- simulation ---------------- */
 function stepCar(c,dt){
@@ -4087,6 +4356,7 @@ function stepCar(c,dt){
     c.chAdded=(c.chAdded||0)+(c.soc-before)/100*spC.kwh;
     const used=(c.soc-before)/100*spC.kwh*tariff(hour());
     S.d.energy+=used; S.d.cost+=used; S.cash-=used;
+    if(c.d){ c.d.energy+=used; c.d.cost+=used }
     /* Automatic top-ups stop at CFG.chargeTo; a charge the operator ordered
        fills right up, because deliberately buying cheap kWh off-peak is the
        whole reason to order one. */
@@ -4104,7 +4374,7 @@ function stepCar(c,dt){
       log(c.id,'cleared after '+Math.round(c.blocked)+'s',0);
       c.blocked=0;
     } else if(c.blocked>CFG.cancelAt&&c.ride){
-      S.d.cancels++; S.safety=clamp(S.safety-2.5,0,100);
+      S.d.cancels++; if(c.d) c.d.cancels++; S.safety=clamp(S.safety-2.5,0,100);
       log(c.id,'rider cancelled — '+Math.round(c.blocked)+'s wait',2);
       S.rides=S.rides.filter(function(r){return r!==c.ride});
       c.ride=null; c.reached=false; c.state='idle'; c.blocked=0; c.route=[];
@@ -4162,10 +4432,11 @@ function stepCar(c,dt){
       const f=c.ride.fare, cut=f*(pf?pf.cut:0.25), take=f-cut;
       S.cash+=take; S.d.gross+=f; S.d.commission+=cut; S.d.cost+=cut;
       S.d.done++; c.earn+=take;
+      if(c.d){ c.d.gross+=f; c.d.cost+=cut; c.d.rides++ }
       log(c.id,'fare '+money2(f)+' less '+money2(cut)+' cut · '+c.ride.to,0);
       S.rides=S.rides.filter(function(r){return r!==c.ride});
       c.ride=null; c.reached=false; c.state='idle'; c.idleFor=0;
-      sndIdle();
+      sndPaid();
     }
   }
 }
@@ -4242,7 +4513,10 @@ function stepOnce(dt,realDt){
 /* Fixed costs are owed per calendar day, clocked on or not. */
 function billMidnight(){
   let fix=0;
-  S.cars.forEach(function(c){ fix+=fixedPerCar(c) });
+  S.cars.forEach(function(c){
+    const f=fixedPerCar(c); fix+=f;
+    if(c.d){ c.d.fixed+=f; c.d.cost+=f }
+  });
   S.d.fixed+=fix; S.d.cost+=fix; S.cash-=fix;
   /* The payment just charged above included a principal slice, so retire it.
      Done after billing, not before, so the last payment is still taken.
@@ -4312,6 +4586,12 @@ function checkUnlocks(){
     log('Console',gained+' unlocked',0);
     render();
   }
+  /* Piggybacked on the same tick for the same reason: both are "has a
+     threshold been crossed since last time" scans over a short table of
+     cheap predicates, and both must stay cheap. checkAchievements() with no
+     argument evaluates only the `live` entries — the shift-end ones are
+     driven from appendHistoryRow(). */
+  checkAchievements();
   return gained;
 }
 
@@ -4349,8 +4629,13 @@ const RAY=[
   /* Beat 1 no longer says "I sold you that car" — you have no car yet. The
      opening decision is which one, and how you hold it. */
   {n:1, spot:'gar-cards',
-   t:"Paolo Cortez. Forty-one years in a cab before I got out, while getting out "+
-     "was still my idea.<br><br>Seven and a half thousand dollars and no car. You can't buy "+
+   /* {NAME} is the only beat that greets the player by name (open question in
+      onboardingplan.md §2, resolved conservatively: once, not everywhere —
+      Paolo using it in every beat reads as a mail-merge). rayShow() replaces
+      it, already escaped. */
+   t:"Welcome to Deadhead Robotaxi Fleet Ops. My name is Paolo Cortez. Forty-one "+
+     "years in a cab before I got out, while getting out was still my idea. "+
+     "You're {NAME}, I'm told.<br><br>Seven and a half thousand dollars and no car. You can't buy "+
      "one outright on that, so you'll rent or you'll put money down. Rent costs "+
      "nothing today and the most every day after."},
   {n:2, spot:'tb-cash-box',
@@ -4753,7 +5038,8 @@ function rayShow(n){
   const b=RAY.filter(function(x){return x.n===n})[0];
   if(!b||S.ray.skipped) return;
   S.ray.cur=n;
-  $('ray-text').innerHTML=b.t;
+  $('ray-text').innerHTML=b.t.indexOf('{NAME}')>=0
+    ?b.t.replace('{NAME}',escapeHtml(playerName())):b.t;
   rayFoot('Got it','Skip',n+' of '+RAY.length);
   $('ray').hidden=false;
   raySpot(b.spot);
@@ -4896,6 +5182,7 @@ function clockOn(){
   /* Beat 1 has already fired by now — it arrives with the garage, before
      there is a car to clock on with. */
   setSpeed(1); render();
+  autosaveSoon('clock-on');
 }
 function clockOff(quiet){
   if(!S.onClock) return;
@@ -4907,6 +5194,7 @@ function clockOff(quiet){
   });
   S.rides=[];
   log('Shift','clocked off at '+hhmm(S.t),0);
+  autosaveSoon('clock-off');
   if(quiet){ setSpeed(0); render(); return }
   startFastForward();
 }
@@ -4929,10 +5217,24 @@ function startFastForward(){
 }
 function stopFastForward(){
   S.ffwd=false; setSpeed(0); render();
-  if(S.over) return;             /* bankruptcy has its own end-state UI */
+  if(S.over){
+    /* Bankruptcy returns early and skips shiftReport()/rayCheck() — it has
+       its own end-state UI — but it still gets a history row filed. It is
+       the single most informative row in the whole ledger (onboardingplan.md
+       §3), and skipping it here would mean the one run everyone would want
+       to look at in admin later never left a trace. No safety bump, though:
+       that recovery is for a shift that finished on its own feet. */
+    appendHistoryRow();
+    return;
+  }
   /* A shift with no cancellations earns some safety back — the score
      needed a way up, not just a way down. */
   if(S.d.cancels===0) S.safety=clamp(S.safety+3,0,100);
+  /* Immediately before shiftReport(), same as the plan calls for: this is
+     the single point every finished shift passes through (fast-forward
+     included), and it is after the safety adjustment above so the row
+     records the safety value the player is about to see. */
+  appendHistoryRow();
   shiftReport();
   rayCheck();
 }
@@ -4947,6 +5249,13 @@ function shiftReport(){
   const billedH=S.billedSec/3600;
   $('rp-day').textContent=S.shiftNo;
   $('rp-next').textContent=S.shiftNo+1;
+  /* One global read (PROFILE.name) — cheap everywhere, per onboardingplan.md
+     §2. textContent, not innerHTML, so this is deliberately NOT run through
+     escapeHtml() — that helper produces HTML entities, and textContent
+     would print them literally rather than render them. Escaping only
+     matters at innerHTML call sites (see the row() build below, and
+     rayCheck's greeting). */
+  $('rp-driver').textContent=playerName();
   $('rp-body').innerHTML=
     row('Shift length',workedH.toFixed(1)+' h')+
     row('Rides completed',d.done)+
@@ -6181,12 +6490,16 @@ function cityLockMsg(btn,id){
   const night=document.documentElement.getAttribute('data-theme')==='night';
   const t=c.tone&&(night?c.tone.night:c.tone.day);
   if(t&&t.tint) lockEl.style.setProperty('--ct',t.tint);
-  lockEl.innerHTML='<span class="avatar" aria-hidden="true">PC</span>'+
-    '<span class="col"><span class="who"><b>Paolo Cortez</b>'+
-    '<span>Messages</span></span>'+
-    '<span class="bubble">'+escapeHtml(cityLockLine(id))+'</span>'+
-    '<span class="need">'+escapeHtml(c.name)+' — <b>'+
-    escapeHtml(gateHint(c.needs))+'</b></span></span>';
+  /* Divs, not spans. The first version used spans and the bubble stayed inline,
+     which paints padding and background per line fragment — see the CSS note. */
+  lockEl.innerHTML='<div class="avatar" aria-hidden="true">PC</div>'+
+    '<div class="col"><div class="who"><b>Paolo Cortez</b>'+
+    '<span>Messages</span></div>'+
+    '<div class="bubble">'+escapeHtml(cityLockLine(id))+'</div>'+
+    /* The rule as a second message: how a person texts a condition after an
+       opinion, and it keeps the sentence that matters out of caption type. */
+    '<div class="bubble"><span class="need">'+escapeHtml(c.name)+'</span> — '+
+    escapeHtml(gateHint(c.needs))+'.</div></div>';
   lockEl.hidden=false;
   const r=btn.getBoundingClientRect(), m=8;
   const lw=lockEl.offsetWidth, lh=lockEl.offsetHeight;
@@ -6955,9 +7268,25 @@ document.querySelectorAll('.t-apps .t-app').forEach(function(b){
       else flashSection('panel-incidents');
       return;
     }
+    if(b.id==='app-trophy'){ openTrophies(); return }
     if(b.dataset.panel) flashSection(b.dataset.panel);
   });
 });
+/* The nav-icon equivalent of flashSection(), for the two things that live in
+   a modal and so have no panel to pulse. Same remove/reflow/re-add dance and
+   the same 1450ms as flashSection — the point is that a player who just
+   earned something is shown WHERE to go look, and the icon is the only part
+   of that path guaranteed to be on screen in every layout tier. */
+function flashNav(id){
+  const el=$(id);
+  if(!el) return;
+  el.classList.remove('nav-highlight');
+  void el.offsetWidth;
+  el.classList.add('nav-highlight');
+  bringIntoView(el);
+  clearTimeout(el._navFlashT);
+  el._navFlashT=setTimeout(function(){ el.classList.remove('nav-highlight') },1450);
+}
 /* There used to be a blind aria-pressed flipper here, from when these four
    icons were decoration. It bubbled AFTER the real handlers and undid the
    value render() had just written, so the state and the light disagreed.
@@ -7009,7 +7338,7 @@ const SLOTS=['slot1','slot2','slot3'];
    SAVE_V above is the STATE SHAPE version and moves only when the
    snapshot format changes — the two are deliberately independent, so
    shipping 0.9.0 does not invalidate 0.8.0 saves. */
-const VERSION='0.26.3';
+const VERSION='0.33.0';
 
 function snapshot(){
   return {
@@ -7427,11 +7756,12 @@ function setSpeed(v){
    ============================================================ */
 function physKey(k){ return k==='auto'?('auto:'+S.city):k }
 
-const PROG_V=3;
-let PROG={unlocked:{austin:true}, results:{}, last:'austin', eggs:{}};
+const PROG_V=4;
+let PROG={unlocked:{austin:true}, results:{}, last:'austin', eggs:{}, achv:{}};
 function progSave(){
   return Store.put('progress',{v:PROG_V, unlocked:PROG.unlocked,
-    results:PROG.results, last:PROG.last, eggs:PROG.eggs}).catch(function(){});
+    results:PROG.results, last:PROG.last, eggs:PROG.eggs,
+    achv:PROG.achv}).catch(function(){});
 }
 /* ---- EASTER EGGS ------------------------------------------------------
    Things that are IN the game but not ON the strip until somebody goes looking.
@@ -7466,6 +7796,161 @@ function findEgg(id){
   progSave();
   return true;
 }
+/* ---- ACHIEVEMENTS -----------------------------------------------------
+   THE THIRD THING THAT LIVES IN PROGRESS, and for the same reason the eggs
+   above do: an achievement is something the PLAYER did, not something a run
+   contains. Going bankrupt in Austin and starting Dallas clean should not
+   un-earn "Repossessed". So: PROG, not S.
+
+   TWO KINDS OF PREDICATE, and the split matters for cost.
+
+   `live()` runs on the sim tick, alongside checkUnlocks(), so it must be as
+   cheap as that one — a field read or a short array scan, nothing more.
+   `shift(r)` runs once, at shift end, against the history row that
+   appendHistoryRow() just built, so it can be as expensive as it likes and
+   gets the whole finished-shift ledger to work with. An entry declares one
+   or the other, never both. A handful of achievements have neither and are
+   awarded explicitly at the moment they happen (see awardAchv() callers) —
+   'hands-on' is one, because "you personally drove a blocked car out" is an
+   event, not a state anything still holds afterwards.
+
+   ORDER IS DISPLAY ORDER. The trophy panel renders this array top to
+   bottom, so it reads first-steps -> money -> discipline -> fleet ->
+   disaster -> cities -> secrets, roughly the order a player meets them.
+
+   `secret:true` hides the hint until it is earned. Used only for the two
+   that would stop being fun if the panel told you how: the Easter egg, and
+   the mini-game most players never discover.
+
+   ADDING ONE: append here, add the id to ACHV_IDS in deploy/src/index.js
+   (the server whitelist) and to ACHV_NAMES in deploy/public/admin.html
+   (the admin label map). Drift costs an unlabelled admin row, nothing
+   worse — the game is the authority and never asks the server what an
+   achievement is. */
+const ACHV=[
+  {id:'first-car',   name:'Keys',            hint:'Put your first car in service.',
+   live:function(){ return S.cars.length>0 }},
+  {id:'first-ride',  name:'Fare One',        hint:'Complete your first ride.',
+   live:function(){ return !!(S.d&&S.d.done>0) }},
+  {id:'first-shift', name:'Clocked Off',     hint:'Finish a shift.',
+   shift:function(){ return true }},
+
+  {id:'black',       name:'In the Black',    hint:'Finish a shift with a profit.',
+   shift:function(r){ return r.net>0 }},
+  {id:'net-500',     name:'Good Day',        hint:'Net $500 in a single shift.',
+   shift:function(r){ return r.net>=500 }},
+  {id:'net-1500',    name:'Printing',        hint:'Net $1,500 in a single shift.',
+   shift:function(r){ return r.net>=1500 }},
+  {id:'cash-10k',    name:'Five Figures',    hint:'Reach $10,000 in the bank.',
+   live:function(){ return S.cash>=10000 }},
+
+  {id:'clean-sheet', name:'Clean Sheet',     hint:'Ten rides in a shift, no cancellations.',
+   shift:function(r){ return r.cancels===0&&r.rides>=10 }},
+  {id:'safety-95',   name:'Spotless',        hint:'End a working shift with safety at 95 or better.',
+   shift:function(r){ return r.safety>=95&&r.rides>=5 }},
+  {id:'meter-runner',name:'Meter Runner',    hint:'Average $120 an hour over a shift of two hours or more.',
+   shift:function(r){ return r.workedH>=2&&(r.net/r.workedH)>=120 }},
+
+  {id:'fleet-3',     name:'Small Fleet',     hint:'Run three cars at once.',
+   live:function(){ return S.cars.length>=3 }},
+  {id:'fleet-5',     name:'Operator',        hint:'Run five cars at once.',
+   live:function(){ return S.cars.length>=5 }},
+  {id:'purpose-built',name:'Purpose Built',  hint:'Put a Cybercab in service.',
+   live:function(){ return hasModel('cybercab') }},
+  {id:'why-a-truck', name:'Why a Truck',     hint:'Put a Cybertruck in service. Nobody will stop you.',
+   live:function(){ return hasModel('cybertruck') }},
+
+  /* Not a consolation prize — a record of the thing this game is actually
+     about. Sitting in the panel next to "Printing" is the point. */
+  {id:'under-review',name:'Under Review',    hint:'Let your safety score fall below 65.',
+   live:function(){ return S.safety<65 }},
+  {id:'repossessed', name:'Repossessed',     hint:'Run out of money.',
+   live:function(){ return !!S.over }},
+  {id:'comeback',    name:'Comeback',        hint:'Follow a losing shift with a winning one.',
+   shift:function(r){
+     /* HISTORY already contains r itself — appendHistoryRow() pushes before
+        it calls in here — so the shift before this one is at length-2. */
+     const prev=HISTORY[HISTORY.length-2];
+     return !!(prev&&prev.net<0&&r.net>0);
+   }},
+
+  {id:'out-of-austin',name:'Out of Austin',  hint:'Unlock a second city.',
+   live:function(){ return cityList().filter(cityUnlocked).length>=2 }},
+  {id:'grand-tour',  name:'Grand Tour',      hint:'Finish a shift in every city.',
+   live:function(){
+     return cityList().every(function(id){
+       const r=PROG.results&&PROG.results[id];
+       return !!(r&&r.shiftDone);
+     });
+   }},
+
+  {id:'found-the-switch',name:'Found the Switch',secret:true,
+   hint:'Discover automatic top-up.',
+   live:function(){ return eggFound('autocharge') }},
+  {id:'hands-on',    name:'Hands On',        secret:true,
+   hint:'Clear a blocked car yourself.'}
+];
+function hasModel(m){
+  return S.cars.some(function(c){ return c.model===m });
+}
+function achvById(id){
+  return ACHV.filter(function(a){ return a.id===id })[0]||null;
+}
+function achvHeld(id){ return !!(PROG.achv&&PROG.achv[id]) }
+function achvList(){ return Object.keys(PROG.achv||{}) }
+/* The ka-ching's older, statelier cousin — a four-note rise, deliberately
+   longer than sndPaid() so an unlock cannot be mistaken for a fare. */
+function sndAchv(){
+  beep(659.3,0.06,'sine',0.05);
+  setTimeout(function(){beep(830.6,0.06,'sine',0.055)},60);
+  setTimeout(function(){beep(987.8,0.06,'sine',0.06)},120);
+  setTimeout(function(){beep(1318.5,0.18,'sine',0.06)},180);
+}
+/* Records the award and returns true only the FIRST time — same contract as
+   findEgg() above, so a caller can award blindly on every tick without
+   having to remember whether it already did. */
+function awardAchv(id){
+  const a=achvById(id);
+  if(!a) return false;                     /* unknown id is not an error */
+  if(!PROG.achv) PROG.achv={};
+  if(PROG.achv[id]) return false;
+  PROG.achv[id]=Date.now();
+  progSave();
+  log('Console','achievement — '+a.name,0);
+  sndAchv();
+  /* Point at the nav icon, not the modal — the modal is closed, and the
+     icon is the one part of the route to it that exists in every layout
+     tier. flashNav() handles bringIntoView() for us. */
+  flashNav('app-trophy');
+  /* Repaint on the event rather than from render(). render() is the only
+     writer for everything it owns, but it does not own this modal — it is
+     shut almost all the time, and rebuilding a 21-tile grid ten times a
+     second while it happens to be open would be flicker bought with work.
+     Nothing in render() touches #trophy, so there is no writer to fight. */
+  const tm=$('trophy');
+  if(tm&&!tm.hidden) renderTrophies();
+  return true;
+}
+/* Called every tick for `live` entries, and once at shift end WITH the row
+   for `shift` entries. Both paths skip anything already held, so the steady
+   state for a player who has everything is one array scan of cheap boolean
+   reads — the same order of work checkUnlocks() already does. */
+function checkAchievements(row){
+  if(!PROG.achv) PROG.achv={};
+  let n=0;
+  ACHV.forEach(function(a){
+    if(PROG.achv[a.id]) return;
+    let got=false;
+    try{
+      if(row&&a.shift) got=!!a.shift(row);
+      else if(!row&&a.live) got=!!a.live();
+    }catch(e){ got=false }   /* a predicate must never break a shift end */
+    if(got&&awardAchv(a.id)) n++;
+  });
+  if(n) render();
+  return n;
+}
+
 function progLoad(){
   return Store.get('progress').then(function(r){
     if(!r||typeof r!=='object') return;
@@ -7473,6 +7958,7 @@ function progLoad(){
     if(r.results&&typeof r.results==='object') PROG.results=r.results;
     if(r.last&&CITIES[r.last]) PROG.last=r.last;
     if(r.eggs&&typeof r.eggs==='object') PROG.eggs=r.eggs;
+    if(r.achv&&typeof r.achv==='object') PROG.achv=r.achv;
     PROG.unlocked.austin=true;      /* the tutorial city is never locked */
     /* v1 -> v2: results records had no `shiftDone`, because the gate that
        needs it ('shift1@<city>') did not exist yet. Reading a missing flag as
@@ -7489,7 +7975,205 @@ function progLoad(){
       });
       progSave();
     }
+    /* v3 -> v4: achievements arrived after these players did. Every `live`
+       predicate re-evaluates on the next tick and heals itself, so this
+       only has to cover the `shift` ones, which fire once and are gone.
+
+       Only what the progress record PROVES is awarded. A veteran with three
+       cities finished has obviously turned a profit at some point, but
+       PROG.results keeps bestCash and nothing about any individual shift's
+       net, so 'black' and the rest are not recoverable and are left for
+       them to earn again. Handing out an achievement on a guess is worse
+       than handing out none: the panel's whole job is to be a true record.
+       Silent by design — awardAchv() logs and plays a fanfare, and a
+       returning player should not be met with four of those at boot. */
+    if((r.v||1)<4){
+      if(!PROG.achv) PROG.achv={};
+      const ranAShift=Object.keys(PROG.results).some(function(id){
+        const rec=PROG.results[id];
+        return !!(rec&&rec.shiftDone);
+      });
+      if(ranAShift&&!PROG.achv['first-shift']) PROG.achv['first-shift']=Date.now();
+      progSave();
+    }
   }).catch(function(){});
+}
+
+/* ============================================================
+   PLAYER PROFILE — a THIRD kind of saved thing, neither run nor progress.
+   A run (S) is wiped by newFleet(); progress (PROG) is per-scenario. The
+   profile outlives both: it exists once, globally, before the first city is
+   even chosen, and physKey() (above) passes 'profile' through untouched —
+   it is not a per-city key, deliberately.
+
+   DECIDED (onboardingplan.md §2): local-only, no login. `id` is the
+   internal identity — a random uuid, generated once and never reused —
+   and `name` is purely cosmetic, free text, may collide with any other
+   player's. Two players named "Pavel" are told apart by `created`, not by
+   the name. Nobody ever types or sees the id/created pair unless they go
+   looking in admin.
+   ============================================================ */
+const PROFILE_V=1;
+let PROFILE={v:1,id:'',name:'',created:0};
+/* Trim and cap ON THE WAY IN — 24 chars hard, so a long paste cannot blow
+   open any layout it lands in. Deliberately NOT html-escaped here: PROFILE
+   round-trips through Store.put/get on every rename and every boot, and
+   escapeHtml()/restore()'s own comment above already found this exact trap
+   for save-file text — escape a string once, save it, reload it, and it
+   gets escaped AGAIN (& -> &amp; -> &amp;amp; -> ...). PROFILE stays raw in
+   memory; every call site that puts the name into innerHTML escapes it
+   there, same as render()/renderGarage()/drawMap() already do for ride and
+   log text. */
+function sanitizeName(v){
+  return String(v==null?'':v).trim().slice(0,24);
+}
+function playerName(){ return PROFILE.name||'Player' }
+function paintProfile(){
+  const t=$('profile-tag'); if(t) t.textContent=playerName();
+  const ni=$('intro-name-input'); if(ni&&!ni.value) ni.value=PROFILE.name||'';
+}
+function profileSave(){
+  return Store.put('profile',{v:PROFILE_V,id:PROFILE.id,name:PROFILE.name,
+    created:PROFILE.created}).catch(function(){});
+}
+function profileLoad(){
+  return Store.get('profile').then(function(r){
+    if(r&&typeof r==='object'&&r.id){
+      PROFILE.v=1; PROFILE.id=r.id;
+      PROFILE.name=sanitizeName(r.name);
+      PROFILE.created=r.created||Date.now();
+      return;
+    }
+    /* First run ever, on this device: mint the identity now so it exists
+       before the intro's name field is even shown. */
+    PROFILE.v=1;
+    PROFILE.id=(crypto&&crypto.randomUUID)?crypto.randomUUID():
+      ('p-'+Date.now().toString(36)+Math.random().toString(36).slice(2));
+    PROFILE.name=''; PROFILE.created=Date.now();
+    return profileSave();
+  }).catch(function(){}).then(paintProfile);
+}
+$('profile-btn').addEventListener('click',function(){
+  const cur=PROFILE.name||'';
+  /* A one-line prompt, not a modal of its own — see the button's own HTML
+     comment. window.prompt is a genuine user gesture and a real text field;
+     it is not styled, but a rename is rare enough that this is the right
+     amount of ceremony for it. */
+  const raw=window.prompt('Your name (shown on shift reports, kept on this device):',cur);
+  if(raw==null) return;                 /* cancelled */
+  PROFILE.name=sanitizeName(raw);
+  profileSave();
+  paintProfile();
+});
+
+/* ============================================================
+   SHIFT-HISTORY LEDGER (onboardingplan.md §3)
+
+   PROG.results[city] keeps only bestCash/day/goalMet/shiftDone, and
+   progTrack() REPLACES that object wholesale on every write — so a full
+   per-shift ledger was computed (S.d), shown once in shiftReport(), and
+   thrown away. This captures it instead.
+
+   A fourth kind of saved thing, alongside run/progress/profile: NOT inside
+   PROG, deliberately. progSave() writes on the 30-second autosave cadence
+   (saveSig()-gated), and growing PROG's payload by one row per shift would
+   mean rewriting the ENTIRE history on every tick that just happens to fire
+   while a shift is running. 'history' is its own Store key, written only
+   when a shift actually ends (appendHistoryRow(), called from
+   stopFastForward() — see there for why bankruptcy still gets a row).
+
+   Capped oldest-first so a long-lived browser profile cannot grow this
+   without bound. No backfill: existing saves start empty, because
+   reconstructing past shifts from PROG.results would mean inventing numbers
+   for fields that were never recorded, and a diagnostic table is worse off
+   with invented rows than with missing ones. */
+const HISTORY_CAP=300;
+let HISTORY=[];
+function historyLoad(){
+  return Store.get('history').then(function(r){
+    if(r&&Array.isArray(r.rows)) HISTORY=r.rows;
+  }).catch(function(){});
+}
+function historySave(){
+  return Store.put('history',{v:1,rows:HISTORY}).catch(function(){});
+}
+function appendHistoryRow(){
+  const d=S.d;
+  /* Per-model economics for THIS shift, built from each car's own c.d ledger
+     (see zeroCarD()/newDay()) rather than spreading the whole shift's total
+     across every model present — the earlier version of this field was a
+     flat, deduped list of model ids, which meant a Cybercab and a Model 3
+     sharing one fleet showed up in admin's Cars view with IDENTICAL numbers
+     (the whole shift's), which is what Pavel spotted and asked to be fixed
+     properly rather than footnoted. A car sold or scrapped mid-shift still
+     contributed while it was owned; S.cars only holds what is owned NOW, so
+     its c.d is folded in here before that history is lost. */
+  const perModel={};
+  S.cars.forEach(function(c){
+    if(!c.d) return;
+    const m=perModel[c.model]||(perModel[c.model]={gross:0,cost:0,miles:0,rides:0});
+    m.gross+=c.d.gross; m.cost+=c.d.cost; m.miles+=c.d.miles; m.rides+=c.d.rides;
+  });
+  const row={
+    ts:Date.now(), playerId:PROFILE.id, city:S.city, day:S.day, shiftNo:S.shiftNo,
+    permit:S.permit,
+    workedH:+(S.workedSec/3600).toFixed(3), billedH:+(S.billedSec/3600).toFixed(3),
+    gross:d.gross, commission:d.commission, cost:d.cost, net:d.gross-d.cost,
+    energy:d.energy, dep:d.dep, maint:d.maint, ins:d.ins, soft:d.soft, fixed:d.fixed,
+    miles:d.miles, rides:d.done, cancels:d.cancels, safety:S.safety,
+    cash:S.cash, cars:S.cars.length,
+    models:perModel
+  };
+  HISTORY.push(row);
+  if(HISTORY.length>HISTORY_CAP) HISTORY.splice(0,HISTORY.length-HISTORY_CAP);
+  /* Shift-end achievements, evaluated against the row that was just built
+     and BEFORE reportStat() below, so anything earned by this shift ships
+     with this shift rather than trailing a report behind. 'comeback' reads
+     HISTORY[length-2], which is why this has to come after the push. */
+  checkAchievements(row);
+  /* Never let a write, local or remote, throw into or block the shift-end
+     path — same discipline as autosave/progSave. reportStat() (§4) is fire-
+     and-forget for the same reason and is called from here so every append
+     that happens locally also gets a chance to ship. deadhead.html and
+     deploy/public/index.html must stay byte-identical (see check-parity.js /
+     DEVELOPING.md), so reportStat() is NOT deploy-only code gated behind a
+     typeof check — it lives in both copies unconditionally. Opened over
+     file://, a relative fetch('/api/stat') simply fails (sync throw or
+     rejected promise, both swallowed below), so a plain file:// open is
+     silently a no-op — the same practical effect the plan asked for,
+     without forking the two files. */
+  historySave();
+  reportStat(row);
+  /* AFTER reportStat(), so the shift that just ended is already on its way
+     to the server and can appear in the board Paolo is about to read out.
+     The Worker caches the board for 60s and loadBoard() for 120s on top, so
+     in practice he is quoting the state as of the last couple of minutes —
+     which is the right trade for a line of colour in the Messages panel. */
+  paoloBoardCall();
+  return row;
+}
+function reportStat(row){
+  try{
+    fetch('/api/stat',{
+      method:'POST',
+      headers:{'content-type':'application/json'},
+      body:JSON.stringify({
+        playerId:row.playerId, name:PROFILE.name, created:PROFILE.created,
+        city:row.city, day:row.day, shiftNo:row.shiftNo, permit:row.permit,
+        workedH:row.workedH, billedH:row.billedH,
+        gross:row.gross, commission:row.commission, cost:row.cost, net:row.net,
+        energy:row.energy, dep:row.dep, maint:row.maint, ins:row.ins,
+        soft:row.soft, fixed:row.fixed,
+        miles:row.miles, rides:row.rides, cancels:row.cancels, safety:row.safety,
+        cash:row.cash, cars:row.cars, models:row.models,
+        /* The player's FULL cumulative list, not this shift's new ones —
+           see the achv column note in schema.sql for why resending it every
+           time is the cheaper shape. Whitelisted again server-side; this
+           side sends whatever PROG holds. */
+        achv:achvList()
+      })
+    }).catch(function(){});
+  }catch(e){ /* fetch can throw synchronously in rare embed contexts */ }
 }
 /* THE ONE DEFINITION of "has completed a shift", reused rather than restated.
    S.shiftNo increments on clock-ON, so `shiftNo>0` alone is true from the first
@@ -8091,6 +8775,11 @@ function dodgeEnd(won){
     log(c.id,'cleared — you drove it around',0);
     c.blocked=0;
     $('dodge-result').textContent='Cleared. Nice driving.';
+    /* Awarded explicitly rather than by predicate: "you personally drove a
+       blocked car out" is an event, and nothing in S still says it happened
+       a tick later. Only on a real clear — the "already cleared on its own"
+       branch below is not the same achievement. */
+    awardAchv('hands-on');
   } else if(won){
     $('dodge-result').textContent='Already cleared on its own — no harm done.';
   } else {
@@ -8135,6 +8824,8 @@ function openGarage(){
 }
 
 function acquire(id,how){
+  /* autosaveSoon() at the end of this function — a car bought while the clock
+     is paused used to sit unsaved until the player pressed play. */
   const v=catalog(id);
   if(!v||!canAfford(v,how)) return;
   if(how==='buy')     S.cash-=v.price;
@@ -8145,6 +8836,7 @@ function acquire(id,how){
     v.name+' — '+c.id,0);
   checkUnlocks();
   renderGarage(); render();
+  autosaveSoon('acquire');
   /* First car is the whole point of the opening, so get out of the way. */
   if(S.cars.length===1) $('garage').hidden=true;
 }
@@ -8174,17 +8866,26 @@ function slotRow(key,save,label,sub){
     : (key==='auto'
         ? '<span class="slot-none">Nothing saved yet</span>'
         : '<button class="pri" data-sv-save="'+key+'">Save here</button>');
+  /* "saved 22 min ago" under a label promising "every 30s" reads as a broken
+     autosave. It usually is not: the game was paused and nothing changed, so
+     there was nothing to write. Say which of the two it is instead of leaving
+     the player to infer it from a clock. */
+  const fresh=key==='auto'&&save&&save.sig&&save.sig===saveSig();
+  const when=save?(fresh?'up to date':'saved '+ago(save.ts)):'';
   return '<div class="slot'+(save?'':' empty')+'">'+
     '<div class="slot-id">'+label+(sub?'<small>'+sub+'</small>':'')+'</div>'+
     '<div class="slot-meta">'+(m
       ? '<b>Day '+m.day+'</b> · '+m.clock+' · '+money(m.cash)+' · '+m.cars+(m.cars===1?' car':' cars')+
-        '<span>saved '+ago(save.ts)+(save.app?' · v'+save.app:'')+'</span>'
+        '<span>'+when+(save.app?' · v'+save.app:'')+'</span>'
       : '<span class="dim">Empty slot</span>')+'</div>'+
     '<div class="slot-act">'+acts+'</div></div>';
 }
 function renderSaves(){
   return Store.list().then(function(all){
-    $('sv-auto').innerHTML=slotRow('auto',all.auto,'Auto','every 30s');
+    /* Was "every 30s", which the code did not honour and which is not the
+       useful fact anyway. It saves when something changes — including while the
+       clock is paused, which is where the old version silently did nothing. */
+    $('sv-auto').innerHTML=slotRow('auto',all.auto,'Auto','on every change');
     $('sv-slots').innerHTML=SLOTS.map(function(k,i){
       return slotRow(k,all[k],'Slot '+(i+1));
     }).join('');
@@ -8193,7 +8894,159 @@ function renderSaves(){
     toast(e.message,true);
   });
 }
-function openSaves(){ $('savemgr').hidden=false; toast(''); renderSaves() }
+function openSaves(){
+  $('savemgr').hidden=false; toast('');
+  $('sv-driver').textContent=playerName();  /* textContent — see rp-driver note */
+  renderSaves();
+}
+
+/* ============================================================
+   TROPHIES — the achievements panel and the per-city leaderboard.
+
+   The two halves have very different trust levels and the UI says so.
+   Achievements are computed on this machine from this player's own save:
+   they are true by construction. The board is other people's self-reported
+   numbers arriving over an unauthenticated endpoint — see the long note
+   above lbPlausible() in deploy/src/index.js for exactly how far the
+   server's checks go and where they stop. Hence "best reported shift"
+   rather than "record": the copy should not promise more integrity than
+   the pipe behind it has. */
+let LB=null;             /* last fetched board, or null */
+let lbAt=0;              /* when we fetched it */
+let lbBusy=false;
+const LB_REFRESH_MS=120000;
+/* Deliberately NOT fetched at boot. An anonymous visitor who never opens
+   this modal costs the Worker nothing (see the SEEN_KEY note in cloud.js —
+   same discipline, same reason), and the board is meaningless until the
+   player has a shift of their own to compare against anyway. The server
+   caches for 60s; this caches for 120s on top, so holding the modal open
+   and closing it repeatedly does not turn into a request per open. */
+function loadBoard(force){
+  if(lbBusy) return Promise.resolve(LB);
+  if(!force&&LB&&(Date.now()-lbAt)<LB_REFRESH_MS) return Promise.resolve(LB);
+  lbBusy=true;
+  return fetch('/api/leaderboard',{credentials:'same-origin'})
+    .then(function(r){ return r.ok?r.json():null })
+    .then(function(d){
+      if(d&&d.cities) { LB=d; lbAt=Date.now() }
+      return LB;
+    })
+    /* Opened over file://, or offline, or the Worker is down: the board is
+       simply absent and the achievements half still works. Never throws
+       into the caller — same fire-and-forget contract as reportStat(). */
+    .catch(function(){ return LB })
+    .then(function(v){ lbBusy=false; return v });
+}
+function renderAchvList(){
+  const held=PROG.achv||{};
+  const n=ACHV.filter(function(a){ return !!held[a.id] }).length;
+  $('tr-count').textContent=n+' / '+ACHV.length;
+  $('tr-list').innerHTML=ACHV.map(function(a){
+    const got=!!held[a.id];
+    /* A secret keeps BOTH its name and its hint back until earned — naming
+       it is most of the spoiler ("Found the Switch" tells you there is a
+       switch to find). Once earned it reads normally. */
+    const hidden=a.secret&&!got;
+    return '<div class="tr-a'+(got?' got':'')+(hidden?' secret':'')+'">'+
+      '<svg class="ms"><use href="#i-trophy"/></svg><div>'+
+      '<b>'+(hidden?'? ? ?':escapeHtml(a.name))+'</b>'+
+      '<span>'+(hidden?'Not yet found.':escapeHtml(a.hint))+'</span>'+
+      '</div></div>';
+  }).join('');
+}
+function renderBoard(){
+  const el=$('tr-board');
+  if(!LB){
+    el.innerHTML='<div class="note">Leaderboard unavailable — you are offline, '+
+      'or this copy is running from a file.</div>';
+    return;
+  }
+  /* cityList() drives the ORDER, the payload drives the CONTENT. The server
+     deliberately does not know the game's city order (see the funnel note
+     in src/index.js), and the game does not know who is on the board, so
+     each side supplies the half it actually owns. A city with no qualifying
+     entries still gets a heading, because an empty Orlando is information —
+     it says nobody has posted one yet, not that Orlando is missing. */
+  const me=(window.DH_REMOTE&&PROFILE&&PROFILE.name)?String(PROFILE.name).toLowerCase():null;
+  const rows=cityList().map(function(id){
+    const c=CITIES[id], list=(LB.cities&&LB.cities[id])||[];
+    const body=list.length?list.map(function(r,i){
+      const mine=me&&String(r.username||'').toLowerCase()===me;
+      return '<div class="tr-row'+(i===0?' first':'')+(mine?' me':'')+'">'+
+        '<span class="rk">'+(i+1)+'</span>'+
+        '<span class="who">'+escapeHtml(r.username)+'</span>'+
+        '<span class="sub">'+escapeHtml(String(r.rides||0))+' rides</span>'+
+        '<span class="amt">'+money(r.net)+'</span></div>';
+    }).join('')
+    :'<div class="tr-row"><span class="who" style="color:var(--text-4)">No qualifying shift yet.</span></div>';
+    return '<div class="tr-board-city"><h5>'+escapeHtml(c.short||c.name)+'</h5>'+body+'</div>';
+  }).join('');
+  el.innerHTML=rows;
+}
+function renderTrophies(){
+  renderAchvList();
+  renderBoard();
+  $('tr-note').textContent=window.DH_REMOTE
+    ? 'Best reported shift per city, signed-in players only. Self-reported — treat it as a scoreboard, not a record book.'
+    : 'Sign in from Saved fleets to put your own shifts on the board. Achievements are kept in this browser either way.';
+}
+function openTrophies(){
+  $('trophy').hidden=false;
+  renderTrophies();                       /* paint what we have immediately */
+  loadBoard().then(function(){
+    /* Only repaint if the modal is still open — a player who closed it
+       during the fetch should not have it silently rewritten underneath.
+       Re-queried rather than closed over, and null-checked: this runs a
+       network round trip later, by which point the document may be
+       unloading. Reading .hidden off a missing element there throws inside
+       a .then(), which surfaces as an unhandled rejection rather than
+       anything a player could act on. */
+    const m=$('trophy');
+    if(m&&!m.hidden) renderTrophies();
+  });
+}
+/* PAOLO READS OUT THE BOARD, once per finished shift.
+
+   Pavel's ask. Deliberately a Comms message and NOT a #ray card: the ray
+   card dims the screen, spotlights a control and waits to be dismissed,
+   which is the right amount of ceremony for "you are about to lose your
+   permit" and far too much for a scoreboard. rayAdvise() also refuses to
+   fire while the player is mid-task for exactly that reason. A log line
+   sits in Messages until it is read and costs the player nothing, and the
+   nav flash below points at the trophy icon for anyone who wants the full
+   list — which is the "message under the trophy icon" shape asked for.
+
+   Only at shift end, only when the city actually has a board, and only if
+   the fetch happens to succeed: the whole thing is decorative and must
+   never delay or break the end of a shift. */
+function paoloBoardCall(){
+  loadBoard().then(function(d){
+    const list=d&&d.cities&&d.cities[S.city];
+    if(!list||!list.length) return;
+    const c=CITIES[S.city];
+    const top=list.slice(0,3).map(function(r,i){
+      return (i+1)+'. '+r.username+' '+money(r.net);
+    }).join('  ·  ');
+    log('Paolo','best in '+(c.short||c.name)+' — '+top,0);
+    /* Where the player actually stands, but only if they are on it and
+       only if they are signed in — telling an anonymous player they are
+       not on a board they cannot join is nagging, not information. */
+    const me=(window.DH_REMOTE&&PROFILE&&PROFILE.name)
+      ?String(PROFILE.name).toLowerCase():null;
+    if(me){
+      const at=list.findIndex(function(r){
+        return String(r.username||'').toLowerCase()===me;
+      });
+      if(at===0) log('Paolo','that top one is you. Enjoy it while it lasts.',0);
+      else if(at>0) log('Paolo','you are '+(at+1)+' on that list.',0);
+    }
+    flashNav('app-trophy');
+  }).catch(function(){});   /* decorative — never throws into shift end */
+}
+$('tr-close').addEventListener('click',function(){ $('trophy').hidden=true });
+$('trophy').addEventListener('click',function(e){
+  if(e.target===$('trophy')) $('trophy').hidden=true;
+});
 
 $('saves').addEventListener('click',openSaves);
 $('garage-btn').addEventListener('click',openGarage);
@@ -8348,15 +9201,62 @@ function progTrack(){
        and shiftDone is the next city's unlock condition. */
     shiftDone:!!(r.shiftDone||shiftFinished())};
 }
+/* THE STATE SIGNATURE, and why autosave needs one.
+   The Saves dialog labels the auto slot "every 30s" and it was not true: the
+   interval below only fired `if(S.running)`, i.e. only while the clock was
+   moving. Pause the game — which the player does to think, to shop in the
+   garage, to read a panel — and nothing was written at all. Reported as "it
+   says saved 22 minutes ago but Auto says every 30 seconds", which was exactly
+   right.
+   Saving unconditionally every 30s is the other wrong answer: a game sitting
+   paused on a dialog would rewrite IndexedDB forever and keep moving the
+   timestamp, so "saved 4s ago" would stop meaning anything.
+   So: every 30 seconds, save IF SOMETHING CHANGED. This signature is what
+   "changed" means — cheap, no allocation of a whole snapshot, and it covers the
+   things a player does while paused (buying a car, selling one, the geofence,
+   the policy switches, clocking on) as well as the clock itself. */
+function saveSig(){
+  let z=0;
+  for(let i=0;i<ZONES.length;i++) if(ZONES[i].on!==false) z+=1<<i;
+  let p='';
+  for(let i=0;i<PLATFORMS.length;i++) p+=PLATFORMS[i].on?'1':'0';
+  return [Math.round(S.t),S.day,Math.round(S.cash*100),S.cars.length,S.seq,
+    Math.round(S.safety*10),S.shiftNo,S.onClock?1:0,S.over?1:0,S.city,
+    S.autoCharge?1:0,S.fareMult,S.units,S.offers.length,S.rides.length,z,p,
+    S.cars.reduce(function(a,c){ return a+Math.round(c.soc)+Math.round(c.odo) },0)
+  ].join('|');
+}
+let lastSavedSig='';
 function autosave(reason){
   if(saving) return Promise.resolve();
   saving=true;
   progTrack(); progSave();
-  return Store.put('auto',snapshot())
+  const sig=saveSig();
+  const snap=snapshot();
+  /* Stored WITH the save so the dialog can tell "this is the current state"
+     from "this is 22 minutes old", instead of the player having to guess from
+     a timestamp. See slotRow(). */
+  snap.sig=sig;
+  return Store.put('auto',snap)
+    .then(function(){ lastSavedSig=sig })
     .catch(function(err){ console.warn('autosave failed ('+reason+')',err) })
     .then(function(){ saving=false });
 }
-setInterval(function(){ if(S.running&&!S.over) autosave('interval') },30000);
+/* Runs whether or not the clock is running; skips the write when nothing has
+   moved. `S.over` still stops it — a finished run must not overwrite itself. */
+setInterval(function(){
+  if(S.over) return;
+  if(saveSig()===lastSavedSig) return;
+  autosave('interval');
+},30000);
+/* And a flush on the moments a player would be upset to lose, all of which can
+   happen while the clock is paused — which is precisely why the old
+   `if(S.running)` guard lost them. */
+function autosaveSoon(reason){
+  if(S.over) return;
+  if(saveSig()===lastSavedSig) return;
+  autosave(reason);
+}
 /* pagehide is the only event reliably fired on mobile tab kill */
 window.addEventListener('pagehide',function(){ autosave('pagehide') });
 /* Some desktop browsers close a window/tab without ever firing pagehide;
@@ -8378,17 +9278,34 @@ $('rp-go').addEventListener('click',function(){ autosave('day-end') });
    a genuine user gesture, so the player presses the native play button
    themselves and the poster frame is what they see until they do. */
 function showIntro(next){
-  const el=$('intro'), v=$('intro-video');
-  function done(){
+  const el=$('intro'), v=$('intro-video'), skip=$('intro-skip'),
+        start=$('intro-start'), ni=$('intro-name-input');
+  /* Skip must dismiss only the VIDEO, not the name field or the screen
+     (onboardingplan.md §1/§2) — the field is present from the start, so
+     Skip's whole job is to stop playback and let the poster show through.
+     Ending the video does the same, not a full exit; only Start leaves. */
+  function stopVideo(){ v.pause() }
+  function go(){
+    /* Empty is allowed — a blank name must never block entry. sanitizeName
+       trims/caps; the empty-string fallback lives in playerName(). */
+    PROFILE.name=sanitizeName(ni.value);
+    profileSave();
+    paintProfile();
     el.hidden=true; v.pause();
-    v.removeEventListener('ended',done);
-    $('intro-skip').removeEventListener('click',done);
+    v.removeEventListener('ended',stopVideo);
+    skip.removeEventListener('click',stopVideo);
+    start.removeEventListener('click',go);
+    ni.removeEventListener('keydown',onEnter);
     next();
   }
+  function onEnter(e){ if(e.key==='Enter') go() }
   v.currentTime=0;
   el.hidden=false;
-  v.addEventListener('ended',done);
-  $('intro-skip').addEventListener('click',done);
+  ni.value=PROFILE.name||'';
+  v.addEventListener('ended',stopVideo);
+  skip.addEventListener('click',stopVideo);
+  start.addEventListener('click',go);
+  ni.addEventListener('keydown',onEnter);
 }
 
 /* A fresh run. `cityId` is which scenario it belongs to, and it MATTERS: this
@@ -8493,8 +9410,11 @@ setInterval(function(){
   /* Order matters. The legacy 'auto' record has to be relocated before
      anything reads 'auto:<city>', and PROG.last has to be known before S.city
      is chosen, or a player whose last run was Dallas gets reopened in Austin
-     and the Dallas autosave sits there looking lost. */
-  migrateAutoKey().then(progLoad).then(function(){
+     and the Dallas autosave sits there looking lost. profileLoad() joins the
+     same chain because showIntro()'s name field reads PROFILE.name — it must
+     be resolved (existing profile loaded, or a fresh one minted) before a
+     brand-new fleet can reach the intro overlay. */
+  migrateAutoKey().then(progLoad).then(profileLoad).then(historyLoad).then(function(){
     if(PROG.last&&CITIES[PROG.last]&&cityUnlocked(PROG.last)){
       S.city=PROG.last; loadCityTables();
     }
@@ -8544,6 +9464,11 @@ window.DH_ACT1={
   render:render,avgFatigue:avgFatigue,latency:latency,
   CATALOG:CATALOG,catalog:catalog,spec:spec,acquire:acquire,canAfford:canAfford,
   STAGES:STAGES,unlocked:unlocked,checkUnlocks:checkUnlocks,newFleet:newFleet,
+  ACHV:ACHV,achvHeld:achvHeld,achvList:achvList,awardAchv:awardAchv,
+  checkAchievements:checkAchievements,renderTrophies:renderTrophies,
+  openTrophies:openTrophies,loadBoard:loadBoard,
+  board:function(){ return LB },   /* let-reassigned; see the ROADS note above */
+  paoloBoardCall:paoloBoardCall,
   openGarage:openGarage,renderGarage:renderGarage,fixedPerCar:fixedPerCar,
   zones:function(){ return ZONES },
   ZONES_BY_CITY:ZONES_BY_CITY,zonesFor:zonesFor,airportZone:airportZone,
@@ -8595,7 +9520,13 @@ window.DH_ACT1={
   startFastForward:startFastForward,stopFastForward:stopFastForward};
 window.DH_SAVE={snapshot:snapshot,restore:restore,migrate:migrate,VERSION:VERSION,
   Store:Store,LocalStore:LocalStore,V:SAVE_V,SLOTS:SLOTS,
-  refresh:renderSaves,toast:toast,autosave:autosave,open:openSaves};
+  refresh:renderSaves,toast:toast,autosave:autosave,open:openSaves,
+  saveSig:saveSig,autosaveSoon:autosaveSoon,sig:function(){ return lastSavedSig },
+  /* cloud.js prefills the (now username, not email) cloud-account field from
+     this — see the "USERNAME, NOT EMAIL" comment there — so a returning
+     player's cloud sign-in starts from the name they already typed on the
+     intro screen instead of asking for a second identifier from scratch. */
+  playerName:playerName};
 })();
 
 </script>
