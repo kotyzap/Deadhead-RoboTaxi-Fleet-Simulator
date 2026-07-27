@@ -1,0 +1,83 @@
+v0.32.0 — free-tier hardening ahead of the Reddit launch
+
+Cuts what an anonymous visitor and a finished shift cost on Cloudflare's
+free plan, so a traffic spike degrades instead of falling off a cliff.
+
+BACKGROUND
+
+Static assets on Workers are free and unlimited — deadhead.html runs
+entirely client-side off localStorage, so the game itself cannot go down
+no matter how much traffic arrives. The two real ceilings are the Worker's
+100,000 requests/day and D1's 100,000 rows written/day, and both were
+being spent on traffic that did not need to spend them.
+
+Measured before: ~2 Worker requests per page load (even for a visitor who
+never plays) and 4 D1 rows written per finished shift. Estimated ceiling
+~16,000 visitors/day, D1 writes binding first.
+
+After: 0 Worker requests for a visitor who never signs in, and 1 D1 row
+written per finished shift.
+
+1. cloud.js — boot makes no network calls for first-time visitors
+   mount() fired /api/me AND /api/params unconditionally, so a Reddit
+   visitor who bounced in ten seconds still cost two requests; 50,000
+   bouncers exhausted the day for the players who stayed. Added a
+   `dh_seen_account` localStorage marker set in goOnline() and cleared in
+   signOutLocally(); boot probes only when it is present. /api/params is
+   no longer fetched at boot at all — submitAuth() already awaits
+   loadParams() before the KDF, the only place the values matter.
+   The marker is a hint, never authority: the HttpOnly dh_session cookie
+   still decides. If the marker is lost but the cookie survives, the new
+   probeSession() picks the session up the first time the Saves modal
+   opens, and is idempotent so repeated opens cost nothing.
+
+2. schema.sql — dropped idx_stats_ts
+   An index is a written row of its own on every insert, so this doubled
+   the write cost of every player's every shift. It could only ever serve
+   the admin `recent` view; players, funnel, economics and cars full-scan
+   regardless. Trading a scan on a page one person opens occasionally
+   (against 5M rows read/day) for half the write cost of the hottest path
+   is not close. idx_stats_player(player_id, ts) stays.
+
+3. src/index.js — stat_attempts table replaced with an in-memory bucket
+   The throttle defended the write budget by spending it: a SELECT plus an
+   INSERT/UPDATE on every legitimate shift report, purely to be told it
+   was allowed. Now an isolate-local Map, which is enough for the case
+   actually worth defending (a stuck client retry loop on one connection).
+   The real backstop is a Cloudflare Rate Limiting rule on /api/stat,
+   which runs before the Worker is invoked so a flood costs neither a
+   request nor a row — the free plan includes one rule; this is what to
+   spend it on. Exact rule documented in schema.sql.
+
+4. deadhead.html / index.html — intro video preload="metadata" -> "none"
+   The element is in the DOM from first paint even though #intro starts
+   hidden, so every visitor opened a connection to a 5 MB mp4 before
+   deciding to watch anything, competing with the 650 KB of game that
+   actually needs to arrive. Bandwidth is free and unmetered; this is
+   about the first ten seconds after a cold link. The 24 KB poster still
+   renders, so the frame looks identical.
+
+5. test/cloud-budget.test.js — new, wired into npm test
+   Asserts the budget rather than trusting it: zero /api calls on an
+   anonymous boot, exactly one /api/me for a marked browser, no
+   /api/params at boot, no extra requests on repeated modal opens, and
+   one probe on the stale-marker fallback path. Verified to fail when the
+   gate is reverted. The marked-browser assertions double as a guard
+   against the anonymous case passing for the wrong reason (mount() never
+   running at all).
+
+MIGRATION — deploy the Worker FIRST, then run once:
+  npx wrangler d1 execute deadhead-db --remote \
+    --file=./migrations/001-shrink-write-budget.sql
+No player data is touched; an index is derived and stat_attempts held only
+ephemeral counters that reset hourly by design.
+
+STILL OPEN
+- The "DISPATCH OFFLINE" degradation banner for when /api/* does 429.
+  Deliberately NOT a full-screen cover: the game still plays perfectly on
+  localStorage when the API is gone, and a wall would lose a player who
+  could have finished the whole thing.
+- deploy/public/Inside_The_Brutal_New_Robotaxi_Simulator_Deadhead.mp4 is
+  9.8 MB and referenced by nothing. Costs no requests, but it is dead
+  weight in the deploy.
+- night-contrast and DESIGN.md §5 (carried from 0.23.0).

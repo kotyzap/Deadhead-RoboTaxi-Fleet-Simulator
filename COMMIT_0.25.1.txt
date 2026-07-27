@@ -1,0 +1,27 @@
+0.25.1 — the city tab strip no longer clips the tab you are on
+
+Reported at 1449px: "Austin | Dallas | Mia" and then nothing, with the active
+Miami tab sliced down the middle. The v0.25.0 approach was worse than no
+scrolling at all — min-width:0 + overflow-x:auto did stop the strip pushing the
+clock off the topbar, but it let flex squeeze the strip to a stub, hid the
+scrollbar, and then cut the ACTIVE tab, which reads as a rendering fault.
+
+Three fixes, all the same idea: if content is going to overflow, the overflow
+has to be legible and it must never hide the thing you are looking at.
+
+- min-width floor of 132px (about two tabs) so flex cannot collapse the strip.
+- keepCityTabInView() scrolls the pressed tab into view on every rebuild and on
+  resize. It writes scrollLeft directly rather than calling scrollIntoView(),
+  which scrolls every scrollable ancestor — in a fixed 32:9 cockpit that shoves
+  the whole layout sideways. Same trap bringIntoView() already documents.
+- .ovf, toggled from JS when scrollWidth exceeds clientWidth, fades the right
+  edge so a half-visible tab reads as "there is more" rather than as breakage.
+
+The skew now gives up at 1499px instead of 1199px: five overlapping
+parallelograms need the most horizontal room of any form this control can take,
+and 1499 is already a tier boundary in this file (T4). Padding steps down again
+at 1199px (9px) and 760px (8px).
+
+Five checks cover it, with the element geometry stubbed because jsdom does no
+layout — what is under test is the decision, not the box model. Mutation-tested:
+deleting the two scrollLeft lines fails two of them.

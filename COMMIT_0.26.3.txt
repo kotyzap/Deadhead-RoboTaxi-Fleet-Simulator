@@ -1,0 +1,36 @@
+0.26.3 — the topbar breaks in one chosen place, and Coffee stays top-right
+
+At 2115px the row wrapped and put the Coffee button alone on a line of its own,
+which reads as a mistake rather than a layout.
+
+Cause: the topbar was a flat flex list of seventeen items, so once wrapping was
+switched on in v0.26.1 the seam landed wherever the arithmetic put it. Wrapping
+was the right fix for content running off the right edge; leaving the row flat
+was not.
+
+The row now has exactly THREE children, so there is only one seam it can come
+apart at:
+
+  narrow:  [ readouts .......................... Coffee ]
+           [ .................. Clock · speeds · buttons ]
+  wide:    [ readouts .... Clock · speeds · buttons · Coffee ]
+
+- .tb-info holds the brand, the city cards and the six readouts, and grows so
+  Coffee is pushed to the right edge.
+- .tb-ctrls holds everything from Clock on rightwards and takes a full line of
+  its own, right-aligned so it sits under Coffee rather than drifting left.
+- #coffee is pinned to the top-right corner in both arrangements. It is a
+  donation button: findable, never a stray.
+
+The two arrangements are the same three items with `order` swapped, so there is
+no duplicate markup. The single-line case is now the exception, behind
+@media (min-width:2250px) — measured rather than guessed: brand + five city
+cards + six readouts + Clock + four speeds + five buttons + Coffee and their gaps
+come to roughly 2200px, which is exactly why a 2115px window wrapped.
+
+The empty .spacer div is gone. .tb-info's flex-grow does the same job, and a
+flex:1 spacer in a wrapping row claims a whole line to itself — the same class of
+bug as the one being fixed here.
+
+Three checks, one structural (the row must have three children with Coffee last)
+and two on the order swap and the dead spacer. Mutation-tested.

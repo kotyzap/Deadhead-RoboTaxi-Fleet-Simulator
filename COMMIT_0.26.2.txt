@@ -1,0 +1,30 @@
+0.26.2 — Paolo answers a locked city card
+
+Clicking a padlocked city did nothing at all. The button was `disabled`, so it
+swallowed the click, took no keyboard focus, and the only explanation lived in a
+title attribute nobody hovers on a trackpad.
+
+- Locked cards are now aria-disabled rather than disabled: still clickable, still
+  focusable, and switchCity() was already the authority on whether a city may
+  open, so the click is safe. cityUnlocked() decides, never the attribute — a
+  stale DOM must not be able to open a city.
+- Clicking one anchors a Paolo message bubble under that card, in the same
+  message-bubble language as #ray (avatar, name line, flattened corner), clamped
+  to the viewport like tipShow because a wrapped topbar can put a card on the
+  second line.
+- One line per city, in the voice of a man who has been driving thirty years and
+  counts money out loud. Each names the city BEFORE it rather than the
+  requirement in the abstract, because "one shift in Miami" is something you can
+  go and do. Under the flavour, the requirement in plain words, tinted with the
+  locked city's own tone.
+- A city with no authored line still speaks: the fallback builds a sentence from
+  the gate, so adding a scenario cannot leave a card mute.
+- The bubble goes away on any other click, on Escape, when the strip rebuilds
+  (it would be pointing at a dead element), and after 11 seconds.
+
+9 new checks. Mutation-tested: putting `disabled` back on locked cards fails
+seven of them.
+
+Also: DEBUG=1 now prints the exception behind a failing check. A swallowed throw
+and a returned false looked identical, which cost real time on two failures that
+turned out to be the test's own fixture ordering and switchCity being async.

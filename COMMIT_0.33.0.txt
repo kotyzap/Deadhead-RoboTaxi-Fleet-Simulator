@@ -1,0 +1,108 @@
+v0.33.0 — achievements, the public leaderboard, and an admin that knows
+how many cities the game has
+
+1. ADMIN FUNNEL — cities are derived, not written down
+   view=funnel carried literal `CASE WHEN city = 'dallas'` / `'miami'`
+   columns. Tampa and Orlando shipped after it and nobody came back, so for
+   two releases the admin quietly claimed the game had three cities. The
+   Worker now returns a GROUP BY over the stats table and admin.html renders
+   whatever comes back, so city #6 appears the first time anybody files a
+   shift there. Any city list kept in that file is a list that will be wrong
+   again; there is now no list.
+   Also added four milestones the data already supported and nobody was
+   looking at: reached day 5, turned a profit, ran 2+ cars, filed shift 2.
+
+2. ACHIEVEMENTS — 21 of them, in-game, local, true by construction
+   There were none. Not thin ones — zero matches for "achievement" anywhere
+   in deadhead.html. So this is a new system rather than a fix.
+
+   Lives in PROG, not S, for the same reason the Easter eggs do: going
+   bankrupt in Austin and starting Dallas clean must not un-earn
+   "Repossessed". PROG_V 3 -> 4.
+
+   Two kinds of predicate, split on cost. `live()` runs on the sim tick
+   beside checkUnlocks() and must be as cheap as one. `shift(row)` runs once
+   at shift end against the row appendHistoryRow() just built, and can be as
+   expensive as it likes. A few have neither and are awarded at the moment
+   they happen — 'hands-on' (you personally drove a blocked car out) is an
+   event, not a state anything still holds a tick later.
+
+   The catalogue is not all triumphs. "Under Review" (safety below 65) and
+   "Repossessed" (out of money) sit in the same grid as "Printing" on
+   purpose — this is a game about gig work, and a panel that only records
+   the good days is a different game's panel.
+
+   v3 -> v4 hands existing players 'first-shift' and nothing else. Every
+   `live` predicate re-evaluates and heals itself on the next tick; the
+   `shift` ones fire once and are gone, and PROG.results does not record any
+   individual shift's net, so 'black' and the rest are genuinely not
+   recoverable. Awarding them on a guess would make the panel a worse
+   record than an empty one. Silent — no fanfare at boot.
+
+3. LEADERBOARD — public, per city, best single-shift net, signed-in only
+   GET /api/leaderboard, unauthenticated to read.
+
+   THE HONEST VERSION OF WHAT THIS IS: /api/stat is unauthenticated and
+   every number in it is client-supplied. The schema comment has always said
+   the telemetry is "not trustworthy enough to call a leaderboard".
+   Publishing it does not make it trustworthy; it makes it a target. Three
+   things narrow the gap and none closes it — signed-in only (user_id is
+   stamped from the cookie, never read from the body), internal consistency
+   (net must equal gross - cost, with real miles/rides/hours), and
+   impossibility bounds far above what the fare model can produce. What
+   remains possible is a registered player forging a consistent, individually
+   plausible row. The UI says "best reported shift", not "record", because
+   the copy must not promise more integrity than the pipe behind it has.
+
+   Edge-cached 60s, and that is not an optimisation. This query scans the
+   whole stats table and it is the only endpoint every player polls;
+   uncached it would be the largest D1 read load in the app by a wide
+   margin. The client caches 120s on top.
+
+4. TROPHY UI — a modal, not a panel, and that was a reversal
+   The obvious home was a fourth .panel in #stack-right. That stack has
+   flattened its siblings twice (the "2 grid tracks for 3 panels" bug), and
+   this is a surface you open occasionally rather than watch. A modal costs
+   the grid nothing and follows #garage/#savemgr exactly. New #i-trophy
+   sprite symbol, a Trophies nav icon with its own branch beside
+   app-map/app-camera, and flashNav() — the nav-icon equivalent of
+   flashSection(), for things that live in a modal and so have no panel to
+   pulse.
+   --gold/--gold-bg/--gold-brd declared in BOTH :root and the night block.
+   The day gold is a dark ink that would vanish on a dark sheet; skipping
+   that step is exactly what produced the white slab in the in-car console.
+
+5. PAOLO READS OUT THE BOARD (Pavel's ask)
+   One Comms line at shift end: "best in Austin — 1. x $1,240 · 2. …", plus
+   where the player stands if they are on it and signed in. Deliberately
+   log() and NOT a #ray card: the ray card dims the screen, spotlights a
+   control and waits to be dismissed, which is right for "you are about to
+   lose your permit" and far too much for a scoreboard. Followed by a flash
+   on the trophy icon for anyone who wants the full list.
+
+6. TESTS — two new files, both verified to fail when the thing breaks
+   test/leaderboard.test.js runs the REAL lbPlausible(), extracted from
+   src/index.js at run time, against real SQLite (node:sqlite). Covers the
+   drive-by forgery, the careful forgery, the impossible hourly rate, the
+   anonymous row, and per-city ranking/capping.
+   test/achievements.test.js boots the game in jsdom and guards the three
+   ways a catalogue like this rots: a predicate that throws (checkAchievements
+   swallows those on purpose, so a typo'd field name is otherwise a silently
+   unwinnable achievement), award-once slipping, and cross-file drift between
+   ACHV, the Worker's ACHV_IDS whitelist and admin.html's ACHV_NAMES. Drift
+   was confirmed to fail the suite by injecting it.
+
+MIGRATION — run BEFORE deploying (002 is the opposite order to 001, because
+the new Worker's INSERT names the column):
+  npx wrangler d1 execute deadhead-db --remote --file=./migrations/002-achievements.sql
+  npm run deploy
+
+Existing rows get NULL achv and are excluded from unlock rates rather than
+counted as zero — those players may well hold achievements, we just never
+asked.
+
+STILL OPEN
+- The "DISPATCH OFFLINE" degradation banner (carried from 0.32.0).
+- The Cloudflare rate limiting rule on /api/stat is still unconfigured.
+- deploy/public/Inside_The_Brutal…mp4, 9.8 MB, referenced by nothing.
+- night-contrast and DESIGN.md §5 (carried from 0.23.0).

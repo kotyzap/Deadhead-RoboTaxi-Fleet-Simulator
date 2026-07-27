@@ -1,0 +1,45 @@
+0.26.0 — city cards that never clip, and charging is a decision again
+
+CITY CARDS. The strip clipped twice (v0.25.0 squeezed it to a stub and hid the
+overflow; v0.25.1 scrolled it and still sliced Dallas in half at 2xxx px), so the
+rule is now stated in the CSS: THIS STRIP MAY NEVER CLIP. All five cities render
+whole cards, locked or not.
+
+- The skew is gone. Overlapping parallelograms were the widest possible form for
+  the same label AND the reason a clipped strip read as a glitch rather than as
+  a cut-off tab. Rounded cards are the same control minus two regressions and
+  they degrade to a phone without a second design.
+- Every card carries a 3px tone line in its own city tint, including the locked
+  ones at 45% — the cheapest possible answer to "which run am I in", and it
+  makes the locked cities a palette of places you have not been rather than a row
+  of grey rectangles. Locked cards get a dashed border, not a grey fill.
+- Room came from the CITY name readout, which printed the active city a second
+  time three items to its right. That slot now shows the one thing the cards
+  cannot: real local time in the city.
+- The topbar wraps to a second line below 1500px instead of overflowing, since
+  the strip no longer shrinks. Padding steps at 1499/1199/900/760, with a new
+  900px step for iPad portrait.
+
+AUTO-CHARGING IS OFF BY DEFAULT, AND HIDDEN. Automatic top-up quietly removed the
+only lever in Act 1 that spends time as well as money: it charged at 28% at
+whatever was nearest, which is the right answer often enough that a player never
+learned the wrong one is expensive. Every other thing the fleet does badly is
+visible; this one was invisible and free.
+
+- The Charge policy button is gone from the strip until the egg is found: five
+  clicks on the version chip inside three seconds (Android's build-number tap,
+  which is the gesture a curious player actually tries). Finding it reveals the
+  switch AND turns the policy on, because the reward is the behaviour, not the
+  button.
+- PROG.eggs (PROG_V 3) holds the find. Knowledge outlives a run; the policy does
+  not — newFleet() now resets S.autoCharge, a hole it had exactly like the one it
+  had for S.permit before v0.23.2. A test caught that.
+- A save that already had it ON keeps it and counts as having found the egg: a
+  run visibly charging itself with no visible control is a bug report. A save
+  with it OFF is left alone; that state is now simply the default.
+- [hidden] alone would not have worked — .t-ctl .icons button sets display:flex
+  and an author display beats the attribute. Same bug that made "Take control"
+  look dead for three rounds; the rule that undoes it is asserted in a test.
+
+19 new checks. Mutation-tested: flipping the autoCharge literal, renaming the
+tone-line CSS rule, and re-adding overflow-x to the strip each fail a check.

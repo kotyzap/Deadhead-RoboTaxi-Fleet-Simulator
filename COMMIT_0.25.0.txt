@@ -1,0 +1,53 @@
+0.25.0 — Tampa and Orlando: five cities, one chain
+
+Cities #4 and #5, both launched for real on 21 July 2026. The chain is now
+Austin → Dallas → Miami → Tampa → Orlando, each gated on one shift clocked off
+in the city before it, and a test asserts the chain itself rather than the
+individual gates: every city's `needs` must name its immediate predecessor.
+
+DESIGN.md §5 had these two down as the "tourism" scenario — airport and
+theme-park demand, strong seasonality — and that was wrong for the third time
+running. Orlando's real geofence is a corridor along Semoran Blvd and Lee Vista
+Blvd that runs PAST MCO without including it, with Disney 20+ km away. Tampa's
+is downtown, Ybor City, Tampa Heights, West Tampa and Hyde Park, excluding TPA
+and every suburb. No new demand curve was needed; three of five shipped cities
+now have no airport run, because that is what Tesla's early geofences look like.
+
+TAMPA is the mirror of Miami — all core, no suburbs — and the inversion is
+measured, not thematic. Evening/morning offer ratio: Miami 0.59, Orlando 0.81,
+Tampa 1.42. Tampa's 21:00 is 25.1/h against 17.7/h at the 06:00 open, and 46.0/h
+with the three Ybor taprooms live, the largest single hour in the game. Charging
+inverts too: both in-geofence Superchargers are 150 kW, both 250 kW sites are out
+of town, so the trade is "charge slowly in the box or leave the evening you came
+for". fareK 0.92, the lowest of the five — a small dense core means the shortest
+trips in the game. TECO off-peak 7.5c/kWh is the cheapest night power.
+
+ORLANDO is the thinnest city in the game, next to an airport it cannot serve:
+18.2/h at open, 14.8/h at 21:00, 31.5/h ceiling with the whole corridor live —
+half of Tampa's. A big fleet starves, hence cap 14 and the lowest goal. It is
+also the first city with NO brewery zone: Orlando's beer scene is 8–14 km outside
+the box, and inventing service area is the one thing the city tables don't do.
+The number that shows it — opening every zone buys +74% to +155% of evening
+demand everywhere else and +0% here. Compensations are real: OUC is municipal
+with the cheapest power of any scenario, and Lee Vista Blvd is 8 stalls at
+325 kW, the fastest hardware and the only site inside the geofence, so the
+charger queue penalty finally matters.
+
+Tab bar at five cities: min-width:0 + overflow-x:auto so the strip gives instead
+of the clock being pushed off the topbar, with tighter padding at ≤1199px and
+≤760px. Rejected collapsing to a dropdown past three cities — it scales forever
+but throws away the padlocked tab, and a lock you can see is a goal.
+
+Tone: Orlando takes the violet citiesplan reserved for SF Bay, which cannot ship
+before Act 2; SF picks a new hue when it exists. Both new tones clear the v0.24.0
+AA rules (Tampa #0D7687/#0E8092, Orlando #7F4DD5/#895BD9).
+
+Provenance note worth keeping: tesla.com's Lee Vista Boulevard page embeds a
+static map centred on Columbus, Ohio — 1,500 km from the site — in every locale.
+Stalls, power and host are transcribed as usual; that one coordinate is placed
+from the street address and labelled as such in the file.
+
+Still to run locally (OSRM is unreachable from the sandbox): nudge-zones, then
+bake roads for miami, tampa and orlando, then re-bake austin and dallas for
+whatever the nudge moved. Until then those cities draw straight lines, which is
+a supported state.

@@ -1,0 +1,41 @@
+0.24.0 — Miami, and the city gate becomes a chain
+
+City #3 is Miami, chosen over Houston (same-day Dallas launch, same rules — a
+bronze re-skin) and Orlando/Tampa (wants a demand curve that doesn't exist
+yet). Tesla's real 3 July 2026 geofence is 10–14 sq mi of WESTERN Miami-Dade
+and excludes everything Miami is famous for: no downtown, no Brickell, no
+Miami Beach, no MIA. That exclusion list is the scenario.
+
+- First city with NO airport zone. The policy strip's airport toggle now
+  disables itself and says why; before this it stayed live and did nothing.
+- First city with fareK below 1 (0.94) — no CBD, no airport premium.
+- FPL's summer peak runs noon–21:00 at 26c/kWh: nine expensive hours where
+  Austin has five. Published tariff, not a difficulty knob.
+- insK 1.35, the worst in the table. Legacy 72 kW charging, mostly outside
+  the box. Busiest opener in the game at 20.2 offers/h.
+- Chargers transcribed from tesla.com; zone centroids placed from street
+  geography and labelled as such.
+
+New mechanic: incident risk is a function, not the inline 0.00018 constant.
+incidentRisk() = INC_BASE × cityK('incK') × weatherIncidentMult(), so rain
+finally matters to safety (storm ×2.2) and a city can be rougher than another
+(Miami incK 1.30). The elevated risk is STATED in the Incidents panel rather
+than merely applied.
+
+Gate chain: needs:'shift1@<city>'. One Dallas shift opens Miami, one Austin
+shift opens Dallas. The bare 'shift1' read the live run only and could not
+tell which city the shift happened in, so a second Austin shift would have
+opened city #3. Adds shiftFinished(), cityShiftDone(), progNoteShift() and
+PROG.results[city].shiftDone; PROG_V 1→2 with a migration that infers the flag
+from day>1 rather than making existing players re-earn it.
+
+Night accents now clear WCAG AA 4.5:1 as fills (Austin 3.60 → 4.55, Dallas
+3.34 → 4.59, Miami 4.56). The old 3.0 floor was a deviation whose comment
+defended it; --accent is a solid fill under white text, so the dark surface
+behind it was never relevant. Gradient top stops get a 4.0 floor.
+
+Also: deploy/scripts/nudge-zones.js snaps zone centroids onto routable roads
+via OSRM /nearest (up to 452 m off today), with nudge-splice.test.js covering
+the splice offline. DESIGN.md §5 corrected (real launch dates, Dallas's
+compact geofence, Miami's exclusion list) and §6.1 (real time scale:
+simPerReal 1, speeds 0/1/4/20).

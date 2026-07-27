@@ -1,0 +1,25 @@
+0.26.7 — one message style for Paolo, and the bubble is a block
+
+The locked-city reply was squeezed and hard to read, and the cause was a real
+bug rather than taste: `.bubble` had no `display`, so it stayed inline, and a
+multi-line inline box paints its background and padding per LINE FRAGMENT instead
+of around the paragraph. Text spilled past the grey and the avatar drifted to the
+floor.
+
+- display:block on the bubble and the column, which is what makes a paragraph
+  paint as one rounded box. The builder emits divs, not spans.
+- THE BUBBLE RULES NOW LIVE IN ONE PLACE. #ray and #lockmsg list themselves as
+  selectors on the same declarations — avatar, name line, grey, radius, night
+  variant — so Paolo looks like Paolo whether he is speaking from the card or
+  answering a locked city, in every city, in both themes. A third surface should
+  add its selector, never copy the values.
+- The requirement is now a SECOND BUBBLE rather than a tinted caption. Two
+  messages in a row is how a person texts a rule after an opinion, and it stops
+  the sentence that matters most being set in the smallest, palest type on
+  screen — which is what the city-tinted caption was.
+- Width is min(330px, 100vw - 24px) with slightly more padding, so a long line
+  has room and a narrow window still fits.
+
+Two checks: the reply is built from block elements in two bubbles, and the shared
+selectors exist so the two surfaces cannot drift. Mutation-tested by removing
+display:block.

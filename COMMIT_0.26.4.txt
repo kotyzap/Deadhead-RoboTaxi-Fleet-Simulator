@@ -1,0 +1,34 @@
+0.26.4 — autosave keeps its promise, and the cloud button says what it does
+
+AUTOSAVE. The Saves dialog labelled the auto slot "every 30s" and showed
+"saved 22 min ago" at the same time. Both halves were wrong.
+
+- The interval was guarded by `if(S.running)`, i.e. it only fired while the clock
+  was moving. Pause the game — to think, to shop in the garage, to read a panel —
+  and nothing was written at all. A car bought while paused sat unsaved.
+- Saving unconditionally every 30s is the other wrong answer: a game parked on a
+  dialog would rewrite IndexedDB forever and keep moving the timestamp, so
+  "saved 4s ago" would stop meaning anything.
+
+So it now saves every 30 seconds IF SOMETHING CHANGED, running or not. saveSig()
+is what "changed" means — cheap, no snapshot allocation, and it covers what a
+player does while paused (buy, sell, geofence, policy switches, clocking on) as
+well as the clock. S.over still stops it; a finished run must not overwrite
+itself.
+
+- autosaveSoon() flushes on acquire, sell, clock-on and clock-off — every one of
+  which can happen while paused, which is exactly what the old guard lost.
+- The signature is stored with the save, so the dialog can distinguish "this IS
+  the current state" from "this is 22 minutes old". It now reads "up to date"
+  rather than an age that looked like a bug.
+- The label is "on every change" instead of a cadence the code would not keep.
+
+CLOUD BUTTON. "Upload 1 local" was read as "Save" — the opposite of what it does.
+It is now "Copy 1 save to cloud", with a title explaining that it copies saves
+already in this browser up to the account for another device, and creates
+nothing. The account header said "Syncing", which reads as a progress state for
+something happening right now; it is a standing fact, so it says "Saves follow
+this account".
+
+Six checks, including that the old `if(S.running)` guard cannot come back.
+Mutation-tested.

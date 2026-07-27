@@ -1,0 +1,23 @@
+0.26.1 — the topbar wraps instead of running off the right edge
+
+Reported at ~1700px: the row ended mid-button, with Garage, Saves, Night, Sound,
+units and Coffee past the right edge — no scrollbar, no way to reach them.
+
+Cause: the items in this row deliberately refuse to shrink (flex:0 0 auto plus
+white-space:nowrap, which is what stopped the mid-width alignment bug), so a row
+that does not fit can only do one of two things — overflow or wrap. Wrapping was
+switched on at 1499px and below. Above that it overflowed, and five city cards
+plus the tagline plus PERMIT is exactly the combination that no longer fits a
+1700px window.
+
+- .topbar now wraps at EVERY width, with min-height instead of a fixed flex
+  basis (a fixed basis would clip the second line vertically instead). On the
+  32:9 target it still sits on one line — nothing changes there.
+- The 2199px tier gets min-height:44px for the same reason, and now also drops
+  the brand tagline: it is decoration and it was the cheapest 120px available.
+- The 1499px tier no longer has to switch the row's mode, so it only buys width
+  back as it did before.
+
+A test asserts the invariant that keeps breaking: every .topbar rule must avoid a
+fixed flex basis and a fixed height, and the base rule must set flex-wrap.
+Mutation-tested with flex:0 0 44px restored.

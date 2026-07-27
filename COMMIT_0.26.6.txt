@@ -1,0 +1,19 @@
+0.26.6 — two lines: read on the first, press on the second
+
+Below 1200px the row was settling into four lines — brand / cards + readouts /
+shift / controls — when two is enough.
+
+- SHIFT moved out of the readouts and into the control group as its first child,
+  pushed left with margin-right:auto. Line two now reads
+  "SHIFT On · 0.9 h .................. Clock off · speeds · buttons", which also
+  puts the shift status next to the Clock button it describes.
+- The brand no longer claims a whole line at this tier (it still does on a phone,
+  where it must), and its tagline is hidden here since it now shares the line.
+- Coffee stays at the end of line one, as it was.
+
+The split is now a rule rather than an accident: everything you READ is on the
+first line, everything you PRESS is on the second.
+
+Three checks — Shift's parent and position, the left/right push, and that the
+brand does not take a line above the phone tier. Mutation-tested by moving Shift
+back to the readouts, which fails two.

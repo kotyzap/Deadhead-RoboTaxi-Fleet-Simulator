@@ -1,0 +1,21 @@
+0.26.5 — Coffee rides with the readouts instead of taking a line
+
+Same complaint as 0.26.3, one wrap tier further in. At ~885px the readout block
+wrapped to three lines, filled 100% of the row, and pushed Coffee onto a fourth
+line by itself.
+
+Grouping alone could not fix that: .tb-info is a single flex item, so if its
+content fills the width there is nothing left for its sibling. So the room is now
+reserved rather than hoped for — .tb-info is capped at
+calc(100% - var(--coffee-w)), and --coffee-w tracks how wide the button actually
+is at that tier: 116px with a label, 56px where the topbar reduces it to an icon
+(<=1499px), 112px again below 1200px where the labels come back, and no cap at all
+above 2250px where the whole row is one line.
+
+align-self:flex-end puts it level with the LAST line of the readout block — next
+to Shift when the block has wrapped, next to Cash when it has not. On a
+single-line topbar the flex line is exactly one control tall, so that is
+identical to centring: correct at every width, aligned where it matters.
+
+Two checks, one for the order swap and one that the reservation exists at every
+tier. Mutation-tested by removing the cap.
