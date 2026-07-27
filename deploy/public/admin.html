@@ -89,6 +89,14 @@ th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--brd)}
 th{color:var(--text-3);font-weight:500;text-transform:uppercase;font-size:10px;letter-spacing:.06em}
 tr:hover td{background:rgba(var(--accent-rgb),.05)}
 .num{text-align:right;font-variant-numeric:tabular-nums}
+/* Achievement name over the condition that earns it — the rate is
+   unreadable without the condition ("Grand Tour 4%" means nothing until you
+   know it wants a shift in every city). Block, not a second column, so a
+   long spec wraps under its own name instead of stretching the numbers. */
+td .spec{display:block;color:var(--text-3);font-size:11px;margin-top:2px}
+/* In the catalogue but earned by nobody. Dimmed rather than hidden: a zero
+   is a finding, and it should not read as loudly as a real number. */
+tr.zero td{opacity:.55}
 .panel{background:var(--panel);backdrop-filter:blur(20px) saturate(1.5);
   -webkit-backdrop-filter:blur(20px) saturate(1.5);
   border:1px solid var(--panel-brd);border-radius:var(--r-srf);
@@ -262,20 +270,45 @@ tr:hover td{background:rgba(var(--accent-rgb),.05)}
       '</div>';
   }
 
-  /* Display names for the achievement ids the server whitelists. Third copy
-     of the catalogue, after deadhead.html's ACHV (the authority) and
-     ACHV_IDS in src/index.js (the whitelist) — see the note above ACHV_IDS
-     for why a copy beats an import here. An id missing from this map renders
-     as the raw id rather than blank, so drift is visible and harmless. */
-  const ACHV_NAMES = {
-    'first-car':'Keys','first-ride':'Fare One','first-shift':'Clocked Off',
-    'black':'In the Black','net-500':'Good Day','net-1500':'Printing',
-    'cash-10k':'Five Figures','clean-sheet':'Clean Sheet','safety-95':'Spotless',
-    'under-review':'Under Review','meter-runner':'Meter Runner',
-    'fleet-3':'Small Fleet','fleet-5':'Operator','purpose-built':'Purpose Built',
-    'why-a-truck':'Why a Truck','repossessed':'Repossessed','comeback':'Comeback',
-    'out-of-austin':'Out of Austin','grand-tour':'Grand Tour',
-    'found-the-switch':'Found the Switch','hands-on':'Hands On'
+  /* Name AND the condition that earns it, for every achievement id the
+     server whitelists. The name alone was not enough to read a rate
+     against: "Grand Tour 4%" only means something once you know it wants a
+     shift in every city.
+
+     Third copy of the catalogue, after deadhead.html's ACHV (the authority)
+     and ACHV_IDS in src/index.js (the whitelist). A copy rather than an
+     import for the same reason as ACHV_IDS — this file never touches the
+     server's module graph. What makes the copy safe is that
+     test/achievements.test.js compares both fields here against the game's
+     ACHV table character for character, so drift fails the suite rather
+     than silently mislabelling a row. Keep the strings identical to the
+     game's; if you reword a hint there, reword it here.
+
+     An unknown id renders as the raw id rather than blank, so an
+     achievement added to the game and forgotten here is visible in the
+     table instead of invisible. */
+  const ACHV_INFO = {
+    'first-car':        ['Keys',             'Put your first car in service.'],
+    'first-ride':       ['Fare One',         'Complete your first ride.'],
+    'first-shift':      ['Clocked Off',      'Finish a shift.'],
+    'black':            ['In the Black',     'Finish a shift with a profit.'],
+    'net-500':          ['Good Day',         'Net $500 in a single shift.'],
+    'net-1500':         ['Printing',         'Net $1,500 in a single shift.'],
+    'cash-10k':         ['Five Figures',     'Reach $10,000 in the bank.'],
+    'clean-sheet':      ['Clean Sheet',      'Ten rides in a shift, no cancellations.'],
+    'safety-95':        ['Spotless',         'End a working shift with safety at 95 or better.'],
+    'meter-runner':     ['Meter Runner',     'Average $120 an hour over a shift of two hours or more.'],
+    'fleet-3':          ['Small Fleet',      'Run three cars at once.'],
+    'fleet-5':          ['Operator',         'Run five cars at once.'],
+    'purpose-built':    ['Purpose Built',    'Put a Cybercab in service.'],
+    'why-a-truck':      ['Why a Truck',      'Put a Cybertruck in service. Nobody will stop you.'],
+    'under-review':     ['Under Review',     'Let your safety score fall below 65.'],
+    'repossessed':      ['Repossessed',      'Run out of money.'],
+    'comeback':         ['Comeback',         'Follow a losing shift with a winning one.'],
+    'out-of-austin':    ['Out of Austin',    'Unlock a second city.'],
+    'grand-tour':       ['Grand Tour',       'Finish a shift in every city.'],
+    'found-the-switch': ['Found the Switch', 'Discover automatic top-up.'],
+    'hands-on':         ['Hands On',         'Clear a blocked car yourself.']
   };
   function renderAchievements(data){
     const rows = data.rows||[];
@@ -286,13 +319,35 @@ tr:hover td{background:rgba(var(--accent-rgb),.05)}
         'as zero — those players may well hold some, we just never asked.</div>';
     }
     function pct(n){ return total?Math.round((n/total)*100)+'%':'—'; }
+    /* Achievements the catalogue has but NOBODY has earned are the most
+       interesting rows in this table and the query cannot return them —
+       json_each() only sees ids that appear in somebody's list. So the
+       catalogue is walked, not the results: an unearned achievement shows
+       as a real 0 rather than being silently absent, which is the
+       difference between "too hard" and "nobody has got there yet". */
+    const got = {};
+    rows.forEach(function(r){ got[r.id] = r.players; });
+    Object.keys(ACHV_INFO).forEach(function(id){
+      if(!(id in got)) got[id] = 0;
+    });
+    const all = Object.keys(got).map(function(id){
+      return { id: id, players: got[id] };
+    }).sort(function(a,b){ return b.players - a.players; });
+
     return '<p class="note">Unlock rate across '+esc(total)+' distinct players. '+
       'A low number on an early achievement is a funnel problem; a low number on a '+
-      'late one is just difficulty.</p>'+
+      'late one is just difficulty. Rows at zero are in the game but nobody has '+
+      'earned them yet.</p>'+
       '<table><thead><tr><th>Achievement</th><th class="num">Players</th>'+
       '<th class="num">Rate</th></tr></thead><tbody>'+
-      rows.map(function(r){
-        return '<tr><td>'+esc(ACHV_NAMES[r.id]||r.id)+'</td>'+
+      all.map(function(r){
+        const info = ACHV_INFO[r.id];
+        /* An id the game has and this file does not still renders — as the
+           raw id with a flag, so drift is loud rather than invisible. */
+        const name = info ? info[0] : r.id;
+        const spec = info ? info[1] : 'unknown id — not in ACHV_INFO';
+        return '<tr'+(r.players?'':' class="zero"')+'>'+
+          '<td><b>'+esc(name)+'</b><span class="spec">'+esc(spec)+'</span></td>'+
           '<td class="num">'+esc(r.players)+'</td>'+
           '<td class="num">'+pct(r.players)+'</td></tr>';
       }).join('')+'</tbody></table>';

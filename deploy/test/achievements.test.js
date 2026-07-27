@@ -149,15 +149,44 @@ function loadableScript(html) {
       extra.length === 0, 'stale in ACHV_IDS: ' + extra.join(', '));
   }
 
+  /* admin.html's ACHV_INFO carries the name AND the earning condition, so
+     the admin reads like the game does. It is a hand-kept copy, which is
+     only safe because it is compared here against the authority character
+     for character — a reworded hint in the game that is not mirrored fails
+     the suite instead of quietly leaving the admin describing an older
+     rule. Parsed rather than imported: admin.html is a static page with no
+     module graph to hook into. */
   const admin = fs.readFileSync(ADMIN, 'utf8');
-  const am = admin.match(/const ACHV_NAMES = \{([\s\S]*?)\};/);
-  check('admin.html declares ACHV_NAMES', !!am);
+  const am = admin.match(/const ACHV_INFO = \{([\s\S]*?)\n  \};/);
+  check('admin.html declares ACHV_INFO', !!am);
   if (am) {
-    const labelled = (am[1].match(/'([^']+)'\s*:/g) || [])
-      .map((s) => s.replace(/'\s*:$/, '').slice(1));
-    const unlabelled = ids.filter((id) => !labelled.includes(id));
-    check('every achievement has an admin label', unlabelled.length === 0,
-      'missing from ACHV_NAMES: ' + unlabelled.join(', '));
+    const info = {};
+    const rowRe = /'([^']+)'\s*:\s*\[\s*'((?:[^'\\]|\\.)*)'\s*,\s*'((?:[^'\\]|\\.)*)'\s*\]/g;
+    let mm;
+    while ((mm = rowRe.exec(am[1])) !== null) {
+      info[mm[1]] = [mm[2].replace(/\\'/g, "'"), mm[3].replace(/\\'/g, "'")];
+    }
+    check('ACHV_INFO parsed as many rows as the game has achievements',
+      Object.keys(info).length === A.ACHV.length,
+      `admin=${Object.keys(info).length} game=${A.ACHV.length}`);
+
+    const missing = ids.filter((id) => !info[id]);
+    check('every achievement has an admin entry', missing.length === 0,
+      'missing from ACHV_INFO: ' + missing.join(', '));
+
+    const stale = Object.keys(info).filter((id) => !ids.includes(id));
+    check('ACHV_INFO lists nothing the game does not have', stale.length === 0,
+      'stale in ACHV_INFO: ' + stale.join(', '));
+
+    const wrongName = A.ACHV.filter((a) => info[a.id] && info[a.id][0] !== a.name)
+      .map((a) => `${a.id}: admin "${info[a.id][0]}" vs game "${a.name}"`);
+    check('every admin name matches the game exactly', wrongName.length === 0,
+      wrongName.join('; '));
+
+    const wrongHint = A.ACHV.filter((a) => info[a.id] && info[a.id][1] !== a.hint)
+      .map((a) => `${a.id}: admin "${info[a.id][1]}" vs game "${a.hint}"`);
+    check('every admin specification matches the game exactly',
+      wrongHint.length === 0, wrongHint.join('; '));
   }
 
   /* The trophy modal must exist and must be closed at boot. `hidden` alone

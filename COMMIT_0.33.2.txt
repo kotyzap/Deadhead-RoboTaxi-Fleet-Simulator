@@ -1,0 +1,54 @@
+0.33.2 — the admin Achievements table says what each achievement is
+
+Pavel: the table listed bare names. "Grand Tour 4%" is unreadable as a
+number until you know Grand Tour wants a shift in every city — the rate
+and the condition only mean something together, and the game already
+shows both in the trophy panel. The admin now matches it.
+
+WHAT CHANGED
+
+admin.html's ACHV_NAMES becomes ACHV_INFO, carrying the name AND the
+earning condition for all 21 ids. The table renders the name in bold with
+the condition beneath it, wrapping under its own name rather than
+stretching the Players and Rate columns.
+
+ZERO ROWS NOW APPEAR. The query cannot return them — json_each() only
+sees ids that exist in somebody's list, so an achievement nobody has
+earned was silently absent from the table. Those are the most interesting
+rows there are: the difference between "too hard" and "nobody has reached
+it yet" is invisible if the row is missing entirely. The renderer now
+walks the catalogue rather than the result set and shows unearned
+achievements as a real 0, dimmed so a zero does not read as loudly as a
+number.
+
+THE COPY IS NOW MACHINE-VERIFIED
+
+This is the third copy of the catalogue (game ACHV is the authority,
+ACHV_IDS in src/index.js is the server whitelist, ACHV_INFO here is the
+labels), and adding hints to it doubled the surface that can drift. So
+the test no longer just checks that every id is present — it compares
+both the name and the specification against the game's ACHV table
+character for character.
+
+Reword a hint in the game without mirroring it here and the suite fails
+naming both strings. Verified: changing "Finish a shift in every city."
+to "Visit every city." in admin.html produces
+
+  FAIL every admin specification matches the game exactly — grand-tour:
+       admin "Visit every city." vs game "Finish a shift in every city."
+
+Five new checks in all: the block parses, counts match, nothing is
+missing, nothing is stale, names match, specifications match. An id the
+game has and admin.html does not still renders — as the raw id with
+"unknown id — not in ACHV_INFO" where the spec goes, so drift that slips
+past the suite is loud in the UI rather than invisible.
+
+STILL OPEN
+- Both D1 migrations unrun. 002 BEFORE the next deploy (the Achievements
+  view 503s until it lands), 001 after.
+- The Cloudflare rate limiting rule on /api/stat.
+- The DISPATCH OFFLINE banner.
+- Map is gated on 'offers' and so sits dimmed at the start next to its own
+  aria-pressed="true" (carried from 0.33.1 — preserved deliberately, worth
+  a separate look).
+- deploy/public/Inside_The_Brutal…mp4, 9.8 MB, referenced by nothing.
