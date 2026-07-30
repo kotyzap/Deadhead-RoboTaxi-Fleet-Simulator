@@ -40,9 +40,11 @@ function loadSlotAllowed() {
   const src = fs.readFileSync(SRC, 'utf8');
   const slotsM = src.match(/^const SLOTS\s*=\s*(\[[^\]]*\]);/m);
   if (!slotsM) throw new Error('could not find const SLOTS in src/index.js');
+  const cityM = src.match(/^const CITY_IDS\s*=\s*(\[[^\]]*\]);/m);
+  if (!cityM) throw new Error('could not find const CITY_IDS in src/index.js');
   const fnM = src.match(/^function slotAllowed\(slot\)\s*\{[\s\S]*?^\}/m);
   if (!fnM) throw new Error('could not find function slotAllowed() in src/index.js');
-  const src2 = `const SLOTS = ${slotsM[1]};\n${fnM[0]}\nslotAllowed`;
+  const src2 = `const SLOTS = ${slotsM[1]};\nconst CITY_IDS = ${cityM[1]};\n${fnM[0]}\nslotAllowed`;
   return vm.runInNewContext(src2);
 }
 
@@ -75,6 +77,16 @@ check("slotAllowed('nonsense') is false", slotAllowed('nonsense') === false);
 check("slotAllowed('auto:') (empty city) is false", slotAllowed('auto:') === false);
 check("slotAllowed('auto:' + 17 chars) (too long) is false",
   slotAllowed('auto:abcdefghijklmnopq') === false);
+
+/* improvements.md P1-15: auto:<city> used to accept ANY [A-Za-z0-9_-]{1,16}
+   string, so an account could accumulate an unbounded number of 256 KB rows
+   under made-up city names. Now whitelisted against the real, finite city
+   list — every real city must still work, and a made-up one must not. */
+['austin', 'dallas', 'miami', 'tampa', 'orlando', 'sf'].forEach((city) => {
+  check(`slotAllowed('auto:${city}') is true (a real city)`, slotAllowed('auto:' + city) === true);
+});
+check("slotAllowed('auto:notacity') is false — unbounded row growth this closes",
+  slotAllowed('auto:notacity') === false);
 
 // Every literal Store.put('...', …) call site in the game must pass.
 const literals = literalPutSlots();

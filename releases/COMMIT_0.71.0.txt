@@ -1,0 +1,156 @@
+0.71.0 — the ten P1s from improvements.md
+
+Correctness and cost fixes on top of 0.70.0's P0 pass, same review
+(improvements.md). All ten P1 items, in the plan's own order.
+
+
+1. S.d RESTORED WITHOUT A DEFAULT -> INVISIBLE HARD-WEDGE (deadhead.html)
+
+   restore() used to trust s.d verbatim (S.d=s.d). A save missing it
+   entirely, or missing a key added to the ledger after that save was
+   written, made render() throw on every tick with nothing on screen to
+   explain why. newDay()'s zeroed shape is now pulled out into
+   defaultDayLedger() and restore() zero-fills onto it
+   (Object.assign(defaultDayLedger(), s.d||{})) instead of trusting the
+   save.
+
+
+2. FAILED RESUME LEFT A HALF-RESTORED WORLD (deadhead.html)
+
+   Every restore() call site falls back to a clean newFleet() on failure
+   except one: the boot-time "Resume" button's click handler
+   (bootResume()'s $('rs-go') listener) used to log-and-continue, leaving S
+   however far a broken restore() got before throwing. Now mirrors
+   switchCity()'s already-hardened resume path: toast, then
+   newFleet(S.city,{keepCompanyCash:true}).
+
+
+3. AUTOSAVE DROPPED DURING CITY SWITCH (deadhead.html)
+
+   autosave() used to be `if(saving) return` — a second call while one was
+   in flight was silently dropped, not deferred. switchCity() depends on
+   its own autosave('city-switch') call actually running (it's what stamps
+   results[from].parkedAt, the timestamp the departing city's rent bills
+   from) — a concurrent 30s interval autosave landing at the same moment
+   made that a no-op, so parkedAt silently kept its old value. `saving`
+   (boolean) is now `savingP` (a promise chain): every call is queued and
+   actually executes, in order, capturing fresh state at the time it runs
+   rather than being dropped.
+
+
+4. clockOff() CANCELLED CHARGE ORDERS THE SIM PROMISED TO HONOUR (deadhead.html)
+
+   stepOnce() deliberately keeps DRIVING a 'toCharge' car off-clock (a car
+   already sent to charge is supposed to arrive and start charging on its
+   own after you clock off) — but clockOff() reset every non-'charging' car
+   to idle, 'toCharge' included, snapping it to idle mid-route while
+   c.ch/c.chTo/c.chManual stayed set with nothing left driving toward them.
+   'toCharge' now gets the same exemption 'charging' already had. Pulled
+   the four sites that clear these fields slightly differently (sendToCharge()'s
+   cancel branch, strandCar(), stepCar()'s charge-complete branch,
+   restore()'s legacy-save fallback) into one clearChargeIntent(c) helper
+   in the same pass, since clockOff() needed exactly what they already did.
+
+
+5. NEXT-TARIFF LINE HARDCODED TO AUSTIN'S TOU WINDOWS (deadhead.html)
+
+   The Rapid panel computed the next-tariff-change hour and the peak/
+   off-peak/mid label with Austin's literal numbers (16/23/7, >=0.30,
+   <=0.12) regardless of city. San Francisco's off-peak rate (0.31) is
+   itself above the hardcoded 0.30 "peak" cutoff, so it read "peak tariff"
+   for all 24 hours. Both now derive from currentCity().power, same as
+   tariff() itself: nextTariffChange(h) finds the next of all four real
+   boundaries (peakFrom/peakTo/offFrom/offTo) rather than two hardcoded
+   ones — which also fixes a real bug that existed even for Austin, where
+   the old two-boundary logic skipped the peak-to-mid transition at 21:00
+   entirely. tariffTag(h) matches the current rate against the city's own
+   peak/off numbers instead of fixed dollar thresholds.
+
+
+6. OVERNIGHT FAST-FORWARD WAS ONE SYNCHRONOUS ~4,300-ITERATION LOOP (deadhead.html)
+
+   startFastForward() runs stepOnce() substep-by-substep for the whole
+   overnight gap in one synchronous call — necessarily so (0.69.0 already
+   explains why it can't animate again). But every substep still ran
+   rayAdvise()/checkUnlocks()/checkSafety()/rayCheck() — pure UI-advisor
+   decisions and a real achievements scan, repeated thousands of times for
+   a state nobody can see until the jump ends. All four are now skipped
+   per-substep while S.ffwd is true; checkUnlocks()/checkSafety() run once
+   after the whole jump instead (in startFastForward(), right before
+   stopFastForward()), and rayCheck() only needs its one existing call at
+   the very end (stopFastForward() already had it). Same end state, computed
+   once instead of thousands of times. checkUnlocks() also used to call
+   render() the instant a stage unlocked mid-jump — exactly the mid-jump
+   render the synchronous redesign was meant to avoid — which this removes
+   as a side effect.
+
+
+7. PAOLO IDLE ADVISOR TIMED IN SIM-SECONDS (deadhead.html)
+
+   S.ray.advIdle accumulated dt (sim-seconds) instead of realDt — the same
+   bug class already fixed for the offer countdown, the blocked-car window
+   and the no-feed nudge. ADVISE_AFTER=75 "sim-seconds of nothing happening"
+   was actually 3.75 REAL seconds at 20x before a game-pausing advisor card
+   interrupted the player. Now accumulates realDt, a genuine wall-clock wait
+   at every speed.
+
+
+8. progress WRITES DEFEATED THE D1 AUTOSAVE BUDGET (cloud.js)
+
+   CLOUD_AUTOSAVE_MS coalescing applied ONLY to the 'auto'/'auto:<city>'
+   slots. progSave() runs on every single autosave, unconditionally — so a
+   signed-in tab left open all day sent an uncoalesced 'progress' PUT every
+   ~30s: four times the traffic the 'auto' slot alone was capped at.
+   profileSave()/appendHistoryRow() hit 'profile'/'history' on the same
+   cadence. isAutoKey() -> isCoalescedKey() widens the SAME mechanism to
+   all four slots; the old single pendingAuto/lastCloudAuto pair (which
+   could only ever track one in-flight write) is now pendingByKey/
+   lastFlushByKey, Maps keyed per-slot so 'progress' and 'auto:austin' each
+   get their own independent coalescing clock. flushOnExit()/doSignOut()
+   now flush every pending key, not just one.
+
+   New test: deploy/test/cloud-coalesce.test.js signs a fake session in via
+   the real probeSession() path and confirms rapid double-writes to
+   progress/profile/history/auto:<city> are each coalesced independently,
+   and that a non-coalesced slot (slot1) is never deferred.
+
+
+9. /api/stat AND /api/register HAD NO REAL ABUSE CEILING (deploy/src/index.js)
+
+   statThrottled() keyed solely on `${playerId}|${ip}` — playerId is
+   client-generated and never verified, so a script that mints a fresh one
+   per request started a new bucket every time and never once hit
+   STAT_MAX_PER_WINDOW. A second bucket keyed on ip ALONE now backstops it
+   (STAT_MAX_PER_IP_PER_WINDOW=200 — loose enough not to punish a real
+   shared IP, but a real, finite ceiling a rotating-playerId script can't
+   escape). /api/register had no throttle at all despite costing ~5 written
+   rows per call; now IP-keyed at 5/hour, same in-memory/isolate-local
+   trade-off statThrottled() already documents (real backstop is a
+   Cloudflare Rate Limiting rule). Also: /api/login wrote last_seen on
+   EVERY login unconditionally; now skipped if the existing value is
+   already within 24h — nothing reads it at finer resolution than a day.
+
+
+10. UNBOUNDED auto:* ROWS PER ACCOUNT (deploy/src/index.js)
+
+   slotAllowed() accepted ANY auto:[A-Za-z0-9_-]{1,16} — every distinct
+   string sent under 'auto:' got its own row, up to 256 KB, with no cap on
+   how many an account could accumulate. Whitelisted against the real,
+   finite CITY_IDS list (copied from deadhead.html's CITIES, same
+   copy-not-import trade as MODEL_IDS/ACHV_IDS) instead — bounds it at
+   exactly 6 rows per account, no separate row-count query needed.
+
+
+TESTS
+
+  Full suite green: 39 test files (37 existing + the new cloud-coalesce.test.js
+  + last session's slot-allowed.test.js, which also gained coverage for
+  item 10's CITY_IDS whitelist). Parity holds (deadhead.html ==
+  deploy/public/index.html, cloud.js == deploy/public/cloud.js).
+
+  Not covered end-to-end by an automated test in this pass: items 3
+  (autosave queueing under real concurrent load), 4 (clockOff() with a
+  live toCharge car — the state machine is exercised elsewhere but not this
+  exact interaction), and 6 (the ffwd quiet-mode's behavior over a full
+  multi-day jump). All three are plausible follow-ups for a Worker/
+  jsdom harness rather than something worth mocking hastily here.

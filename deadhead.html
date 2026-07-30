@@ -5535,6 +5535,41 @@ function tariff(h){
        : (h>=p.offFrom||h<p.offTo)?p.off
        : p.mid;
 }
+/* improvements.md P1-10: the Rapid panel used to compute BOTH the next
+   tariff-change hour and the peak/off-peak/mid label with numbers lifted
+   straight from Austin's TOU windows (16/23/7, >=0.30, <=0.12) — wrong the
+   moment any other city's rates or windows differ, which is every other
+   city (see the `power` block on each CITIES entry). San Francisco is the
+   worst case: its off-peak rate (0.31) is itself above the hardcoded 0.30
+   "peak" cutoff, so the old code labelled it "peak tariff" for all 24
+   hours, never off-peak or mid, regardless of the time.
+
+   Both derive from currentCity().power now, same as tariff() itself just
+   above. nextTariffChange() also fixes a real bug that existed even for
+   Austin: the old h<16?16:(h<23?23:7) only ever named two boundaries, so
+   during peak (16-21) it announced the OFF-peak start (23) as "next" and
+   skipped over the actual next change at 21 (peak ending into the 21-23
+   mid window) entirely. Generalising to "the next of all four boundaries"
+   fixes that for free. */
+function nextTariffChange(h){
+  const p=currentCity().power;
+  if(!p) return h<16?16:(h<23?23:7);   // pre-city-data fallback — same numbers tariff() falls back to
+  const bounds=[p.peakFrom,p.peakTo,p.offFrom,p.offTo]
+    .filter(function(b){ return typeof b==='number' })
+    .sort(function(a,b){ return a-b });
+  const next=bounds.filter(function(b){ return b>h })[0];
+  return next!==undefined?next:bounds[0];
+}
+/* "peak tariff" / "off-peak" / "mid tariff" by matching the CURRENT rate
+   against this city's own peak/off numbers, rather than fixed dollar
+   thresholds a $0.62 San Francisco peak or a $0.15 Tampa peak can't both
+   satisfy. Falls back to the old fixed thresholds only when there is no
+   per-city power data at all, mirroring tariff()'s own fallback. */
+function tariffTag(h){
+  const p=currentCity().power, rate=tariff(h);
+  if(!p) return rate>=0.30?'peak tariff':rate<=0.12?'off-peak':'mid tariff';
+  return rate===p.peak?'peak tariff':rate===p.off?'off-peak':'mid tariff';
+}
 /* The scenario's economic multipliers. One accessor each so a missing city
    field reads as "no change" instead of NaN-ing the whole economy. */
 function cityK(f){ const v=currentCity()[f]; return typeof v==='number'?v:1 }
@@ -5619,12 +5654,22 @@ const S={
    undefined. */
 function zeroCarD(){ return {gross:0,cost:0,dep:0,maint:0,ins:0,soft:0,fixed:0,
   energy:0,miles:0,rides:0,cancels:0} }
-function newDay(){
-  S.d={gross:0,cost:0,energy:0,payroll:0,miles:0,done:0,lost:0,unserved:0,blocked:0,
+/* The zeroed shape of S.d — pulled out of newDay() so restore() (below) can
+   zero-fill a save missing this entirely, or missing individual keys added
+   after that save was written, rather than trusting s.d verbatim. Every
+   S.d.<key> read in render()/shiftReport() assumes these all exist; a save
+   missing even one (a save from before it was added, or a hand-edited/
+   corrupted import) made render() throw on literally every tick with
+   nothing on screen to explain why — see improvements.md P1-6. */
+function defaultDayLedger(){
+  return {gross:0,cost:0,energy:0,payroll:0,miles:0,done:0,lost:0,unserved:0,blocked:0,
        cancels:0,dep:0,maint:0,ins:0,soft:0,commission:0,fixed:0,
        /* The soloSeat wage — see billMidnight(). Zero in every city that
           isn't soloSeat; never read as a cost, only ever added to S.cash. */
        stipend:0};
+}
+function newDay(){
+  S.d=defaultDayLedger();
   S.cars.forEach(function(c){ c.d=zeroCarD() });
 }
 newDay();
@@ -6038,6 +6083,21 @@ function nearestCharger(c){
   return b;
 }
 
+/* Clears every field that ties a car to a charge order or session: the
+   target charger, the target SOC, whether it was operator-ordered, a
+   queued after-drop-off order, and the energy-delivered counter. Used
+   to be copy-pasted slightly differently at each site that cancels or
+   completes a charge (sendToCharge()'s cancel branch, strandCar(),
+   stepCar()'s charge-complete branch, restore()'s legacy-save fallback) —
+   a couple of which forgot to zero chAdded, which is harmless cosmetically
+   (it's re-zeroed the next time a charge actually starts) but was still
+   drift with no reason to exist. See improvements.md P1-9 for the actual
+   bug this was pulled out to help fix: clockOff() didn't call this at all
+   for a 'toCharge' car, leaving every one of these fields dangling. */
+function clearChargeIntent(c){
+  c.ch=null; c.chTo=null; c.chManual=false; c.chQueue=null; c.chAdded=0;
+}
+
 /* Operator-ordered charging. Until this existed the ONLY way a car reached
    a charger was the automatic trigger in stepCar's idle branch — below
    CFG.chargeAt and already idle — which meant the player could not act on
@@ -6065,7 +6125,7 @@ function sendToCharge(carId,name){
      only in the console button's own handler. Recovery is recoverCar()'s job. */
   if(c.state==='stranded'||c.state==='recovery') return null;
   if(c.state==='toCharge'&&c.ch===h){
-    c.state='idle'; c.ch=null; c.route=[]; c.chTo=null; c.chManual=false;
+    c.state='idle'; c.route=[]; clearChargeIntent(c);
     log(c.id,'charge cancelled',0);
     render(); return 'cancelled';
   }
@@ -6291,7 +6351,7 @@ function strandCar(c){
     c.queue=[];
   }
   /* Any pending charge order is void — it cannot drive there now. */
-  c.ch=null; c.chQueue=null; c.chTo=null; c.chManual=false;
+  clearChargeIntent(c);
   sndBlocked();
 }
 /* The paid way out. Charged the moment the flatbed is called, not on arrival,
@@ -6357,7 +6417,7 @@ function stepCar(c,dt,realDt){
        fills right up, because deliberately buying cheap kWh off-peak is the
        whole reason to order one. */
     if(c.soc>=(c.chTo||CFG.chargeTo)){
-      c.state='idle'; c.ch=null; c.chTo=null; c.chManual=false; c.chAdded=0;
+      c.state='idle'; clearChargeIntent(c);
       log(c.id,'charged to '+pct(c.soc),0);
       sndCharged();
     }
@@ -6516,12 +6576,34 @@ function stepOnce(dt,realDt){
   /* Beat 8 needs to know how long nothing has been happening. */
   const busy=S.cars.some(function(c){return c.state!=='idle'})||S.offers.length>0;
   S.ray.idleFor=busy?0:S.ray.idleFor+dt;
-  S.ray.advIdle=busy?0:(S.ray.advIdle||0)+dt;
+  /* improvements.md P1-12: advIdle used to accumulate dt (sim-seconds), same
+     bug class already fixed for the offer countdown, the blocked-car window
+     and the no-feed nudge (see stepOnce's realDt note, and the comment just
+     below on why the no-feed trigger has to be real-seconds). ADVISE_AFTER
+     is documented as "sim-seconds of nothing happening", but at 20x speed
+     that is 3.75 REAL seconds before a game-pausing advisor card interrupts
+     the player — barely enough time to notice the screen went quiet, let
+     alone decide it needs advice. realDt makes this a genuine wall-clock
+     wait at every speed, same as its siblings. */
+  S.ray.advIdle=busy?0:(S.ray.advIdle||0)+realDt;
   /* Anything actually happening also clears the "he already said this" latch,
      so the same advice can return later if the player drifts back into the
      same hole — just not on a loop while they are still in it. */
   if(busy) S.ray.advKey=null;
-  rayAdvise();
+  /* improvements.md P1-11: skipped during a fast-forward jump. rayAdvise()
+     only ever decides whether to pop an advisor card — pure UI state, zero
+     effect on the economy — and startFastForward() runs stepOnce() up to
+     ~4,300 times in one synchronous call to cover an overnight gap. Calling
+     it that many times was pure waste: nothing renders mid-jump (see the
+     long comment above startFastForward()), so a card it decided to show
+     was invisible anyway, and rayAdvise() itself already documents having
+     to guard against firing mid-ffwd and leaving a stray card sitting next
+     to the shift report. Skipping it here removes the waste AND the reason
+     for that guard to ever trigger, though the guard stays as a safety net.
+     Nothing needs to "catch up" on resume: it is driven by S.ray.advIdle,
+     which keeps accumulating above regardless, and the normal tick loop
+     picks it back up the moment real ticks resume after the jump. */
+  if(!S.ffwd) rayAdvise();
   /* Cars only move while you are supervising them — except a car already on
      a charger, which keeps charging whether you're clocked on or fast-
      forwarding to the next shift. */
@@ -6538,9 +6620,22 @@ function stepOnce(dt,realDt){
   const l=loadRatio();
   S.ops.forEach(function(o){ o.fatigue=clamp(o.fatigue+dt/3600*0.07*(0.5+l),0,1) });
   if(S.cash<0) bankrupt();
-  checkUnlocks();
-  checkSafety();
-  rayCheck();
+  /* improvements.md P1-11: also skipped per-substep during a fast-forward
+     jump, same reasoning as rayAdvise() above — checkUnlocks() calls
+     render() the instant a stage unlocks, which is exactly a mid-jump
+     render the whole point of running this synchronously was meant to
+     avoid, and checkAchievements() inside it is a real scan repeated
+     thousands of times for nothing anyone can see yet. rayCheck() is
+     the scripted-beat equivalent of rayAdvise(). None of the three need to
+     run every substep: startFastForward() runs checkUnlocks()/checkSafety()
+     once after the whole jump completes, and stopFastForward() already
+     calls rayCheck() once at the very end — so the end state is exactly as
+     correct as before, just computed once instead of thousands of times. */
+  if(!S.ffwd){
+    checkUnlocks();
+    checkSafety();
+    rayCheck();
+  }
 }
 
 /* Fixed costs are owed per calendar day, clocked on or not. */
@@ -6972,7 +7067,8 @@ function nextTask(){
    world has genuinely stalled (the same `busy` test beat 9 uses) and only
    when the task has CHANGED since he last spoke — so he answers "what now?"
    without turning into a tooltip that reappears every thirty seconds. */
-const ADVISE_AFTER=75;      /* sim-seconds of nothing happening */
+const ADVISE_AFTER=75;      /* REAL seconds of nothing happening — see the P1-12
+                                fix on S.ray.advIdle's accumulation, below */
 function rayAdvise(){
   if(S.ray.skipped||S.ray.cur) return;
   /* Only garage-triggered lines (beat 1, fired directly by openGarage()) may
@@ -7029,9 +7125,11 @@ function rayAdvise(){
    ============================================================
    The one hole the advisor above could not cover. nextTask() has always
    returned the 'plat' task for an unconnected fleet, but rayAdvise() only
-   speaks after ADVISE_AFTER *sim*-seconds of the world being quiet — and a
-   player who clocks on with no feed is watching a screen where nothing will
-   EVER happen, so "quiet" is the permanent state, not a signal. At 1x that
+   speaks after ADVISE_AFTER REAL seconds of the world being quiet (fixed in
+   improvements.md P1-12 — it used to be sim-seconds, arriving in 3.75 real
+   seconds at 20x) — and a player who clocks on with no feed is watching a
+   screen where nothing will EVER happen, so "quiet" is the permanent state,
+   not a signal. At 1x that
    advice is over a minute away; the wait reads as the game being broken.
 
    So this is its own trigger, and it is timed in REAL seconds — ten of them,
@@ -7655,7 +7753,17 @@ function clockOff(quiet){
   /* Offers do not survive a shift; the feeds go quiet when you do. */
   S.offers=[];
   S.cars.forEach(function(c){
-    if(c.state!=='charging'){ c.state='idle'; c.route=[]; c.ride=null; c.reached=false }
+    /* improvements.md P1-9: stepOnce() deliberately keeps DRIVING a
+       'toCharge' car off-clock (see the comment above its stepCar() call)
+       — sending a car to charge and then clocking off is supposed to let
+       it arrive and start charging on its own. This used to reset every
+       non-'charging' car to idle here, 'toCharge' included: the car
+       snapped to idle wherever it happened to be mid-route, while c.ch/
+       c.chTo/c.chManual stayed set with nothing left driving toward them —
+       a charge order the sim had already promised to honour, silently
+       broken. 'toCharge' now gets the same exemption 'charging' already
+       had. */
+    if(c.state!=='charging'&&c.state!=='toCharge'){ c.state='idle'; c.route=[]; c.ride=null; c.reached=false }
     /* Queued rides don't survive the shift ending any more than S.rides
        does — without this a car's backlog from tonight would silently
        reappear and start dispatching the moment tomorrow's shift begins. */
@@ -7758,6 +7866,15 @@ function startFastForward(){
      clockOn() hardening from earlier this session. */
   try{
     step(S.ffwdTarget-S.t);
+    /* stepOnce() skips checkUnlocks()/checkSafety()/rayCheck() on every
+       substep while S.ffwd is true (improvements.md P1-11) — run them once
+       here, after the whole jump, so a stage that should have unlocked or a
+       safety-permit change that should have landed during the gap still
+       does, exactly once, instead of not at all. rayCheck() itself is not
+       repeated here: stopFastForward() below already calls it once, after
+       the safety bump and the history row, which is the right order for it. */
+    checkUnlocks();
+    checkSafety();
     stopFastForward();
   }catch(err){
     console.error('fast-forward failed partway through the overnight jump — recovering',err);
@@ -10074,10 +10191,10 @@ function render(){
 
   /* rapid */
   $('rapid-now').innerHTML=money2(tariff(h))+'<small>/kWh</small>';
-  const nxt=h<16?16:(h<23?23:7);
+  const nxt=nextTariffChange(h);
   $('rapid-next').innerHTML=money2(tariff(nxt))+'<small>/kWh</small>';
   $('rapid-when').textContent='From '+String(nxt).padStart(2,'0')+':00';
-  $('rapid-tag').textContent=tariff(h)>=0.30?'peak tariff':tariff(h)<=0.12?'off-peak':'mid tariff';
+  $('rapid-tag').textContent=tariffTag(h);
   /* Each row is now a dispatch control for whichever car is selected, and
      shows the two things that decide whether it is worth using: how far it
      is and how long the drive takes. With no car selected the rows fall back
@@ -11091,7 +11208,7 @@ const SLOTS=['slot1','slot2','slot3'];
    SAVE_V above is the STATE SHAPE version and moves only when the
    snapshot format changes — the two are deliberately independent, so
    shipping 0.9.0 does not invalidate 0.8.0 saves. */
-const VERSION='0.70.0';
+const VERSION='0.71.0';
 
 function snapshot(){
   return {
@@ -11345,7 +11462,13 @@ function restore(save,opts){
   /* scalars */
   S.t=s.t; S.day=s.day; S.cash=s.cash; S.fareMult=s.fareMult;
   S.carsPerOp=s.carsPerOp; S.seq=s.seq; S.safety=s.safety;
-  S.permit=s.permit; S.over=!!s.over; S.d=s.d;
+  S.permit=s.permit; S.over=!!s.over;
+  /* improvements.md P1-6: s.d used to be trusted verbatim (S.d=s.d), so a
+     save missing it entirely — or missing a key added to the ledger after
+     that save was written — made render() throw on every tick with no
+     visible error, an invisible hard-wedge. Zero-fill onto the same default
+     shape newDay() uses instead of trusting the save. */
+  S.d=Object.assign(defaultDayLedger(), (s.d&&typeof s.d==='object')?s.d:{});
   /* A save from before multi-city support has no city field. */
   S.city=(s.city&&CITIES[s.city])?s.city:'austin';
   /* Before anything reads ZONES/CHARGERS/ROADS below — notably the geofence
@@ -11467,7 +11590,7 @@ function restore(save,opts){
       c.state='idle'; c.route=[]; c.reached=false;
     }
     if(!c.ch&&(c.state==='charging'||c.state==='toCharge')){
-      c.state='idle'; c.route=[]; c.chTo=null; c.chManual=false;
+      c.state='idle'; c.route=[]; clearChargeIntent(c);
     }
     /* Recovery, re-pointed by name like c.ch. A tow whose destination this
        city hasn't got still completes — stepCar's recovery branch falls back
@@ -13460,7 +13583,19 @@ $('sv-file').addEventListener('change',function(){
 });
 
 /* ---------------- autosave ---------------- */
-let saving=false;
+/* improvements.md P1-8: this used to be a boolean `saving` flag that made a
+   second autosave() call a silent no-op (`if(saving) return`) while one was
+   already in flight — dropped, not deferred. switchCity() relies on
+   autosave('city-switch') actually running: it's what stamps
+   results[from].parkedAt fresh via progTrack() (see the comment above
+   switchCity()), which is the timestamp reconcileParkedBilling() bills the
+   parked city's rent from. A concurrent 30s interval autosave landing at
+   the exact moment a player switched cities made the city-switch call a
+   no-op, so parkedAt silently kept its OLD value — the departing city's
+   last minutes of play vanish from the record it's billed against.
+   savingP is the tail of a promise chain instead: every call is queued and
+   actually runs, in order, rather than the second one being dropped. */
+let savingP=Promise.resolve();
 /* The run's high-water mark, kept in memory by render() and flushed here.
    Deliberately piggybacked on the autosave cadence: progress is written to the
    same IndexedDB and there is no reason to open a second transaction every
@@ -13521,19 +13656,29 @@ function saveSig(){
 }
 let lastSavedSig='';
 function autosave(reason){
-  if(saving) return Promise.resolve();
-  saving=true;
-  progTrack(); progSave();
-  const sig=saveSig();
-  const snap=snapshot();
-  /* Stored WITH the save so the dialog can tell "this is the current state"
-     from "this is 22 minutes old", instead of the player having to guess from
-     a timestamp. See slotRow(). */
-  snap.sig=sig;
-  return Store.put('auto',snap)
-    .then(function(){ lastSavedSig=sig })
-    .catch(function(err){ console.warn('autosave failed ('+reason+')',err) })
-    .then(function(){ saving=false });
+  /* Queue behind whatever is already in flight rather than dropping this
+     call — see the long comment above savingP. progTrack()/progSave()/
+     saveSig()/snapshot() all run AT THE TIME THIS CALL ACTUALLY EXECUTES
+     (inside the .then below), not now, so a queued city-switch call still
+     captures that city's true last-moment state rather than whatever was
+     current when it was merely scheduled. */
+  const run=savingP.then(function(){
+    progTrack(); progSave();
+    const sig=saveSig();
+    const snap=snapshot();
+    /* Stored WITH the save so the dialog can tell "this is the current state"
+       from "this is 22 minutes old", instead of the player having to guess from
+       a timestamp. See slotRow(). */
+    snap.sig=sig;
+    return Store.put('auto',snap)
+      .then(function(){ lastSavedSig=sig })
+      .catch(function(err){ console.warn('autosave failed ('+reason+')',err) });
+  });
+  /* Swallow here, not above: a failed write must not break the CHAIN (the
+     next queued autosave still has to run), but the caller of THIS call
+     still gets to see whether its own write succeeded via `run`. */
+  savingP=run.catch(function(){});
+  return run;
 }
 /* Runs whether or not the clock is running; skips the write when nothing has
    moved. `S.over` still stops it — a finished run must not overwrite itself. */
@@ -13921,7 +14066,15 @@ setInterval(function(){
   if(S.ffwd){
     const dt=CFG.ffwdSimPerReal*CFG.tickMs/1000;
     step(dt);
-    if(S.over||S.t>=S.ffwdTarget) stopFastForward();
+    /* This branch should never fire (see the comment above this
+       setInterval) — startFastForward() runs the whole gap synchronously
+       and always clears S.ffwd before returning. If it somehow does,
+       checkUnlocks()/checkSafety() need the same catch-up
+       startFastForward() gives them, since stepOnce() skips both while
+       S.ffwd is true (improvements.md P1-11) — otherwise a stage unlock or
+       safety-permit change could be silently missed for however many ticks
+       this fallback path is actually alive. */
+    if(S.over||S.t>=S.ffwdTarget){ checkUnlocks(); checkSafety(); stopFastForward() }
   } else if(S.running&&S.speed>0){
     const dt=CFG.simPerReal*S.speed*CFG.tickMs/1000;
     step(dt); acc+=CFG.tickMs;
@@ -13961,10 +14114,19 @@ setInterval(function(){
       '<div class="rp-row"><span>Saved</span><span>'+ago(sv.ts)+'</span></div>';
     $('resume').hidden=false;
     $('rs-go').addEventListener('click',function(){
+      /* improvements.md P1-7: this used to log-and-continue on a failed
+         restore(), same fault switchCity()'s resume path had before it was
+         hardened (2026-07-30, see the comment there) — a bad restore() can
+         leave S half-mutated (some fields moved to the new save, others
+         still whatever a fresh boot defaulted them to), and every other
+         restore() call site already falls back to a clean newFleet() on
+         failure. This is the one that didn't. */
       try{
         restore(sv); log('System','resumed day '+S.day,0);
       }catch(err){
         console.warn('resume failed — starting fresh',err);
+        toast('Your save could not be loaded — started a fresh fleet instead.',true);
+        newFleet(S.city,{keepCompanyCash:true});
       }
       $('resume').hidden=true; setSpeed(CFG.defaultSpeed); render(); paintUnits(); syncSoundBtn();
     });

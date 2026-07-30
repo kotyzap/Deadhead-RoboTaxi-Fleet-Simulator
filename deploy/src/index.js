@@ -41,8 +41,28 @@ const MAX_SAVE_BYTES = 256 * 1024;   // a real save is ~1–15 KB; this is abuse
    UI) and are accepted here instead. */
 function slotAllowed(slot) {
   if (SLOTS.includes(slot) || slot === 'progress' || slot === 'profile' || slot === 'history') return true;
-  return slot.indexOf('auto:') === 0 && /^[A-Za-z0-9_-]{1,16}$/.test(slot.slice(5));
+  /* improvements.md P1-15: this used to accept ANY auto:[A-Za-z0-9_-]{1,16}
+     — every distinct string a client sent under 'auto:' got its own row,
+     each up to MAX_SAVE_BYTES (256 KB), with no cap on how many distinct
+     slots one account could accumulate. A client is not required to send a
+     real city id here (the server has no way to have verified that even if
+     it wanted to, short of this exact whitelist), so nothing stopped an
+     account from writing an unbounded number of 256 KB rows under made-up
+     'auto:<anything>' keys. Whitelisting the real, finite city list closes
+     it the same way MODEL_IDS/ACHV_IDS already whitelist client-supplied
+     ids elsewhere in this file — bounds it at exactly CITY_IDS.length rows
+     per account, no separate row-count query needed. */
+  return slot.indexOf('auto:') === 0 && CITY_IDS.includes(slot.slice(5));
 }
+
+/* deadhead.html's CITIES ids, copied rather than shared — same copy-not-
+   import trade as MODEL_IDS/ACHV_IDS below (this Worker has no import path
+   back into the game engine). Used only to whitelist auto:<city> in
+   slotAllowed() above. Keep in sync when a city ships; the cost of drift is
+   that city's autosave 400ing until this list catches up, the same failure
+   mode 'auto:<city>' itself had before physKey() was accounted for here at
+   all — see the P0-1/P0-2 fixes earlier in this file's history. */
+const CITY_IDS = ['austin', 'dallas', 'miami', 'tampa', 'orlando', 'sf'];
 
 /* CATALOG ids from deadhead.html's CATALOG const, copied rather than shared
    — this Worker has no import path back into the game engine, and the list
@@ -427,23 +447,54 @@ function edgeGeo(request) {
 
    Anything a throttle here would have caught and this misses still lands
    in a table whose every numeric column is clamped, so the downside of a
-   miss is a junk row, not a broken query. */
-const statBuckets = new Map();   // `${playerId}|${ip}` -> { n, start }
+   miss is a junk row, not a broken query.
+
+   IMPROVEMENTS.MD P1-14: keying SOLELY on `${playerId}|${ip}` was a real
+   hole, not a theoretical one — playerId is a client-generated uuid the
+   server never verifies, so a script that generates a fresh one per request
+   starts a brand-new bucket every single time and never once hits
+   STAT_MAX_PER_WINDOW. The combined key still exists (it is still the more
+   precise bucket when the caller isn't doing that), but a SECOND bucket
+   keyed on ip ALONE now backstops it, with a much higher ceiling — a real
+   IP can legitimately host many distinct players (NAT, a campus network, a
+   café), so this has to be loose enough not to punish that, while still
+   being a real, finite ceiling a rotating-playerId script cannot escape. */
+const statBuckets = new Map();     // `${playerId}|${ip}` -> { n, start }
+const statBucketsByIp = new Map(); // `${ip}` -> { n, start }
+const STAT_MAX_PER_IP_PER_WINDOW = 200; // ~6-7x a single real player's ceiling
 
 function statThrottled(playerId, ip) {
-  const key = `${playerId}|${ip}`;
   const nowMs = now();
   // Cheap unbounded-growth guard; see STAT_BUCKET_CAP.
   if (statBuckets.size > STAT_BUCKET_CAP) statBuckets.clear();
-  const b = statBuckets.get(key);
+  if (statBucketsByIp.size > STAT_BUCKET_CAP) statBucketsByIp.clear();
+
+  const ipHit = bump(statBucketsByIp, ip, STAT_MAX_PER_IP_PER_WINDOW, nowMs);
+  const pairHit = bump(statBuckets, `${playerId}|${ip}`, STAT_MAX_PER_WINDOW, nowMs);
+  return ipHit || pairHit;
+}
+/* Shared bump-or-reject helper for the two throttle maps above and
+   registerBuckets below: true if this key is already at its ceiling for
+   the current window, otherwise records the hit and returns false. Always
+   uses STAT_WINDOW_MS (1 hour) as the window — one shared cadence for
+   every in-memory/isolate-local throttle in this file, not a separate
+   knob per endpoint that could quietly drift out of sync with the others. */
+function bump(map, key, ceiling, nowMs) {
+  const b = map.get(key);
   if (!b || nowMs - b.start > STAT_WINDOW_MS) {
-    statBuckets.set(key, { n: 1, start: nowMs });
+    map.set(key, { n: 1, start: nowMs });
     return false;
   }
-  if (b.n >= STAT_MAX_PER_WINDOW) return true;
+  if (b.n >= ceiling) return true;
   b.n++;
   return false;
 }
+
+/* improvements.md P1-14: /api/register's own throttle bucket — see the
+   comment at its call site. A real player registers once; five in an hour
+   from one connection is already generous. */
+const registerBuckets = new Map(); // `${ip}` -> { n, start }
+const REGISTER_MAX_PER_WINDOW = 5;
 
 /* ---------------- admin gate ----------------
    Was a Wrangler secret (ADMIN_TOKEN); replaced with a hardcoded
@@ -599,6 +650,18 @@ async function handleApi(request, env, url, ctx) {
 
   /* --- register --- */
   if (p === '/api/register' && method === 'POST') {
+    /* improvements.md P1-14: this had NO throttle at all, on an endpoint
+       that costs ~5 written rows per call (users + a session) and needs
+       nothing but a made-up username/authKey pair to succeed repeatedly.
+       IP-keyed, same in-memory/isolate-local trade-off statThrottled()
+       already documents at length above (not global, resets on isolate
+       recycle, real backstop is a Cloudflare Rate Limiting rule) — good
+       enough for a stuck client or a single runaway script, which is the
+       realistic threat against a free-plan Worker, not a distributed
+       attacker with unlimited IPs. */
+    if (bump(registerBuckets, clientIp(request), REGISTER_MAX_PER_WINDOW, now())) {
+      return bad('too many accounts created from this connection — try again later', 429);
+    }
     const body = await request.json().catch(() => null);
     if (!body) return bad('malformed request');
     const username = checkUsername(body.username);
@@ -642,7 +705,7 @@ async function handleApi(request, env, url, ctx) {
     if (await throttled(env, username)) {
       return bad('too many failed attempts — wait 15 minutes', 429);
     }
-    const user = await env.DB.prepare('SELECT id, pw FROM users WHERE username = ?').bind(username).first();
+    const user = await env.DB.prepare('SELECT id, pw, last_seen FROM users WHERE username = ?').bind(username).first();
 
     if (user && isLegacyRow(user.pw)) {
       return bad('this account predates a security change and must be recreated — ' +
@@ -660,7 +723,16 @@ async function handleApi(request, env, url, ctx) {
     }
 
     await clearFails(env, username);
-    await env.DB.prepare('UPDATE users SET last_seen = ? WHERE id = ?').bind(now(), user.id).run();
+    /* improvements.md P1-14: this used to write last_seen on EVERY login,
+       unconditionally — a returning player who signs in several times a
+       day (a new tab, a phone and a laptop, a cleared cookie) spent a
+       write each time for a column that only needs day-level resolution;
+       nothing reads last_seen more precisely than that (see the days_active/
+       retention queries in the admin dashboard below). Skipped once the
+       existing value is already within the last 24h. */
+    if (now() - (user.last_seen || 0) > 86400000) {
+      await env.DB.prepare('UPDATE users SET last_seen = ? WHERE id = ?').bind(now(), user.id).run();
+    }
     const { token, maxAge } = await startSession(env, user.id);
     return json({ username }, 200, { 'set-cookie': cookieHeader(token, maxAge) });
   }

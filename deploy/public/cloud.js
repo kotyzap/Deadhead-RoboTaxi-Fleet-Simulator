@@ -92,8 +92,6 @@
   let saltPrefix = 'deadhead|';
   let paramsLoaded = false;
   let signedIn = null;            // username string when signed in
-  let lastCloudAuto = 0;
-  let pendingAuto = null;         // newest {key, save} not yet pushed
 
   /* deadhead.html's physKey() rewrites the logical key 'auto' to
      'auto:<city>' so each city keeps its own autosave slot — see the long
@@ -105,6 +103,24 @@
      (interval) — no such endpoint" console warning: physKey() shipped
      without this file being taught the new key shape. */
   function isAutoKey(k) { return k === 'auto' || k.indexOf('auto:') === 0; }
+
+  /* improvements.md P1-13: coalescing used to apply ONLY to isAutoKey()
+     slots — but autosave() (deadhead.html) calls progSave() every single
+     time it runs, unconditionally, and the 30s autosave interval means a
+     signed-in tab left open all day sends ~2,880 uncoalesced 'progress'
+     PUTs, four times the capped 'auto' writes CLOUD_AUTOSAVE_MS exists to
+     bound. profileSave() and appendHistoryRow() (-> historySave, below)
+     hit the same slots on every profile edit / shift filed. None of these
+     three needs sub-2-minute freshness any more than the autosave does —
+     they are exactly the kind of "changes slowly, tolerates being a couple
+     of minutes stale" record CLOUD_AUTOSAVE_MS was invented for.
+     isCoalescedKey() widens the SAME mechanism (not a second one) to all
+     four; see pendingByKey/lastFlushByKey below, which replace the old
+     single pendingAuto/lastCloudAuto pair now that more than one distinct
+     slot needs its own independent coalescing clock. */
+  function isCoalescedKey(k) {
+    return isAutoKey(k) || k === 'progress' || k === 'profile' || k === 'history';
+  }
 
   const $ = (id) => document.getElementById(id);
   const enc = new TextEncoder();
@@ -193,16 +209,23 @@
     return L ? L.put(k, v).catch(() => {}) : Promise.resolve();
   }
 
-  async function flushAuto() {
-    if (!pendingAuto || !signedIn) return;
-    const { key, save } = pendingAuto;
-    pendingAuto = null;
-    lastCloudAuto = Date.now();
+  /* Per-key coalescing state — one entry per distinct slot (auto:<city>,
+     progress, profile, history each keep their own clock), replacing the
+     old single pendingAuto/lastCloudAuto pair that only ever tracked one
+     slot at a time (see isCoalescedKey() above). */
+  const pendingByKey = new Map();   // key -> save (newest not yet pushed)
+  const lastFlushByKey = new Map(); // key -> Date.now() of last successful push
+
+  async function flushKey(key) {
+    if (!pendingByKey.has(key) || !signedIn) return;
+    const save = pendingByKey.get(key);
+    pendingByKey.delete(key);
+    lastFlushByKey.set(key, Date.now());
     try {
       await req(API.save(key), { method: 'PUT', body: JSON.stringify(save) });
       setSyncNote('synced ' + new Date().toLocaleTimeString());
     } catch (e) {
-      pendingAuto = { key, save };  // keep it for the next attempt
+      pendingByKey.set(key, save);  // keep it for the next attempt
       setSyncNote('offline — saved locally');
     }
   }
@@ -223,10 +246,11 @@
 
     async put(k, v) {
       await localPut(k, v);
-      if (isAutoKey(k)) {
-        pendingAuto = { key: k, save: v };
-        if (Date.now() - lastCloudAuto < CLOUD_AUTOSAVE_MS) return { ok: true, deferred: true };
-        return flushAuto();
+      if (isCoalescedKey(k)) {
+        pendingByKey.set(k, v);
+        const last = lastFlushByKey.get(k) || 0;
+        if (Date.now() - last < CLOUD_AUTOSAVE_MS) return { ok: true, deferred: true };
+        return flushKey(k);
       }
       try {
         await req(API.save(k), { method: 'PUT', body: JSON.stringify(v) });
@@ -241,7 +265,7 @@
     async del(k) {
       const L = Local();
       if (L) await L.del(k).catch(() => {});
-      if (isAutoKey(k) && pendingAuto && pendingAuto.key === k) pendingAuto = null;
+      if (isCoalescedKey(k)) pendingByKey.delete(k);
       try {
         await req(API.save(k), { method: 'DELETE' });
       } catch (e) {
@@ -299,22 +323,28 @@
   };
 
   /* Push whatever is pending when the tab goes away, so closing the
-     browser does not lose up to two minutes of cloud progress. */
+     browser does not lose up to two minutes of cloud progress. improvements.md
+     P1-13: now iterates every coalesced key (auto:<city>, progress, profile,
+     history can each have their own independent write in flight), not just
+     one — the old single pendingAuto meant a pending 'progress' write and a
+     pending 'auto:<city>' write could never both survive a tab close, only
+     whichever happened to be stored in that one slot. */
   function flushOnExit() {
-    if (!pendingAuto || !signedIn) return;
-    const body = JSON.stringify(pendingAuto.save);
+    if (!signedIn || !pendingByKey.size) return;
     // keepalive lets the request outlive the page; sendBeacon cannot set
     // the method to PUT, so use fetch with keepalive.
-    try {
-      fetch(API.save(pendingAuto.key), {
-        method: 'PUT',
-        credentials: 'same-origin',
-        headers: { 'content-type': 'application/json' },
-        body,
-        keepalive: true,
-      });
-      pendingAuto = null;
-    } catch { /* nothing more we can do at this point */ }
+    for (const [key, save] of pendingByKey) {
+      try {
+        fetch(API.save(key), {
+          method: 'PUT',
+          credentials: 'same-origin',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(save),
+          keepalive: true,
+        });
+      } catch { /* nothing more we can do at this point */ }
+    }
+    pendingByKey.clear();
   }
   window.addEventListener('pagehide', flushOnExit);
   document.addEventListener('visibilitychange', () => {
@@ -681,7 +711,7 @@
   function signOutLocally() {
     signedIn = null;
     window.DH_REMOTE = null;
-    pendingAuto = null;
+    pendingByKey.clear();
     /* Back to costing nothing at boot. Deliberately cleared here rather
        than only in doSignOut(): this also runs on a 401 from a dead
        session, which is exactly when the marker has gone stale. */
@@ -858,7 +888,9 @@
 
   async function doSignOut() {
     busy(true);
-    try { await flushAuto() } catch { /* best effort */ }
+    /* Flush every coalesced key that's still pending, not just one — same
+       reasoning as flushOnExit() above. */
+    try { await Promise.all([...pendingByKey.keys()].map(flushKey)) } catch { /* best effort */ }
     try { await req(API.logout, { method: 'POST' }) } catch { /* cookie may already be gone */ }
     signOutLocally();
     if (window.DH_SAVE && window.DH_SAVE.refresh) window.DH_SAVE.refresh();
