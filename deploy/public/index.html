@@ -5185,8 +5185,9 @@ const CHARGERS_BY_CITY={
 
      Lee Vista is tied with Dallas's S Riverfront for the fastest hardware in
      the game, and it is the ONLY site inside the service area — with 8 stalls
-     against a fleet cap of 18. The queue penalty (see chargeEta) is therefore a
-     real constraint here for the first time: past eight cars charging at once,
+     against a fleet cap of 14 (see CITIES.orlando.fleetCap). The queue penalty
+     (see chargeEta) is therefore a real constraint here for the first time:
+     past eight cars charging at once,
      the alternative is a 14 km deadhead out of the corridor. Cheap power, fast
      charger, one door. */
   orlando:[
@@ -5222,6 +5223,19 @@ const CHARGERS_BY_CITY={
      lat:37.6554620, lng:-122.4009325, stalls:20, kw:72}
   ]
 };
+/* improvements.md P3-29: this returns the LIVE array, unlike zonesFor()
+   above, which deep-copies. Not an oversight — the two have different
+   mutability needs. A zone's `on` flag is per-run player state (the
+   geofence toggle), so zonesFor() copies specifically so flipping it on one
+   run's ZONES can never leak into CHARGERS_BY_CITY's/ZONES_BY_CITY's own
+   authored config and corrupt the next fresh run. A charger object has no
+   equivalent per-run mutable field — CHARGERS_BY_CITY entries are only ever
+   read (stalls, kw, lat/lng), never written — and returning the SAME
+   objects is actually required elsewhere: cars reference their charger by
+   object identity (`c.ch===x` in drawMap()/assign()'s charger-row scoring),
+   which only holds if chargerByName()/nearestCharger() hand back elements
+   of the one live CHARGERS array rather than copies that would never
+   reference-equal anything a car is pointed at. */
 function chargersFor(city){ return CHARGERS_BY_CITY[city]||CHARGERS_BY_CITY.austin }
 /* `let`, not `const`: switching city reassigns it. Everything reads the
    live binding rather than capturing the array, and saves now reference a
@@ -10179,6 +10193,28 @@ let lastPlatSig=null, lastOfferSig=null;
    cache, or the guard buys nothing. */
 let lastFleetSig=null, lastRapidSig=null, lastBkLinesSig=null, lastBkLiabSig=null,
     lastIncSig=null, lastWaitSig=null, lastZoneSig=null, lastLiveSig=null;
+/* improvements.md P3-24: every dirty-check guard above (and a few more
+   scattered through the map/lock code — lastMsgSeenCount, lastLocksSig,
+   lastZoneStyleSig, _roadPathCache) is keyed off a signature of the
+   CURRENT run's state. None of them are reset when a run itself resets —
+   newFleet() for a brand-new game/city, restore() for loading a save — so
+   a coincidental signature match against the PREVIOUS run's last-known
+   value can leave stale HTML on screen after the reset instead of forcing
+   the one rebuild that would show the new run's actual state. Worst case
+   observed: the Messages panel's lastMsgSeenCount surviving into a new
+   run, showing the previous run's Paolo transcript until something else
+   happened to change seen.length. Called from both newFleet() and
+   restore(), right before their own render() call, so that first render
+   after a reset is guaranteed to rebuild everything from scratch. */
+function resetRenderCaches(){
+  lastPlatSig=null; lastOfferSig=null;
+  lastFleetSig=null; lastRapidSig=null; lastBkLinesSig=null; lastBkLiabSig=null;
+  lastIncSig=null; lastWaitSig=null; lastZoneSig=null; lastLiveSig=null;
+  lastMsgSeenCount=-1;
+  lastLocksSig=null;
+  lastZoneStyleSig=null;
+  _roadPathCache.clear();
+}
 function render(){
   const h=hour();
   /* Both are no-ops in the common case — see progGates(). */
@@ -10934,6 +10970,18 @@ document.querySelectorAll('.seg button').forEach(function(b){
     if(v===1) paoloRealTime();
   });
 });
+/* improvements.md P3-29: the slider's max="3" in the markup is a second,
+   hand-kept copy of CFG.speeds.length-1 — the two must always agree (index
+   3 has to BE the last entry in CFG.speeds, or dragging to the end either
+   stops short of 20x or reads past the array into undefined). Setting it
+   here from the live array means a future change to CFG.speeds (adding a
+   5th speed, say) only has to touch the one array; the markup's own
+   min/step stay as static defaults since they are not derived from
+   anything. The .dots markup a few lines up in the HTML is the same kind
+   of coupling (one <i> per entry) and is not re-derived here — four fixed
+   speed tiers has been stable since Act 1 shipped, and generating them
+   dynamically is more code than the coupling has ever cost. */
+$('spd').max=String(CFG.speeds.length-1);
 $('spd').addEventListener('input',function(){
   const v=CFG.speeds[parseInt(this.value,10)];
   setSpeed(v);
@@ -11319,7 +11367,7 @@ const SLOTS=['slot1','slot2','slot3'];
    SAVE_V above is the STATE SHAPE version and moves only when the
    snapshot format changes — the two are deliberately independent, so
    shipping 0.9.0 does not invalidate 0.8.0 saves. */
-const VERSION='0.72.0';
+const VERSION='0.73.0';
 
 function snapshot(){
   return {
@@ -11800,6 +11848,7 @@ function restore(save,opts){
   reconcileParkedBilling();
 
   setSpeed(0);                  /* always resume paused */
+  resetRenderCaches();           /* improvements.md P3-24 — see its comment */
   syncOps(); render(); drawMap();
 }
 
@@ -13905,9 +13954,22 @@ function autosaveSoon(reason){
 }
 /* pagehide is the only event reliably fired on mobile tab kill */
 window.addEventListener('pagehide',function(){ autosave('pagehide') });
-/* Some desktop browsers close a window/tab without ever firing pagehide;
-   beforeunload is the belt to that suspenders. */
-window.addEventListener('beforeunload',function(){ autosave('beforeunload') });
+/* improvements.md P3-25: this used to be autosave('beforeunload') — but
+   autosave() is Store.put() into IndexedDB, an ASYNC write, and a browser
+   tearing the page down for beforeunload makes no promise that an async
+   write started in that handler ever finishes. In practice it mostly did
+   not: the "belt to pagehide's suspenders" was itself unreliable exactly
+   when it mattered most (a real window close, not the mobile tab-kill
+   pagehide already covers). localStorage.setItem() is synchronous and
+   reliably completes even during unload, so this now writes a compact
+   emergency snapshot there instead — read back once at the very next boot
+   (see bootResume()'s EMERGENCY_KEY check) and only if it is actually newer
+   than whatever IndexedDB already has. */
+const EMERGENCY_KEY='dh_emergency_snapshot';
+window.addEventListener('beforeunload',function(){
+  try{ localStorage.setItem(EMERGENCY_KEY,JSON.stringify(snapshot())) }
+  catch(e){ /* private mode, quota, or no localStorage — nothing more to do here */ }
+});
 document.addEventListener('visibilitychange',function(){
   if(document.visibilityState==='hidden') autosave('hidden');
   else wxWake();
@@ -14126,7 +14188,9 @@ function newFleet(cityId,opts){
   newDay();
   if(map){ for(const id in carLayer){ map.removeLayer(carLayer[id]); delete carLayer[id] } }
   $('ray').hidden=true; raySpotClear();
-  setSpeed(0); render();
+  setSpeed(0);
+  resetRenderCaches();            /* improvements.md P3-24 — see its comment */
+  render();
   /* The garage opens either way — you still cannot run a city without buying
      a car. Only the video is conditional. */
   const start=function(){ openGarage(); rayCheck() };
@@ -14311,8 +14375,37 @@ setInterval(function(){
       S.city=PROG.last; loadCityTables();
     }
     renderCityTabs();
-    return Store.get('auto');
+    /* A rejected Store.get() (IndexedDB blocked/unavailable — private
+       browsing, some mobile embeds) must not skip the emergency-snapshot
+       check below by falling straight to this whole chain's outer .catch:
+       that is exactly the situation the localStorage rescue exists for, a
+       primary store that is not working. Treated the same as "no save". */
+    return Store.get('auto').catch(function(){ return null });
   }).then(function(sv){
+    /* improvements.md P3-25: the one-shot emergency snapshot the
+       beforeunload handler writes synchronously to localStorage (see
+       EMERGENCY_KEY above). Read at most once, right here, and always
+       cleared afterward whether or not it gets used — it is a rescue for
+       THIS boot only, never a second permanent save location that could
+       drift out of sync with IndexedDB/the cloud. Only wins if it is
+       actually for the city about to load and actually newer than what
+       IndexedDB already has: a stale or foreign-city blob (a previous
+       session that never got around to overwriting it, or a save opened
+       for a different city in between) must not resurrect old state on
+       top of a perfectly good newer autosave. Wrapped defensively — this
+       is user-editable browser storage, same trust level as an imported
+       save file. */
+    try{
+      const raw=localStorage.getItem(EMERGENCY_KEY);
+      if(raw){
+        localStorage.removeItem(EMERGENCY_KEY);
+        const emg=JSON.parse(raw);
+        if(emg&&emg.s&&emg.s.city===S.city&&typeof emg.ts==='number'&&
+           (!sv||!sv.ts||emg.ts>sv.ts)){
+          sv=emg;
+        }
+      }
+    }catch(e){ /* corrupted blob — fall through to whatever Store.get() returned */ }
     if(!sv||!sv.meta){ newFleet(S.city); return }
     const m=sv.meta;
     /* improvements.md P2-16: same fix as slotRow() above, and the same
@@ -14428,15 +14521,13 @@ window.DH_ACT1={
   HELP:HELP,tipShow:tipShow,tipHide:tipHide,
   UNITS:UNITS,uKm:uKm,uMi:uMi,uEff:uEff,uPerDist:uPerDist,uSys:uSys,
   uImp:uImp,rangeKm:rangeKm,defaultUnits:defaultUnits,paintUnits:paintUnits,
-  nextTask:nextTask,rayAdvise:rayAdvise,ADVISE_AFTER:ADVISE_AFTER,
+  rayAdvise:rayAdvise,ADVISE_AFTER:ADVISE_AFTER,
   noFeedTick:noFeedTick,NOFEED_AFTER:NOFEED_AFTER,noFeed:noFeed,mmss:mmss,
   NOFEED_REPEAT:NOFEED_REPEAT,NOFEED_MAX_SAID:NOFEED_MAX_SAID,
   rayFill:rayFill,floorCost:floorCost,money:money,money2:money2,
   rayCoffee:rayCoffee,rayFoot:rayFoot,rayAtCoffee:rayAtCoffee,
   rayDodgeBrief:rayDodgeBrief,closeDodge:closeDodge,dodgeEnd:dodgeEnd,
-  rayCheck:rayCheck,
   KOFI_URL:KOFI_URL,KOFI_QR:KOFI_QR,
-  raySkip:raySkip,
   socNeeded:socNeeded,silhouette:silhouette,
   CARART:CARART,BODY_FOR:BODY_FOR,PHOTO_FOR:PHOTO_FOR,artHtml:artHtml,drive:drive,
   /* Exposed for the fresh-run clock-seed regression test. */
@@ -14449,7 +14540,7 @@ window.DH_ACT1={
   /* Exposed for test/rebrand.test.js: the alias resolver and the achievement
      predicate's lookup are the two places a pre-rebrand save can break. */
   modelId:modelId,hasModel:hasModel,MAKE:MAKE,MODEL_ALIAS:MODEL_ALIAS,
-  livePlatforms:livePlatforms,acceptRate:acceptRate,volumeMult:volumeMult,
+  livePlatforms:livePlatforms,acceptRate:acceptRate,
   winProb:winProb,offerNet:offerNet,deadheadKm:deadheadKm,
   acceptOffer:acceptOffer,declineOffer:declineOffer,
   clockOn:clockOn,clockOff:clockOff,shiftReport:shiftReport,
@@ -14462,8 +14553,7 @@ window.DH_ACT1={
   setHistory:function(rows){ HISTORY=rows },
   /* Running flat, for test/stranded.test.js. stepCar/assign/nearestCharger/
      sendToCharge are already exposed further down. */
-  strandCar:strandCar,recoverCar:recoverCar,rangeKm:rangeKm,
-  socNeeded:socNeeded,drive:drive,LABEL:LABEL,CLS:CLS,
+  strandCar:strandCar,recoverCar:recoverCar,LABEL:LABEL,CLS:CLS,
   insPerMile:insPerMile,setSpeed:setSpeed,
   checkSafety:checkSafety,nextDayStart:nextDayStart,
   startFastForward:startFastForward,stopFastForward:stopFastForward,

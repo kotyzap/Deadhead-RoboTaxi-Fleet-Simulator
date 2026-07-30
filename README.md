@@ -19,7 +19,7 @@ No install. No account. No download. It runs in the browser you already have.
 
 ## The first decision is the whole game
 
-You start with **$7,500** and no car. Every vehicle in the catalogue costs more than that.
+You start with **$800** and no car. Every vehicle in the catalogue costs many times that.
 
 That is not a difficulty spike, it is the lesson. You cannot buy your way in, so you have to
 choose *how you hold the asset* — and each way of holding it is wrong in a different way.
@@ -33,7 +33,9 @@ choose *how you hold the asset* — and each way of holding it is wrong in a dif
 Renting costs nothing today and the most every day after. Financing is cheaper for exactly
 as long as you keep working, and a mistake the moment you stop. **Neither is wrong.**
 
-Four of the six are financeable on day one. The other two you can only look at.
+None of the six are financeable on day one — $800 doesn't clear a single down payment plus
+lender reserve. Renting is the only door in; financing is a later move once you've earned
+your way to it.
 
 ---
 

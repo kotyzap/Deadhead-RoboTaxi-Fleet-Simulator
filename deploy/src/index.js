@@ -743,8 +743,16 @@ async function handleApi(request, env, url, ctx) {
     const user = await env.DB.prepare('SELECT id, pw, last_seen FROM users WHERE username = ?').bind(username).first();
 
     if (user && isLegacyRow(user.pw)) {
-      return bad('this account predates a security change and must be recreated — ' +
-        'delete the row from the users table, or register again with a different username', 409);
+      /* improvements.md P3-29: this used to tell the PLAYER to "delete the
+         row from the users table" — an instruction only whoever runs the
+         admin/D1 console can act on, not the person reading a login error
+         in their browser. The actual, player-actionable fix is the same
+         one a taken username already gets them: pick a different name and
+         register fresh. This account's cloud data (progress, saves) is not
+         recoverable under the old scheme either way, since the browser now
+         sends a derived key the old row was never hashed against. */
+      return bad('this account predates a security change and cannot sign in any more — ' +
+        'register again under a different username; your local browser saves are unaffected', 409);
     }
 
     // Same generic message and comparable work either way, so the response

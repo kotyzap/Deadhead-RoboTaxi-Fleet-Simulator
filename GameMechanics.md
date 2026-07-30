@@ -1,9 +1,24 @@
 # Deadhead: game mechanics
 
-How the game is actually played, minute to minute and day to day. Where `DESIGN.md`
-states intent, this document states rules and numbers.
+> **⚠ SUPERSEDED — improvements.md P3-28 (2026-07-30).** This document is a design-phase
+> snapshot from before Act 1 was built (see its own "Status" line below — "not yet built").
+> The numbers throughout are two generations stale against the shipped game: it describes a
+> **$3,000** start and a **three-car** catalogue with a flat **$18,000** price for car #2;
+> the shipped game starts on **$800** (`CFG.startCash` in deadhead.html) with **no financeable
+> car on day one**, against a **six-trim** catalogue (`CATALOG` in deadhead.html — Cab, Saloon,
+> Crossover, Saloon Long, Crossover Six, Truck) at real, differentiated MSRPs. Rewriting this
+> whole document number-by-number was judged more likely to introduce a fresh drift than to
+> fix one — it is kept here as a historical record of the DESIGN, not a source of current
+> numbers. For what is actually true today: `deadhead.html`'s `CATALOG`/`CFG` consts are the
+> authority, `DESIGN.md` §5 for the shipped city roster, and `README.md` for the player-facing
+> summary (kept in sync with the shipped numbers as of this same pass).
 
-- **Status:** design in progress; Act 1 is new and not yet built
+How the game is actually played, minute to minute and day to day. Where `DESIGN.md`
+states intent, this document states rules and numbers. (See the superseded notice above —
+this describes the ORIGINAL design pass, not the shipped numbers.)
+
+- **Status:** design in progress; Act 1 is new and not yet built (as of the date below —
+  Act 1 has since shipped and moved well past this document, see the notice above)
 - **Date:** 2026-07-25
 - **See also:** `DESIGN.md` (premise, pillars, economics), `UI-SPEC.md` (console interface),
   `deadhead.html` (running prototype — currently starts mid-Act-2)

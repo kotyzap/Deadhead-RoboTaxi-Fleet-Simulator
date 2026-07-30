@@ -17,13 +17,19 @@ Developer and operations notes. For what the game *is*, see [README.md](README.m
 **Before numbering a release, read `const VERSION` in `deadhead.html`. Do not
 infer the current version from anything else.**
 
-This is written in bold because it has already gone wrong. The `COMMIT_*.txt`
-notes in the repo root are written by hand and are not written every time —
-they stopped at `COMMIT_0.26.7.txt` while the build went on to 0.31.0. Anyone
-who reads the highest filename and adds one lands *five versions in the past*
-and silently reuses a number that has already shipped. The git log is no safer:
-everything since 0.26.3 is uncommitted, so `git tag` and `git log` both
-describe a build months behind the working tree.
+This is written in bold because it has already gone wrong, more than once. The
+`COMMIT_*.txt` notes are written by hand and are not written every time — they
+once stopped at `COMMIT_0.26.7.txt` while the build had gone on to 0.31.0, and
+later the working tree ran ~36 versions ahead of the last real commit before a
+catch-up commit brought git back in sync (improvements.md #27, 2026-07-30 —
+see `releases/COMMIT_0.70.0.txt` onward for the notes written since). Anyone
+who reads the highest filename and adds one, or reads the newest git tag and
+assumes it is current, can land several versions in the past and silently
+reuse a number that has already shipped. As of this pass, `git log`/`git tag`
+ARE caught up to the working tree again (commits exist through v0.72.0) — but
+that is a snapshot of today, not a standing guarantee, which is exactly why
+`const VERSION` and `test/version.test.js`, not the git history, are the rule
+below.
 
 So: the code is the source of truth, and `npm test` now enforces it —
 `test/version.test.js` fails if the newest `COMMIT_*.txt` does not match
@@ -49,6 +55,13 @@ a bug report from a stranger diagnosable.
 | 0.10.0 | **Ray, the Act 1 tutorial** (`GameMechanics.md` §9). Thirteen beats, every one triggered by game state rather than a timer, so the script follows the player. Spotlight primitive — a ring on the referenced control, console dimmed 25%. Messages card bottom-left; never modal, never pauses the clock except beat 1. All beats stay readable in a Messages panel afterwards. Skippable from the first card and never re-offered. Adds the demand-driven surge model (0.8–2.0×) that beat 7 needs to fire at all. Save shape v4. |
 | 0.9.0 | **Act 1 rebuild** (`GameMechanics.md`). Real-time clock — 1× is the wall clock, speeds pause/1/4/20. Clock on/off shift model: cars earn only while you are supervising, and the car still owes $42 at midnight. Manual accept/decline of offers on a 45-second countdown. Two platforms, Hitchr (25%) and Zipp (15%), with acceptance rate driving offer volume. Start position $1,000 and one owned car. Fixed cost decomposed to $42 base. Insurance tiers at 3 cars. Two prototype bugs fixed: the offer cap never fired, and neutral pricing shed 44% of demand. Save shape v3 with a v2 migration. |
 | 0.8.0 | Save/load: versioned snapshot with reference rehydration, IndexedDB autosave, three manual slots, JSON export/import. Cloudflare Worker + D1 backend for accounts and cloud saves. Version badge in the top bar. |
+
+**This table stops at 0.13.0 on purpose, not by neglect** — improvements.md P3-28 flagged it
+as stale, and the fix is not to hand-copy sixty more rows into a second place that can drift
+from the first. `releases/COMMIT_*.txt` is the real, one-entry-per-release history from
+0.13.0 forward (one file per version, same voice as the rows above); the current shipped
+version is always whatever `const VERSION` says in `deadhead.html` (see the rule just above).
+This table is kept as-is for the early history it already has right, not extended further.
 
 ### Recovering an old version
 

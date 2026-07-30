@@ -227,7 +227,45 @@
     } catch (e) {
       pendingByKey.set(key, save);  // keep it for the next attempt
       setSyncNote('offline — saved locally');
+      /* improvements.md P3-25: keeping the save in pendingByKey used to be
+         the whole plan for "the next attempt" — but nothing ever scheduled
+         one. put() only calls flushKey() again the next time something
+         actually changes and crosses the coalescing window, so a network
+         blip that lands on the LAST write of a session the player then
+         walks away from (tab stays open, nothing more to autosave) left
+         that write stuck in memory forever, rescued only by flushOnExit()
+         whenever the tab finally closes. scheduleRetry() below arms a
+         backoff timer the moment a write fails, independent of whether
+         anything new ever gets written again. */
+      scheduleRetry();
     }
+  }
+
+  /* Backoff retry for writes that failed in flushKey() above. Doubles on
+     each attempt that still leaves something pending (a real outage, not a
+     one-off blip) and resets to the floor the moment everything drains —
+     so a brief network hiccup costs one extra request soon after, not a
+     fixed drumbeat of retries for the rest of the session. Single shared
+     timer rather than one per key: pendingByKey rarely holds more than a
+     couple of entries (auto:<city>, progress, profile, history), and one
+     Promise.all() over whichever are outstanding is simpler than juggling
+     independent per-key clocks for no real benefit. */
+  const RETRY_MIN_MS = 15000, RETRY_MAX_MS = 300000;
+  let retryDelay = RETRY_MIN_MS;
+  let retryTimer = null;
+  function scheduleRetry() {
+    if (retryTimer) return;   // already armed — the pending failure(s) will ride this one
+    retryTimer = setTimeout(async () => {
+      retryTimer = null;
+      if (!signedIn || !pendingByKey.size) { retryDelay = RETRY_MIN_MS; return }
+      await Promise.all([...pendingByKey.keys()].map(flushKey));
+      if (pendingByKey.size) {
+        retryDelay = Math.min(retryDelay * 2, RETRY_MAX_MS);
+        scheduleRetry();
+      } else {
+        retryDelay = RETRY_MIN_MS;
+      }
+    }, retryDelay);
   }
 
   const RemoteStore = {
@@ -712,6 +750,11 @@
     signedIn = null;
     window.DH_REMOTE = null;
     pendingByKey.clear();
+    /* A queued retry for the account that just signed out must not fire
+       against the next one, or (with nobody signed in at all) spin the
+       backoff up needlessly against an empty queue. */
+    if (retryTimer) { clearTimeout(retryTimer); retryTimer = null }
+    retryDelay = RETRY_MIN_MS;
     /* Back to costing nothing at boot. Deliberately cleared here rather
        than only in doSignOut(): this also runs on a 401 from a dead
        session, which is exactly when the marker has gone stale. */

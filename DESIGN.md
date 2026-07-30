@@ -172,7 +172,9 @@ Each real Tesla Robotaxi metro is a scenario with its own goal, constraints, and
 required strategy. Extensible as new cities launch.
 
 Cities are **sequential, not parallel**: one run is live at a time, each with its own
-$7,500. Cash never travels between them — only unlocks and per-city results do. Each city's
+$800 (CFG.startCash — see the note in deadhead.html's CATALOG comment for why $7,500 was
+the design-era figure and is no longer the shipped one). Cash never travels between them —
+only unlocks and per-city results do. Each city's
 tab unlocks by clocking off one shift in the city before it (`needs:'shift1@<city>'`), so the
 scenarios form a chain rather than a menu.
 
@@ -327,7 +329,11 @@ cars-per-operator slider feel like a real trade-off rather than a number to maxi
 If both are yes, the trilemma will carry a full game and we commit to an architecture.
 If not, the fix is in the time and demand model, not in adding features.
 
-Built and running: **`deadhead.html`** (`shell.html` remains the static style reference).
+Built and running: **`deadhead.html`**. `shell.html` was the static style reference at the
+time this was written (2026-07-25); it predates the glassmorphism restyle, night/day theming,
+and everything since, so it no longer matches the shipped tokens (improvements.md P3-29,
+2026-07-30) and should not be treated as current. `deadhead.html` itself — the running
+build — is the real style reference now.
 
 ---
 

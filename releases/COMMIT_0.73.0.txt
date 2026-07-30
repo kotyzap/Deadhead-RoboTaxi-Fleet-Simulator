@@ -1,0 +1,94 @@
+v0.73.0 — P3 complete: improvements.md fully closed out (P3-24 through P3-29)
+
+The last phase of Fable's code review. Nothing here changes gameplay — it
+closes lifecycle gaps, adds missing test coverage, and fixes documentation
+that had drifted behind the shipped game.
+
+P3-24 — resetRenderCaches() from newFleet()/restore()
+Every render-signature dirty-check guard added in the P2 performance pass
+(lastPlatSig, lastFleetSig, lastMsgSeenCount, lastLocksSig, lastZoneStyleSig,
+the roadPath memo cache, and the rest) survived a run reset, so a
+coincidental signature match against the PREVIOUS run's last-known value
+could leave stale HTML on screen right after starting a new run or loading
+a save — worst case, the Messages panel showing a previous run's Paolo
+transcript. resetRenderCaches() clears all of them and is now called from
+both newFleet() and restore(), right before their own render() call.
+
+P3-25 — cloud autosave retry, and a real synchronous unload write
+Two separate gaps in cloud.js:
+  - flushKey()'s catch kept a failed write in pendingByKey "for the next
+    attempt", but nothing ever scheduled one — an idle tab after a network
+    blip never synced again until something new happened to be written.
+    scheduleRetry() now arms a backoff timer (15s, doubling to a 5-minute
+    cap, resetting once everything drains) the moment a write fails.
+  - beforeunload called autosave('beforeunload') — an ASYNC IndexedDB
+    write with no guarantee it ever completes before the page tears down.
+    It now writes a compact snapshot() to localStorage SYNCHRONOUSLY
+    instead, read back at most once on the very next boot (EMERGENCY_KEY)
+    and only if it's for the city about to load and newer than IndexedDB's
+    own copy — a one-shot rescue, never a second permanent save location.
+    Writing the test for this caught a real bug in the fix itself: the
+    rescue originally only ran inside Store.get('auto')'s .then(), so a
+    REJECTED Store.get() (IndexedDB blocked/unavailable) skipped it
+    entirely and fell straight to a fresh fleet — exactly the situation the
+    rescue exists for. Fixed by catching that rejection into null before
+    the emergency-snapshot check runs, not after.
+
+P3-26 — Worker HTTP test harness, extended parity check
+worker.test.js adds direct coverage for statThrottled()/bump() (the P1-14
+abuse ceilings), sanitizeModels()/sanitizeAchv() (client-payload
+sanitizers), and isAdmin()'s brute-force throttle end-to-end against a real
+login_attempts table — none of which had a dedicated test before. Extracted
+from src/index.js at run time, same discipline as the existing
+leaderboard.test.js/display-name.test.js, with fixture admin credentials
+supplied by the test itself (never the real, gitignored admin-config.js).
+check-parity.js now also hashes cloud.js against deploy/public/cloud.js —
+flagged in P1-13 as "byte-identical by luck", which is exactly the kind of
+true that stops being true the first time someone edits one copy under
+time pressure.
+
+P3-28 — docs vs. code on money and trims
+README.md and DESIGN.md quoted the $7,500 design-era starting cash and "four
+of six financeable on day one" — the shipped game starts on $800
+(CFG.startCash) with zero financeable trims on day one. Both fixed, and a
+new docs-money.test.js greps the real numbers out of deadhead.html and
+checks README/DESIGN against them, so this specific drift can't recur
+silently. GameMechanics.md (two full generations stale — $3,000 start,
+three-car catalogue, a flat $18,000 price for car #2) gets a prominent
+superseded notice at the top rather than a line-by-line rewrite: it is kept
+as a historical design record, not treated as a source of current numbers.
+DEVELOPING.md's "everything since 0.26.3 is uncommitted" claim is now
+false (this project's git history is caught up through this tag) — fixed,
+with a pointer to releases/COMMIT_*.txt as the real ongoing history instead
+of extending the hand-kept table by 50+ more rows in a second place.
+
+P3-29 — small stuff
+  - Seven duplicate keys in window.DH_ACT1's export object (volumeMult,
+    nextTask, socNeeded, drive, raySkip, rayCheck, rangeKm) — harmless
+    (same value both times) but confusing; removed.
+  - The Orlando charger comment said "fleet cap of 18" against the real
+    fleetCap:14 — fixed, with a cross-reference so it can't silently drift
+    from CITIES.orlando.fleetCap again.
+  - CFG.speeds vs. the speed slider's hardcoded max="3": the slider's max
+    is now set from CFG.speeds.length-1 at boot, so a future speed added to
+    the array doesn't also require a matching manual markup edit.
+  - chargersFor() returning the live array while zonesFor() deep-copies
+    looked like an inconsistency; it's intentional (chargers have no
+    per-run mutable field the way a zone's `on` flag does, and cars
+    reference their charger by object identity) — documented rather than
+    changed.
+  - The legacy pbkdf2$ login error told the PLAYER to "delete the row from
+    the users table" — an instruction only an admin can act on. Reworded
+    to the actual player-actionable fix: register again under a different
+    username.
+  - DESIGN.md no longer calls shell.html "the static style reference" —
+    it predates the glassmorphism restyle and everything since, and
+    deadhead.html itself is the real reference now.
+
+Verification: full deploy/ test suite (49 files, four new: emergency-
+snapshot.test.js, cloud-retry.test.js, worker.test.js, docs-money.test.js)
+green, check-parity.js clean across both file pairs, no behavioural change
+to gameplay.
+
+This closes every item in improvements.md — P0 through P3, 29 numbered
+findings, all fixed or explicitly and permanently resolved as intentional.
