@@ -1,10 +1,16 @@
 # Deadhead
 
+<img width="2752" height="1536" alt="Deadhead — a robotaxi fleet simulator" src="https://github.com/user-attachments/assets/d26dc3ce-3da6-4391-bb7f-4b20c49e5fb8" />
+
 **A robotaxi fleet simulator where you never touch a steering wheel.**
 
 You are not the driver. You are the person the driver got replaced by — and the job turns
 out to be harder. Six cars, six real cities mapped to the metre, and a spreadsheet
 that bites. All of it happens on one screen: the car's own centre console.
+
+<div align="center">
+<img width="75%" alt="Deadhead gameplay — the centre-console fleet manager in action" src="https://github.com/user-attachments/assets/72f0fab7-906a-4ec9-800b-75fa35a31023" />
+</div>
 
 > *Deadhead* — the trade word for driving with no fare aboard. It is the thing that quietly
 > kills a robotaxi fleet's margin, and the reason this game is named after it.
