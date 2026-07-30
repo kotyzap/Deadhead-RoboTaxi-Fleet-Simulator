@@ -22,6 +22,9 @@ const path = require('path');
 
 const ROOT = path.join(__dirname, '..', '..');
 const GAME = path.join(ROOT, 'deadhead.html');
+/* Release notes live in releases/ as of improvements.md #27's repo tidy-up
+   (they used to sit loose in ROOT, 87 files deep — see COMMIT_0.70.0.txt). */
+const RELEASES = path.join(ROOT, 'releases');
 
 let failures = 0;
 function check(label, cond, detail) {
@@ -48,7 +51,7 @@ function cmp(a, b) {
   return 0;
 }
 
-const notes = fs.readdirSync(ROOT)
+const notes = fs.readdirSync(RELEASES)
   .map((f) => (f.match(/^COMMIT_(\d+\.\d+\.\d+)\.txt$/) || [])[1])
   .filter(Boolean)
   .sort(cmp);
@@ -60,7 +63,7 @@ const newest = notes[notes.length - 1];
 check(`const VERSION (${version}) matches the newest release note (${newest})`,
   cmp(version, newest) === 0,
   cmp(version, newest) > 0
-    ? `VERSION is ahead — write COMMIT_${version}.txt`
+    ? `VERSION is ahead — write releases/COMMIT_${version}.txt`
     : `VERSION is behind — bump const VERSION to ${newest}, or renumber the note`);
 
 /* A release note must not claim a version the code has never been at. Catches
@@ -72,7 +75,7 @@ check('no release note is numbered above const VERSION', stale.length === 0,
 
 /* The note's own first line must agree with its filename — a renamed file
    with an unedited heading is the other half of the same mistake. */
-const head = fs.readFileSync(path.join(ROOT, `COMMIT_${newest}.txt`), 'utf8')
+const head = fs.readFileSync(path.join(RELEASES, `COMMIT_${newest}.txt`), 'utf8')
   .split('\n')[0];
 check(`COMMIT_${newest}.txt's first line names ${newest}`,
   head.indexOf(newest) >= 0, 'first line was: ' + head);
