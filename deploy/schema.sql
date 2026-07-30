@@ -27,7 +27,18 @@ CREATE TABLE IF NOT EXISTS users (
   -- adminplan.md §3 for the whole design. Free: request.cf is already
   -- attached to the register request, and this rides along in an INSERT
   -- that happens anyway.
-  country    TEXT
+  country    TEXT,
+  -- improvements.md P2-18: username is half the login credential (paired
+  -- with the password to sign in), so publishing it on the public
+  -- leaderboard/admin views handed out a verified list of real account
+  -- names — a distributed guesser no longer has to find a valid username,
+  -- only a password for one it already knows exists. display_name is a
+  -- SEPARATE value, set at registration from the display name the player
+  -- already typed on the intro screen (PROFILE.name — see checkDisplayName()
+  -- in src/index.js) and never used for authentication. Falls back to
+  -- username at read time (COALESCE) for any row written before this
+  -- column existed, or a request that didn't send one.
+  display_name TEXT
 );
 -- ADDITIVE MIGRATION NOTE: on a database that already has `users.email` from
 -- before this rename, run once (SQLite/D1 support RENAME COLUMN):
@@ -41,6 +52,14 @@ CREATE TABLE IF NOT EXISTS users (
 -- run once — a "duplicate column name" error means it is already there and
 -- is safe to ignore:
 --   ALTER TABLE users ADD COLUMN country TEXT;
+--
+-- ADDITIVE MIGRATION NOTE (improvements.md P2-18, `display_name`): same
+-- deal — run once, ignore "duplicate column name":
+--   ALTER TABLE users ADD COLUMN display_name TEXT;
+-- Existing rows will have display_name NULL; every read of it in this file
+-- is COALESCE(display_name, username), so an unmigrated or not-yet-set row
+-- still shows its username on the board exactly as before, rather than
+-- showing blank.
 
 -- Session tokens are stored as SHA-256 hashes, never in the clear, so a
 -- leaked database dump cannot be replayed as a login.

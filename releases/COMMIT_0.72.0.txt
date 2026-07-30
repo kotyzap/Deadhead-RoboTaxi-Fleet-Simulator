@@ -1,0 +1,58 @@
+v0.72.0 — P2 performance pass complete (improvements.md P2-21, P2-22, P2-23)
+
+Three performance items from Fable's improvements.md, closing out the P2
+list. None of these change what the game does — only how much redundant
+work render() and the sim tick do to get there.
+
+P2-21 — render-signature dirty-check extended to the rest of the panels
+Eight panels were still doing an unconditional innerHTML rebuild every
+render() tick (~10x/second): fleet-rows, rapid-rows, bk-lines, bk-liab,
+inc-list, waiting-list, zone-chips, live-list. Each now computes a small
+signature string from only the fields that actually reach its template and
+skips the rebuild when nothing visible has changed — the same pattern
+#plat-rows/#offer-list already used (see COMMIT_0.68.0/0.69.0 and
+click-reliability.test.js). live-list needed care: S.log caps at 60
+entries, so .length alone stops changing once a busy shift fills it —
+folded the newest entry's own identity (t+who+what) into the signature so a
+fresh line still invalidates the cache after the cap is hit. paintLocks()
+got the same treatment, gated on S.unlocked.join(',') — it only grows, so a
+simple equality check is exact, not an approximation.
+
+P2-22 — map memoisation: road geometry, trip line, zone circles
+roadFix(c) was rebuilding the full [lat,lng] path array from ROADS on every
+single call, and was being called two or three times per car per frame
+(once directly in drawMap(), once again inside carHeading(), a third time
+for whichever car is selected, for the trip line). roadPath() now memoises
+by roadKey(a,b) — the source data never changes after loadCityTables()
+sets ROADS, so the same array can be returned every time; the cache clears
+whenever ROADS itself is swapped for a new city. carHeading() now accepts
+an already-computed fix instead of recomputing it. The trip line (tripLine)
+used to be torn down and rebuilt as a brand-new Leaflet layer every frame —
+now reuses the same layer via setLatLngs() and only actually
+removes/recreates it on a real appear/disappear. Zone-circle setStyle()
+calls are now gated on an hour+on-flags signature, since every circle's
+style is fully determined by those two things and the hour only changes
+once every 3600 sim-seconds.
+
+P2-23 — checkAchievements() throttle, MutationObserver scoping
+checkAchievements() (the no-row `live` scan) ran from checkUnlocks() on
+every real sim tick — CFG.tickMs is 100ms, so ~10x/second — re-evaluating
+the whole ACHV table for flags that rarely change and, once earned, never
+need checking again. Throttled to real wall-clock time (not sim time, so
+it stays ~1/sec at every game speed including 20x) via a simple
+Date.now()-gated skip. The shift-end scan (called WITH a row, from
+appendHistoryRow(), once per shift) is deliberately exempt — it only runs
+once, so throttling it would risk skipping the one evaluation that row
+ever gets.
+
+The modal-focus MutationObserver was observing document.body with
+subtree:true, which queues a record for every `hidden` toggle anywhere on
+the page — and render() flips `hidden` on plenty of non-modal elements
+many times a second. It now observes each of the four modal elements
+(#report/#garage/#resume/#savemgr) directly, no subtree, so the browser
+itself only ever queues a record for the four events this exists to catch.
+
+Verification: full deploy/ test suite (43 files) green, check-parity.js
+clean, no behavioural change to any of the panels, the map, or the
+achievements/lock gating — only work skipped when nothing visible could
+have changed.

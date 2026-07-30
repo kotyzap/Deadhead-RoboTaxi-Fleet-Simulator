@@ -179,6 +179,14 @@ const KDF_PREFIX = 'deadhead|';      // salt = KDF_PREFIX + lowercased username
 /* ---------------- helpers ---------------- */
 const enc = new TextEncoder();
 const now = () => Date.now();
+/* improvements.md P2-19: MAX_STAT_BYTES/MAX_SAVE_BYTES were both enforced
+   with `text.length`, which is UTF-16 CODE UNITS, not bytes — every
+   character outside the ASCII range (any non-English display name, city
+   flavour text a save might round-trip, an emoji) costs 2-4 real bytes but
+   counts as 1-2 code units, so a multi-byte-heavy payload could reach up to
+   ~3-4x the intended budget before being rejected. enc.encode(str).length
+   is the actual UTF-8 byte count these caps were always meant to measure. */
+const byteLen = (str) => enc.encode(str).length;
 
 function json(data, status = 200, headers = {}) {
   return new Response(JSON.stringify(data), {
@@ -273,6 +281,20 @@ function checkUsername(v) {
   if (u.length < 1 || u.length > 40) return null;
   if (/[\x00-\x1f]/.test(u)) return null;   // no control characters
   return u;
+}
+/* improvements.md P2-18: the display name stored alongside (never instead
+   of) username — see the column comment in schema.sql for why the two need
+   to be different values at all. Deliberately NOT lowercased (unlike
+   checkUsername) and NOT required to be unique: it is cosmetic, the same
+   free-text PROFILE.name the player already sees in their own topbar, not
+   a login credential. Returns null (not '') for anything invalid/blank so
+   the caller can fall back to username cleanly with `||`. */
+function checkDisplayName(v) {
+  if (typeof v !== 'string') return null;
+  const n = v.trim().slice(0, 40);
+  if (!n) return null;
+  if (/[\x00-\x1f]/.test(n)) return null;   // no control characters
+  return n;
 }
 /* Minimum length is enforced in the browser now — the server only ever
    sees the derived key, so it cannot judge the password behind it. */
@@ -612,9 +634,17 @@ async function handleApi(request, env, url, ctx) {
     const hit = await cache.match(cacheKey);
     if (hit) return hit;
 
+    /* improvements.md P2-18: u.username -> COALESCE(u.display_name,
+       u.username). username is half the login credential; publishing it
+       here handed a distributed guesser a verified list of real account
+       names to try passwords against. display_name is a separate, cosmetic
+       column (see schema.sql) that falls back to username only for a row
+       from before this migration, or an account that never set one. The
+       JSON key stays `username` below (the client just displays whatever
+       string is in it — renaming the key would be churn with no benefit). */
     const { results } = await env.DB.prepare(
       `SELECT city, username, net, ts, rides, worked_h AS workedH FROM (
-         SELECT s.city AS city, u.username AS username, s.net AS net,
+         SELECT s.city AS city, COALESCE(u.display_name, u.username) AS username, s.net AS net,
                 s.ts AS ts, s.rides AS rides, s.worked_h AS worked_h,
                 ROW_NUMBER() OVER (
                   PARTITION BY s.city ORDER BY s.net DESC, s.ts ASC
@@ -668,6 +698,11 @@ async function handleApi(request, env, url, ctx) {
     if (!username) return bad('enter a username');
     const keyErr = checkAuthKey(body.authKey);
     if (keyErr) return bad(keyErr);
+    /* improvements.md P2-18: optional, and falls back to username itself
+       when absent (an older cached client that doesn't send it yet, or a
+       player who never set a display name) — this must never fail
+       registration over a cosmetic field. */
+    const displayName = checkDisplayName(body.displayName) || username;
 
     const exists = await env.DB.prepare('SELECT 1 FROM users WHERE username = ?').bind(username).first();
     if (exists) return bad('that username is already taken', 409);
@@ -679,9 +714,9 @@ async function handleApi(request, env, url, ctx) {
       // and re-writing it on every login would spend a write to make the
       // column noisier. Free — see edgeGeo().
       await env.DB.prepare(
-        'INSERT INTO users (id, username, pw, created, last_seen, country) VALUES (?,?,?,?,?,?)'
+        'INSERT INTO users (id, username, pw, created, last_seen, country, display_name) VALUES (?,?,?,?,?,?,?)'
       ).bind(id, username, await hashAuthKey(body.authKey), now(), now(),
-             edgeGeo(request).country).run();
+             edgeGeo(request).country, displayName).run();
     } catch (err) {
       // UNIQUE violation: another request registered this username between
       // the SELECT above and this INSERT.
@@ -759,7 +794,7 @@ async function handleApi(request, env, url, ctx) {
      already in currentUser) — worth doing, not required. */
   if (p === '/api/stat' && method === 'POST') {
     const text = await request.text();
-    if (text.length > MAX_STAT_BYTES) return bad('payload too large', 413);
+    if (byteLen(text) > MAX_STAT_BYTES) return bad('payload too large', 413);
     let body;
     try { body = JSON.parse(text) } catch { return bad('malformed request') }
     if (!body || typeof body !== 'object') return bad('malformed request');
@@ -1388,7 +1423,7 @@ async function handleApi(request, env, url, ctx) {
 
     if (method === 'PUT') {
       const text = await request.text();
-      if (text.length > MAX_SAVE_BYTES) return bad('save too large', 413);
+      if (byteLen(text) > MAX_SAVE_BYTES) return bad('save too large', 413);
       let save;
       try { save = JSON.parse(text) } catch { return bad('save is not valid JSON') }
       /* progSave()/profileSave()/appendHistoryRow()'s records have no `.s` —
@@ -1438,9 +1473,26 @@ export default {
     if (url.pathname.startsWith('/api/')) {
       // Same-origin only. The cookie is SameSite=Lax, and we additionally
       // reject cross-origin writes rather than relying on that alone.
+      //
+      // improvements.md P2-20: `new URL(origin)` used to run un-guarded.
+      // An `Origin: null` header — a real header value browsers send from
+      // a sandboxed iframe, a file:// page, or certain redirect chains, not
+      // a hostile fabrication — makes `origin` the literal string "null",
+      // which is not a parseable URL: `new URL('null')` throws, uncaught,
+      // all the way out of this handler and into a bare 500 with no `bad()`
+      // JSON body, for a request that was never actually malicious. An
+      // unparseable Origin is treated the same as a cross-origin one (403,
+      // the same response a real cross-origin request already gets) —
+      // strictly safer than letting it through, and no worse for a
+      // same-origin browser request, which never sends a header shaped
+      // like this in the first place.
       const origin = request.headers.get('origin');
-      if (origin && new URL(origin).host !== url.host) {
-        return bad('cross-origin requests are not allowed', 403);
+      if (origin) {
+        let originHost;
+        try { originHost = new URL(origin).host } catch { originHost = null }
+        if (originHost !== url.host) {
+          return bad('cross-origin requests are not allowed', 403);
+        }
       }
       // Without a D1 binding the game still works on local browser saves,
       // so say that rather than throwing an opaque 500.

@@ -759,9 +759,17 @@
       await loadParams();
       // The slow part, and it belongs here rather than on the server.
       const authKey = await deriveAuthKey(username, pw);
+      // improvements.md P2-18: displayName is only meaningful on register
+      // (login doesn't touch it) — the player's existing display name
+      // (PROFILE.name in deadhead.html, the same one prefillUsername()
+      // above reads), so the leaderboard/admin have something to show that
+      // isn't the login username itself. Harmless to send on login too;
+      // the server only reads it in the register branch.
+      const profileName = window.DH_SAVE && typeof window.DH_SAVE.profileName === 'function'
+        ? window.DH_SAVE.profileName() : '';
       const data = await req(mode === 'register' ? API.register : API.login, {
         method: 'POST',
-        body: JSON.stringify({ username, authKey }),
+        body: JSON.stringify({ username, authKey, displayName: profileName }),
       });
       $('dh-pw').value = '';
       togglePeekOff();

@@ -4547,6 +4547,7 @@ function loadCityTables(){
   ZONES=zonesFor(S.city);
   CHARGERS=chargersFor(S.city);
   ROADS=roadsFor(S.city);
+  _roadPathCache.clear();   /* see roadPath() — stale Dallas geometry must never survive into a Miami run */
   applyCityTone();
   /* Both no-op before initMap() has run — loadCityTables() is called during
      boot, before the map exists — so initMap() calls them itself afterwards.
@@ -9108,14 +9109,32 @@ const ROADS_BY_CITY={
 function roadsFor(city){ return ROADS_BY_CITY[city]||{} }
 let ROADS=roadsFor('austin');
 function roadKey(a,b){ return a<b?a+'|'+b:b+'|'+a }
+/* improvements.md P2-22: roadFix() runs this at least twice per car per
+   render frame (once directly, once again inside carHeading() — see its
+   call site in drawMap()), and a third time for whichever car is selected
+   (the trip-line draw below). The source array in ROADS never changes
+   after loadCityTables() sets it, so the [lat,lng] pairs built here are
+   the same array every time for a given (a,b) — only the memory churn of
+   rebuilding it was ever "live". Cached by roadKey(a,b) directly (not by
+   the unordered a,b pair) so the forward and reversed directions are
+   cached separately, since reversing IS a real difference in the output.
+   loadCityTables() clears this whenever ROADS itself is swapped for a new
+   city, so a stale Dallas path can never leak into a Miami run. Safe to
+   share the same array across callers: pathAt() only ever reads it or
+   .slice()s a copy, never mutates it in place. */
+let _roadPathCache=new Map();
 /* The stored line runs from the alphabetically smaller endpoint to the larger,
    so half of all lookups come back reversed. */
 function roadPath(a,b){
   const f=ROADS[roadKey(a,b)];
   if(!f) return null;
+  const ck=a+'|'+b;
+  const hit=_roadPathCache.get(ck);
+  if(hit) return hit;
   const out=[];
   for(let i=0;i<f.length;i+=2) out.push([f[i],f[i+1]]);
   if(!(a<b)) out.reverse();
+  _roadPathCache.set(ck,out);
   return out;
 }
 function pathLen(p){
@@ -9212,8 +9231,14 @@ function carBearing(a,b){
    lean into the curve of US-183 instead of aiming through the scenery at its
    destination. Then the next waypoint. Then whatever it was last, so a parked
    car does not snap to north. */
-function carHeading(c){
-  const fix=roadFix(c);
+function carHeading(c,fixIn){
+  /* improvements.md P2-22: drawMap() already computed roadFix(c) for this
+     car this frame (to place the marker) — accept it instead of paying for
+     the roadPath lookup + pathAt() walk a second time. Still calls
+     roadFix(c) itself when nothing is passed, so every other caller (there
+     are none today, but this is a public-ish helper) keeps working exactly
+     as before. */
+  const fix=fixIn!==undefined?fixIn:roadFix(c);
   if(fix&&fix.rest.length){
     const h=carBearing(fix.pt,fix.rest[0]);
     c.hdg=h; return h;
@@ -9224,7 +9249,7 @@ function carHeading(c){
   }
   return typeof c.hdg==='number'?c.hdg:0;
 }
-let map=null,carLayer={},zoneLayer=[],chLayer=[],tripLine=null;
+let map=null,carLayer={},zoneLayer=[],chLayer=[],tripLine=null,lastZoneStyleSig=null;
 /* The slippy-map tile that covers a coordinate, for the blurred #bgmap
    wallpaper. This was a hardcoded '/8/58/105.png' — which is Austin, so every
    city sat on a blurred picture of Texas hill country. Derived rather than
@@ -9350,6 +9375,11 @@ function buildCityLayers(){
   if(!map) return;
   zoneLayer.forEach(function(o){ map.removeLayer(o.c) });
   zoneLayer.length=0;
+  /* Fresh L.circle() instances below have never had setStyle() called on
+     them — the drawMap() dirty-check must not skip that first real call
+     just because the hour+on-flags signature happens to match the last
+     (now-removed) city's. */
+  lastZoneStyleSig=null;
   chLayer.forEach(function(m){ map.removeLayer(m) });
   chLayer.length=0;
   /* NOW STROKED (2026-07-30, Pavel: "make all circles more visible. some are
@@ -9680,7 +9710,7 @@ function drawMap(){
            angle per marker (m._hdg) and always stepping it by the shortest
            signed delta to the new target, so the transition only ever
            animates the true turn. */
-        const target=carHeading(c);
+        const target=carHeading(c,fix);
         let cur=m._hdg;
         if(typeof cur!=='number') cur=target;
         cur+=((target-cur+540)%360)-180;
@@ -9710,13 +9740,24 @@ function drawMap(){
      reads quiet rather than outlined-but-empty, and hidden outright when the
      zone is switched off. */
   const h=hour();
-  zoneLayer.forEach(function(o){
-    const on=o.z.on!==false;
-    const lvl=on?clamp(o.z.base*CURVES[o.z.p][h]/12,0.13,0.50):0;
-    o.c.setStyle({fillOpacity:lvl,opacity:on?clamp(lvl*1.6,0.42,0.85):0});
-  });
+  /* improvements.md P2-22: every zone circle's style is fully determined by
+     the hour and its own on/off flag (base/p are per-run constants) — so as
+     long as neither has moved since the previous frame, calling setStyle()
+     on all of them again recomputes and reapplies the exact same values.
+     Leaflet's setStyle() still touches the real SVG/VML element under the
+     hood, so skipping it when nothing changed is a real saving, not just a
+     JS one — and it only changes on the hour or a zone toggle, both rare
+     next to the ~10x/second render() cadence this runs at. */
+  const zoneStyleSig=h+'|'+zoneLayer.map(function(o){return o.z.on!==false}).join(',');
+  if(zoneStyleSig!==lastZoneStyleSig){
+    lastZoneStyleSig=zoneStyleSig;
+    zoneLayer.forEach(function(o){
+      const on=o.z.on!==false;
+      const lvl=on?clamp(o.z.base*CURVES[o.z.p][h]/12,0.13,0.50):0;
+      o.c.setStyle({fillOpacity:lvl,opacity:on?clamp(lvl*1.6,0.42,0.85):0});
+    });
+  }
   const sel=S.cars.filter(function(c){return c.id===S.sel})[0];
-  if(tripLine){ map.removeLayer(tripLine); tripLine=null }
   if(sel&&sel.route.length){
     const fix=roadFix(sel);
     let pts;
@@ -9731,7 +9772,21 @@ function drawMap(){
     } else {
       pts=[[sel.lat,sel.lng]].concat(sel.route);   /* no baked route: as before */
     }
-    tripLine=L.polyline(pts,{color:TONE.accent,weight:3,opacity:.85}).addTo(map);
+    /* improvements.md P2-22: this used to be map.removeLayer()+L.polyline()
+       every single frame — tearing down and rebuilding a Leaflet layer
+       (its own DOM <path>, its own internal event wiring) ~10x/second for a
+       line that mostly just gets a little shorter each tick. setLatLngs()
+       on the same layer instance is the supported way to redraw an existing
+       polyline's points; the layer is only removed/recreated when it does
+       not exist yet or the previous frame had no selected car with a route
+       (i.e. a real appear/disappear, not an ordinary update). */
+    if(tripLine){
+      tripLine.setLatLngs(pts);
+    } else {
+      tripLine=L.polyline(pts,{color:TONE.accent,weight:3,opacity:.85}).addTo(map);
+    }
+  } else if(tripLine){
+    map.removeLayer(tripLine); tripLine=null;
   }
 }
 
@@ -10114,6 +10169,16 @@ let lastMsgSeenCount=-1;
    to show", which is when a lost click is actually acceptable (the button
    the player was aiming at may have just moved anyway). */
 let lastPlatSig=null, lastOfferSig=null;
+/* improvements.md P2-21: same dirty-check pattern extended to the rest of
+   the panels that were still doing an unconditional innerHTML rebuild
+   every render() tick — fleet-rows, rapid-rows, bk-lines, bk-liab,
+   inc-list, waiting-list, zone-chips, live-list. Each signature includes
+   only the fields that actually reach that panel's template, same
+   discipline as platSig/offerSig above (see their comment): a field that
+   changes but never changes what's ON SCREEN must not invalidate the
+   cache, or the guard buys nothing. */
+let lastFleetSig=null, lastRapidSig=null, lastBkLinesSig=null, lastBkLiabSig=null,
+    lastIncSig=null, lastWaitSig=null, lastZoneSig=null, lastLiveSig=null;
 function render(){
   const h=hour();
   /* Both are no-ops in the common case — see progGates(). */
@@ -10167,19 +10232,25 @@ function render(){
   $('m-earn').textContent=S.cars.filter(function(c){return c.state==='onTrip'}).length;
   $('m-idle').textContent=idle; $('m-down').textContent=down;
   $('fleet-count').textContent=S.cars.length+' vehicles';
-  $('fleet-rows').innerHTML=S.cars.map(function(c){
-    /* How many accepted rides are backed up behind this car's current one —
-       see assign()'s queuing branch. Flagged (t-attn, amber) once there's
-       at least one, so a glance down the column says which cars are
-       already spoken for before you accept another offer. */
-    const q=(c.queue||[]).length;
-    const qCell=q?'<span class="t-attn" title="'+q+' ride'+(q===1?'':'s')+
-      ' waiting behind this car\'s current trip">'+q+'</span>':'0';
-    return '<tr data-car="'+escapeHtml(c.id)+'"'+(c.id===S.sel?' class="on"':'')+'>'+
-      '<td class="cid">'+escapeHtml(c.id)+'</td><td>'+stateCell(c)+'</td>'+
-      '<td class="r">'+pct(c.soc)+'</td><td class="r">'+money2(c.earn)+'</td>'+
-      '<td class="r">'+qCell+'</td></tr>';
-  }).join('');
+  const fleetSig=S.sel+'|'+S.cars.map(function(c){
+    return c.id+':'+c.state+':'+Math.round(c.soc)+':'+c.earn.toFixed(2)+':'+(c.queue||[]).length;
+  }).join(',');
+  if(fleetSig!==lastFleetSig){
+    lastFleetSig=fleetSig;
+    $('fleet-rows').innerHTML=S.cars.map(function(c){
+      /* How many accepted rides are backed up behind this car's current one —
+         see assign()'s queuing branch. Flagged (t-attn, amber) once there's
+         at least one, so a glance down the column says which cars are
+         already spoken for before you accept another offer. */
+      const q=(c.queue||[]).length;
+      const qCell=q?'<span class="t-attn" title="'+q+' ride'+(q===1?'':'s')+
+        ' waiting behind this car\'s current trip">'+q+'</span>':'0';
+      return '<tr data-car="'+escapeHtml(c.id)+'"'+(c.id===S.sel?' class="on"':'')+'>'+
+        '<td class="cid">'+escapeHtml(c.id)+'</td><td>'+stateCell(c)+'</td>'+
+        '<td class="r">'+pct(c.soc)+'</td><td class="r">'+money2(c.earn)+'</td>'+
+        '<td class="r">'+qCell+'</td></tr>';
+    }).join('');
+  }
   $('buy').textContent=S.cars.length?'Add a vehicle':'Choose a vehicle';
   $('buy').disabled=false;
 
@@ -10200,23 +10271,30 @@ function render(){
      is and how long the drive takes. With no car selected the rows fall back
      to the old read-only Open/Queue display. */
   const selCh=selCar();
-  $('rapid-rows').innerHTML=CHARGERS.map(function(x){
-    const q=S.cars.filter(function(c){return c.ch===x&&c.state==='charging'}).length;
-    const free=x.stalls-q, busy=free<=0;
-    const here=selCh&&selCh.ch===x;
-    const enr=here&&selCh.state==='toCharge', chg=here&&selCh.state==='charging';
-    const qd=selCh&&selCh.chQueue===x.n;
-    const sub=[x.stalls+' stalls · '+(busy?'full':free+' free'),x.kw+' kW']
-      .concat(selCh?[uKm(dist(selCh.lat,selCh.lng,x.lat,x.lng),1)+' · '+
-        chargeEta(selCh,x)+' min']:[]).join(' · ');
-    const act=!selCh
-      ? '<span class="st t-'+(busy?'attn':'charge')+'">'+(busy?'Queue':'Open')+'</span>'
-      : '<button class="chg-go'+(enr||chg||qd?' on':'')+'" data-chg="'+escapeHtml(x.n)+
-        '"'+(chg?' disabled':'')+'>'+
-        (chg?'Charging':enr?'Cancel':qd?'Queued':'Send')+'</button>';
-    return '<div class="row"><div class="grow"><b>'+x.n+'</b>'+
-      '<div class="sub">'+sub+'</div></div>'+act+'</div>';
-  }).join('');
+  const rapidSig=(selCh?selCh.id+':'+selCh.state+':'+selCh.ch+':'+selCh.chQueue:'none')+'|'+
+    CHARGERS.map(function(x){
+      return x.n+':'+S.cars.filter(function(c){return c.ch===x&&c.state==='charging'}).length;
+    }).join(',');
+  if(rapidSig!==lastRapidSig){
+    lastRapidSig=rapidSig;
+    $('rapid-rows').innerHTML=CHARGERS.map(function(x){
+      const q=S.cars.filter(function(c){return c.ch===x&&c.state==='charging'}).length;
+      const free=x.stalls-q, busy=free<=0;
+      const here=selCh&&selCh.ch===x;
+      const enr=here&&selCh.state==='toCharge', chg=here&&selCh.state==='charging';
+      const qd=selCh&&selCh.chQueue===x.n;
+      const sub=[x.stalls+' stalls · '+(busy?'full':free+' free'),x.kw+' kW']
+        .concat(selCh?[uKm(dist(selCh.lat,selCh.lng,x.lat,x.lng),1)+' · '+
+          chargeEta(selCh,x)+' min']:[]).join(' · ');
+      const act=!selCh
+        ? '<span class="st t-'+(busy?'attn':'charge')+'">'+(busy?'Queue':'Open')+'</span>'
+        : '<button class="chg-go'+(enr||chg||qd?' on':'')+'" data-chg="'+escapeHtml(x.n)+
+          '"'+(chg?' disabled':'')+'>'+
+          (chg?'Charging':enr?'Cancel':qd?'Queued':'Send')+'</button>';
+      return '<div class="row"><div class="grow"><b>'+x.n+'</b>'+
+        '<div class="sub">'+sub+'</div></div>'+act+'</div>';
+    }).join('');
+  }
 
   /* books */
   const d=S.d, net=d.gross-d.cost;
@@ -10234,18 +10312,26 @@ function render(){
     ['Remote monitoring',d.payroll/mi,1],['Software',d.soft/mi,0],
     ['Platform commission',d.commission/mi,0],['Fixed (lease, permits)',d.fixed/mi,0]];
   const mx=Math.max.apply(null,lines.map(function(x){return x[1]}))||1;
-  $('bk-lines').innerHTML=lines.map(function(x){
-    return '<div class="costline'+(x[2]?' hi':'')+'"><span>'+x[0]+'</span><span class="track"><i style="width:'+
-      Math.round(x[1]/mx*100)+'%"></i></span><span class="amt">'+money2(x[1])+'</span></div>';
-  }).join('');
-  $('bk-liab').innerHTML=
-    '<div class="row"><div class="grow"><b>Payroll accrued today</b><div class="sub">'+
-      S.ops.length+' operators · '+money2(CFG.wage)+'/h each</div></div><b>'+money2(-d.payroll)+'</b></div>'+
-    '<div class="row"><div class="grow"><b>Priced out by Meridian</b><div class="sub">fare '+
-      S.fareMult.toFixed(1)+'× · win rate '+Math.round(winProb(S.fareMult)*100)+
-      '%</div></div><b>'+d.lost+'</b></div>'+
-    '<div class="row"><div class="grow"><b>Riders who gave up</b><div class="sub">'+
-      'no car free within '+Math.round(CFG.rideExpire/60)+' min</div></div><b>'+d.unserved+'</b></div>';
+  const bkLinesSig=[d.dep,d.energy,d.maint,d.ins,d.payroll,d.soft,d.commission,d.fixed,d.miles].join(',');
+  if(bkLinesSig!==lastBkLinesSig){
+    lastBkLinesSig=bkLinesSig;
+    $('bk-lines').innerHTML=lines.map(function(x){
+      return '<div class="costline'+(x[2]?' hi':'')+'"><span>'+x[0]+'</span><span class="track"><i style="width:'+
+        Math.round(x[1]/mx*100)+'%"></i></span><span class="amt">'+money2(x[1])+'</span></div>';
+    }).join('');
+  }
+  const bkLiabSig=S.ops.length+'|'+d.payroll+'|'+S.fareMult+'|'+d.lost+'|'+d.unserved;
+  if(bkLiabSig!==lastBkLiabSig){
+    lastBkLiabSig=bkLiabSig;
+    $('bk-liab').innerHTML=
+      '<div class="row"><div class="grow"><b>Payroll accrued today</b><div class="sub">'+
+        S.ops.length+' operators · '+money2(CFG.wage)+'/h each</div></div><b>'+money2(-d.payroll)+'</b></div>'+
+      '<div class="row"><div class="grow"><b>Priced out by Meridian</b><div class="sub">fare '+
+        S.fareMult.toFixed(1)+'× · win rate '+Math.round(winProb(S.fareMult)*100)+
+        '%</div></div><b>'+d.lost+'</b></div>'+
+      '<div class="row"><div class="grow"><b>Riders who gave up</b><div class="sub">'+
+        'no car free within '+Math.round(CFG.rideExpire/60)+' min</div></div><b>'+d.unserved+'</b></div>';
+  }
 
   /* incidents */
   const blocked=S.cars.filter(function(c){return c.state==='blocked'});
@@ -10272,7 +10358,13 @@ function render(){
   /* Elevated risk is stated, never merely applied — see incidentRiskNote(). */
   const irn=incidentRiskNote();
   if(irn) inc+='<div class="empty">'+escapeHtml(irn)+'</div>';
-  $('inc-list').innerHTML=inc;
+  const incSig=blocked.map(function(c){return c.id+':'+Math.round(c.blocked)}).join(',')+
+    '|safety:'+Math.round(S.safety)+'|permit:'+S.permit+'|cancels:'+d.cancels+
+    '|ops:'+S.ops.length+'|lat:'+Math.round(lat)+'|irn:'+(irn||'');
+  if(incSig!==lastIncSig){
+    lastIncSig=incSig;
+    $('inc-list').innerHTML=inc;
+  }
 
   /* ride queue */
   /* Locks. A panel keeps its head visible so the player can see what
@@ -10386,14 +10478,20 @@ function render(){
      hidden 9-minute rideExpire timer with no countdown anywhere — the rider
      is still out there, still waiting, and still able to give up on you. */
   const waitingRides=S.rides.filter(function(r){return !r.car}).reverse();
-  $('waiting-list').innerHTML=waitingRides.map(function(r){
-    const left=Math.max(0,CFG.rideExpire-r.wait);
-    return '<div class="offer'+(left<60?' warn':'')+'">'+
-      '<div class="offer-top"><span class="pn">Accepted</span><b>'+escapeHtml(r.from)+'</b>'+
-        '<span class="sub">→ '+escapeHtml(r.to)+'</span>'+
-        '<span class="net">'+money2(offerNet(r))+'</span></div>'+
-      '<div class="offer-rt">no car free · rider gives up in '+Math.round(left)+'s</div></div>';
-  }).join('');
+  const waitSig=waitingRides.map(function(r){
+    return r.from+'>'+r.to+':'+Math.round(CFG.rideExpire-r.wait);
+  }).join(',');
+  if(waitSig!==lastWaitSig){
+    lastWaitSig=waitSig;
+    $('waiting-list').innerHTML=waitingRides.map(function(r){
+      const left=Math.max(0,CFG.rideExpire-r.wait);
+      return '<div class="offer'+(left<60?' warn':'')+'">'+
+        '<div class="offer-top"><span class="pn">Accepted</span><b>'+escapeHtml(r.from)+'</b>'+
+          '<span class="sub">→ '+escapeHtml(r.to)+'</span>'+
+          '<span class="net">'+money2(offerNet(r))+'</span></div>'+
+        '<div class="offer-rt">no car free · rider gives up in '+Math.round(left)+'s</div></div>';
+    }).join('');
+  }
 
   $('rq-tag').textContent=S.offers.length+' offers'+
     (waitingRides.length?' · '+waitingRides.length+' waiting':'');
@@ -10415,9 +10513,13 @@ function render(){
         (S.onClock?'':' once you clock on');
     }
   }
-  $('zone-chips').innerHTML=ZONES.map(function(z,i){
-    return '<button class="chip'+(z.on!==false?' on':'')+'" data-zone="'+i+'">'+z.n+'</button>';
-  }).join('');
+  const zoneSig=ZONES.map(function(z){return z.n+':'+(z.on!==false)}).join(',');
+  if(zoneSig!==lastZoneSig){
+    lastZoneSig=zoneSig;
+    $('zone-chips').innerHTML=ZONES.map(function(z,i){
+      return '<button class="chip'+(z.on!==false?' on':'')+'" data-zone="'+i+'">'+z.n+'</button>';
+    }).join('');
+  }
 
   /* console rail */
   const sel=S.cars.filter(function(c){return c.id===S.sel})[0]||S.cars[0];
@@ -10587,10 +10689,19 @@ function render(){
   $('cta-wait').textContent=S.offers.length+' offers · '+idle+' idle';
 
   /* live feed */
-  $('live-list').innerHTML=S.log.slice(0,14).map(function(e){
-    return '<div class="t-ev'+(e.kind===1?' attn':e.kind===2?' crit':'')+'"><b>'+escapeHtml(e.who)+
-      '</b><span>'+escapeHtml(e.what)+'</span><i>'+hhmm(e.t)+'</i></div>';
-  }).join('')||'<div class="t-ev"><span>Waiting for the first ride.</span></div>';
+  /* S.log.length alone is NOT a valid signature: log() caps the array at
+     60 entries (see its own comment above), so once a busy shift fills it
+     up, .length pins at 60 forever while the newest entry keeps changing
+     underneath. Fold in the newest entry's own identity so a fresh line
+     still invalidates the cache after the cap is hit. */
+  const liveSig=S.log.length+'|'+(S.log[0]?S.log[0].t+':'+S.log[0].who+':'+S.log[0].what:'');
+  if(liveSig!==lastLiveSig){
+    lastLiveSig=liveSig;
+    $('live-list').innerHTML=S.log.slice(0,14).map(function(e){
+      return '<div class="t-ev'+(e.kind===1?' attn':e.kind===2?' crit':'')+'"><b>'+escapeHtml(e.who)+
+        '</b><span>'+escapeHtml(e.what)+'</span><i>'+hhmm(e.t)+'</i></div>';
+    }).join('')||'<div class="t-ev"><span>Waiting for the first ride.</span></div>';
+  }
 
   /* Messages: every beat stays readable afterwards. seen.length only moves
      when raySeen() gains an entry (a beat gets dismissed), so it's a cheap
@@ -11208,7 +11319,7 @@ const SLOTS=['slot1','slot2','slot3'];
    SAVE_V above is the STATE SHAPE version and moves only when the
    snapshot format changes — the two are deliberately independent, so
    shipping 0.9.0 does not invalidate 0.8.0 saves. */
-const VERSION='0.71.0';
+const VERSION='0.72.0';
 
 function snapshot(){
   return {
@@ -11430,16 +11541,44 @@ function escapeHtml(v){
     return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
   });
 }
-/* Sanitisation used to happen HERE, at load time — but snapshot() persists
-   whatever's already in S verbatim, so an escaped string saved once and
-   reloaded got escaped again (& -> &amp; -> &amp;amp; -> ...) on every
-   export/import round trip. Save-file text (ride from/to, car id/hold,
-   log who/what) is untrusted and does reach innerHTML, but the fix is to
-   escape once, at the point of render — see the escapeHtml() call sites in
-   render()/renderGarage()/drawMap() — and leave S itself holding the raw,
-   un-escaped strings a save actually contains. Kept as a pass-through (not
-   deleted) so every existing sanitizeRide(r) call site stays valid. */
-function sanitizeRide(r){ return r }
+/* A finite, generous clamp — never a rejection. A legitimate ride/offer
+   never gets remotely close to these; they exist purely so a hand-edited
+   save can't turn one field into an unbounded number. See sanitizeRide()
+   and the c.owed/odo/soc clamps in the car rebuild below (improvements.md
+   P2-17). Non-finite/missing input falls back to `dflt`, same discipline
+   the server's own clampNum() (deploy/src/index.js) already uses on every
+   client-supplied telemetry field. */
+function clampSaveNum(v,lo,hi,dflt){
+  const n=Number(v);
+  if(!Number.isFinite(n)) return dflt;
+  return Math.max(lo,Math.min(hi,n));
+}
+/* improvements.md P2-17: this used to be a pure pass-through. String
+   injection is handled elsewhere (see the comment above escapeHtml() and
+   its render-time call sites) — this is about NUMBERS instead: a save is
+   just a JSON file a player can open in a text editor, and nothing ever
+   stopped one from setting a ride's fare to 999999999 before re-importing
+   it. That inflated number then flows straight into S.cash/S.d.gross the
+   moment the ride completes, and from there into reportStat()'s payload —
+   the public leaderboard. The server's own impossibility bounds
+   (LB_MAX_NET etc., see lbPlausible() in deploy/src/index.js) are the
+   documented, ACCEPTED backstop for a shift's aggregate numbers ("a
+   registered player who forges an internally consistent, individually
+   plausible row" is explicitly called out as not worth an anti-cheat
+   system there) — but a single ride/offer costs nothing to bound properly
+   here, before it ever reaches that pipeline, so it is. */
+function sanitizeRide(r){
+  if(!r||typeof r!=='object') return r;
+  r.km=clampSaveNum(r.km,0,2000,1);
+  /* A very high surge/fareMult run could legitimately price a ride above a
+     normal fare, so this is generous (a real single ride is a few hundred
+     dollars at most) rather than tight. */
+  r.fare=clampSaveNum(r.fare,0,10000,0);
+  r.wait=clampSaveNum(r.wait,0,1e6,0);
+  r.left=clampSaveNum(r.left,-1e6,1e6,0);
+  r.leftInit=clampSaveNum(r.leftInit,0,1e6,0);
+  return r;
+}
 
 function restore(save,opts){
   opts=opts||{};
@@ -11555,6 +11694,15 @@ function restore(save,opts){
     for(const k in o){
       if(k!=='rideId'&&k!=='chIdx'&&k!=='queueIds'&&k!=='recovToName') c[k]=o[k];
     }
+    /* improvements.md P2-17: same reasoning as sanitizeRide() above — a
+       hand-edited save could set soc above 100 (free range, never needs a
+       charger), odo to something absurd (skews sellValue()'s wear curve),
+       or owed to a huge number (which owedOn()/sellNet() would otherwise
+       trust when computing a sale). Clamped to each field's real domain,
+       not merely "a number", so a legitimate save is untouched by this. */
+    c.soc=clampSaveNum(c.soc,0,100,100);
+    c.odo=clampSaveNum(c.odo,0,2000000,0);
+    c.owed=clampSaveNum(c.owed,0,500000,0);
     /* Raw, un-escaped — see the note by sanitizeRide() above. c.id/c.hold
        are escaped at render time instead (fleet rows, garage "in service"
        list, map tooltips). */
@@ -11665,7 +11813,17 @@ const LOCKMAP=[
   {panel:'pb-inc',stage:'incidents'},
   {panel:'pb-msg',stage:'fleet'}
 ];
+let lastLocksSig=null;
 function paintLocks(){
+  /* LOCKMAP.forEach() below does a querySelector + classList.toggle per
+     panel every render tick, for gates that in practice change maybe half
+     a dozen times per entire playthrough. S.unlocked only grows (see
+     progGates(), the one place that pushes to it), so its joined value is
+     a correct, cheap signature — skip the whole DOM pass when nothing has
+     unlocked since the last frame. */
+  const locksSig=S.unlocked.join(',');
+  if(locksSig===lastLocksSig) return;
+  lastLocksSig=locksSig;
   LOCKMAP.forEach(function(m){
     const body=$(m.panel);
     if(!body) return;
@@ -12029,7 +12187,26 @@ function awardAchv(id){
    for `shift` entries. Both paths skip anything already held, so the steady
    state for a player who has everything is one array scan of cheap boolean
    reads — the same order of work checkUnlocks() already does. */
+/* improvements.md P2-23: the no-row (`live`) scan runs from checkUnlocks(),
+   which fires on every real sim tick — CFG.tickMs is 100ms, so that is
+   ~10x/second during ordinary play. Every ACHV predicate is cheap on its
+   own, but there is no reason to re-run all of them ten times a second for
+   flags that, once earned, never need checking again and, before that,
+   change at most a handful of times across an entire shift. Throttled to
+   real wall-clock time (not sim time) so it stays ~1/sec at every game
+   speed, including 20x — a sim-time throttle would have fired 20x more
+   often exactly when speed made the redundant work worst. The shift-end
+   scan (called WITH a row, from appendHistoryRow(), once per shift) is
+   deliberately exempt: that one only ever runs once, so throttling it buys
+   nothing and would risk skipping the one evaluation that row will ever
+   get. */
+let lastAchvLiveCheck=0;
 function checkAchievements(row){
+  if(!row){
+    const now=Date.now();
+    if(now-lastAchvLiveCheck<900) return 0;
+    lastAchvLiveCheck=now;
+  }
   if(!PROG.achv) PROG.achv={};
   let n=0;
   ACHV.forEach(function(a){
@@ -13203,11 +13380,26 @@ function slotRow(key,save,label,sub){
      the player to infer it from a clock. */
   const fresh=key==='auto'&&save&&save.sig&&save.sig===saveSig();
   const when=save?(fresh?'up to date':'saved '+ago(save.ts)):'';
+  /* improvements.md P2-16: m.day/m.clock/m.cars/save.app come from a save
+     file — imported from disk, or synced down from the cloud — and used to
+     be printed straight into innerHTML. That is HTML injection into a
+     trusted surface from an untrusted file: a hand-edited save with
+     meta.clock = "<img src=x onerror=...>" ran whatever it contained the
+     moment the Saves modal rendered. day/cars are coerced through Number()
+     (a save's numerics should always BE numbers; NaN renders as the literal
+     text "NaN", not as markup) and every field is escapeHtml()'d besides,
+     including money(m.cash) — money() already reduces to Math.round/
+     toLocaleString on a non-numeric input, so it can't carry markup on its
+     own, but escaping it too costs nothing and keeps this call site
+     rule-of-thumb simple: escape everything that came out of a save. */
+  const day=escapeHtml(Number(m&&m.day)), cars=escapeHtml(Number(m&&m.cars)),
+        clock=escapeHtml(m&&m.clock), cash=escapeHtml(m?money(m.cash):''),
+        app=escapeHtml(save&&save.app);
   return '<div class="slot'+(save?'':' empty')+'">'+
     '<div class="slot-id">'+label+(sub?'<small>'+sub+'</small>':'')+'</div>'+
     '<div class="slot-meta">'+(m
-      ? '<b>Day '+m.day+'</b> · '+m.clock+' · '+money(m.cash)+' · '+m.cars+(m.cars===1?' car':' cars')+
-        '<span>'+when+(save.app?' · v'+save.app:'')+'</span>'
+      ? '<b>Day '+day+'</b> · '+clock+' · '+cash+' · '+cars+(m.cars===1?' car':' cars')+
+        '<span>'+when+(save.app?' · v'+app:'')+'</span>'
       : '<span class="dim">Empty slot</span>')+'</div>'+
     '<div class="slot-act">'+acts+'</div></div>';
 }
@@ -13508,7 +13700,19 @@ function focusableIn(el){
 function activeModal(){
   return MODAL_IDS.map(function(id){ return $(id) }).filter(function(m){ return m&&!m.hidden })[0]||null;
 }
-new MutationObserver(function(muts){
+/* improvements.md P2-23: this used to observe document.body with
+   subtree:true, which queues a MutationRecord for every `hidden` toggle
+   ANYWHERE in the whole page — and render() flips `hidden` on plenty of
+   elements that are not one of these four modals (locked panels, the
+   weather badge, per-row states) many times a second. The forEach below
+   then had to inspect and discard nearly all of them, on every one of
+   those toggles, forever. Observing each modal element directly (no
+   subtree, since we only ever care about the element's OWN hidden
+   attribute) means the browser itself only ever queues a record when a
+   modal really opens or closes — the exact four events this exists for,
+   not everything else happening on the page in between. One observer
+   instance, four observe() targets: the callback logic is unchanged. */
+const modalObserver=new MutationObserver(function(muts){
   muts.forEach(function(m){
     const el=m.target;
     if(!(el.nodeType===1&&MODAL_IDS.indexOf(el.id)!==-1)) return;
@@ -13523,7 +13727,11 @@ new MutationObserver(function(muts){
       if(first) first.focus();
     }
   });
-}).observe(document.body,{attributes:true,attributeFilter:['hidden'],subtree:true});
+});
+MODAL_IDS.forEach(function(id){
+  const el=$(id);
+  if(el) modalObserver.observe(el,{attributes:true,attributeFilter:['hidden']});
+});
 document.addEventListener('keydown',function(e){
   if(e.key!=='Tab') return;
   const m=activeModal(); if(!m) return;
@@ -14107,10 +14315,14 @@ setInterval(function(){
   }).then(function(sv){
     if(!sv||!sv.meta){ newFleet(S.city); return }
     const m=sv.meta;
+    /* improvements.md P2-16: same fix as slotRow() above, and the same
+       reason — this save came from IndexedDB/the cloud, either of which can
+       hold a hand-edited file, and m.day/m.clock/m.cars used to go straight
+       into innerHTML unescaped. */
     $('rs-body').innerHTML=
-      '<div class="rp-row"><span>Day</span><span>'+m.day+' · '+m.clock+'</span></div>'+
-      '<div class="rp-row"><span>Cash</span><span>'+money(m.cash)+'</span></div>'+
-      '<div class="rp-row"><span>Fleet</span><span>'+m.cars+(m.cars===1?' car':' cars')+'</span></div>'+
+      '<div class="rp-row"><span>Day</span><span>'+escapeHtml(Number(m.day))+' · '+escapeHtml(m.clock)+'</span></div>'+
+      '<div class="rp-row"><span>Cash</span><span>'+escapeHtml(money(m.cash))+'</span></div>'+
+      '<div class="rp-row"><span>Fleet</span><span>'+escapeHtml(Number(m.cars))+(m.cars===1?' car':' cars')+'</span></div>'+
       '<div class="rp-row"><span>Saved</span><span>'+ago(sv.ts)+'</span></div>';
     $('resume').hidden=false;
     $('rs-go').addEventListener('click',function(){
