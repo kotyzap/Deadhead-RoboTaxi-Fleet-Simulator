@@ -181,7 +181,7 @@ the numbers are not. That line is deliberate.
 
 ## Paolo
 
-<img src="docs/img/paolo.jpg" alt="Paolo Cortez, the in-game tutorial and advisor character" align="right" width="180" style="margin-left:16px;border-radius:8px">
+<img src="docs/img/paolo-robotaxi.jpg" alt="Paolo, the in-game tutorial and advisor character, standing in front of a Deadhead robotaxi" align="right" width="220" style="margin-left:16px;border-radius:8px">
 
 Forty-one years in a cab before he got out, while getting out was still his idea. He walks
 you through your first day, then goes quiet — and speaks again only once you've been stuck
