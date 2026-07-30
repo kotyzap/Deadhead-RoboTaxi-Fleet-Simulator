@@ -1,0 +1,62 @@
+0.53.2 — the city strip shrinks, so the topbar stops at two lines
+
+WHAT WAS WRONG
+
+0.53.1 removed the forced break and won the wide case, but Pavel still had three
+lines at ~1000px: brand + tabs + Day + Clock on line one, CASH alone on line
+two, controls on line three. The gap tightening bought ~40px and the real
+shortfall was bigger than that.
+
+The cause is a decision documented since the strip shipped: .citytabs is
+flex:0 0 auto — "the strip cannot shrink, so the ROW has to be able to wrap."
+That was written when there were FIVE cities. There are eight. The strip is now
+~560px inside a block that also has to hold the brand, Day, Clock and Cash, so
+"let the row wrap instead" means .tb-info wraps INTERNALLY, Cash lands on a line
+of its own, and the topbar is three deep before the controls are even placed.
+
+The strip is also the only item in that block that grows every time a city
+ships, so it is the only one where a fix keeps working at city nine.
+
+WHAT CHANGED
+
+Below 1700px .citytabs is flex:1 1 auto, min-width:0, overflow-x:auto — it
+shrinks and scrolls. Above 1700px it is unchanged (flex:0 0 auto): a scrollable
+strip at a width where everything already fits would clip for no reason. The
+CARDS never shrink (.citytab{flex:0 0 auto} inside the tier) — the strip does.
+
+The old note's actual worry was "off screen with no scrollbar and no way to
+reach it". Answered rather than overruled:
+
+  - It is a real scroll container: wheel, trackpad, drag, touch, and keyboard
+    via the tabs' own focus order.
+  - renderCityTabs() scrolls the ACTIVE tab into view, so switching to a city
+    that sits past the visible end never leaves the strip showing everywhere
+    except where you are. Done with scrollLeft arithmetic, NOT
+    scrollIntoView() — the latter scrolls ancestors too, which on a narrow
+    layout drags the whole page, the same side effect bringIntoView() exists to
+    avoid elsewhere. A 14px inset keeps the tab clear of the edge fade.
+  - Both edges fade (mask-image), so a partially-scrolled strip reads as
+    scrollable. With no overflow the mask stops sit outside the painted area and
+    nothing is dimmed.
+  - The scrollbar itself is hidden: a 30px strip inside the glass bar cannot
+    spare the ~15px a horizontal bar costs.
+
+Also dropped at <=1499px: the version chip in .brand, worth ~55px before the
+strip has to start scrolling at all. VERSION is still in the Saves modal and on
+every release note, so nothing is lost that a bug report needs.
+
+The <=760px phone tier still gives the strip its own full-width line, which is
+right there — it is now a swipeable full-width strip rather than a wrapping one.
+
+TESTS
+
+The old "does not scroll the strip" check asserted overflow-x was absent
+EVERYWHERE; it is replaced by a pair that pins both halves of the new rule —
+flex:0 0 auto at full width, and shrink-plus-scroll (with non-shrinking cards)
+inside the 1699px tier. A third check asserts renderCityTabs() brings the active
+tab into view via scrollLeft and never calls scrollIntoView(). That last one
+initially failed against its own documentation: the comment explaining which
+method is deliberately avoided contains the word, so the assertion had to test
+for a CALL, not a substring.
+
+Full suite passes clean (405 checks).

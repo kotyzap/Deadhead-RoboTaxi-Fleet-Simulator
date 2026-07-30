@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <!-- Deadhead admin — onboardingplan.md §4, plus a Cars view and a light/dark
-     theme added afterward at Pavel's request.
+     theme added afterward at Pavel's request. Reworked 2026-07-30 per
+     adminplan.md: a Dashboard landing view, sortable/filterable tables, and
+     player geography.
 
      "Unlinked" is not access control (/admin.html is the first path anyone
      guesses), so this page carries no secret of its own. The gate is
@@ -11,21 +13,27 @@
 
      This page just asks for the pair once, holds it in JS variables (never
      localStorage — a shared-machine leak for no convenience worth having),
-     and renders five read-only views. It is a dumb viewer; every aggregate
-     (funnel, per-city economics, per-model Cars) is computed server-side
-     with GROUP BY so the payload stays small.
+     and renders read-only views. It is a dumb viewer; every aggregate
+     (funnel, per-city economics, per-model Cars, every dashboard card) is
+     computed server-side with GROUP BY so the payload stays small. Sorting
+     and filtering are the exception and are deliberately client-side: they
+     run over rows already fetched, so they cost no request and no D1 read.
 
      STYLE: deliberately echoes the game's own look — Inter, the same
      6px/14px corner radii, the same glass-panel silhouette — so it reads as
      "the same product's back office", not a bolted-on tool. But the accent
-     colour is its own crimson, not any of the five city tones (blue/bronze/
-     magenta/teal/violet — see CITIES in deadhead.html), specifically so a
-     screenshot of this page is never mistaken for the game itself. Theme
-     preference is NOT sensitive (unlike the credentials above it), so it is
-     the one thing on this page allowed to live in localStorage. -->
+     colour is its own crimson, not any of the six city tones (blue/bronze/
+     magenta/teal/violet/slate — see CITIES in deadhead.html), specifically
+     so a screenshot of this page is never mistaken for the game itself.
+     Theme preference is NOT sensitive (unlike the credentials above it), so
+     it is the one thing on this page allowed to live in localStorage. -->
 <html lang="en" data-theme="day">
 <head>
 <meta charset="utf-8">
+<!-- Was missing until 2026-07-30, which meant iOS laid the page out at
+     980px and shrank it to fit: every table became a grey smear on the
+     phone Pavel actually checks things on. -->
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
 <title>Deadhead — admin</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -43,8 +51,10 @@
   /* THE ADMIN ACCENT — crimson, deliberately not any city tone. */
   --accent:#B5342E; --accent-hi:#C2453E; --accent-2:#8E2620; --accent-rgb:181,52,46;
   --grid:rgba(23,26,32,.14);
+  --ok:#2E9E5B; --warn:#B07000;
   --r-ctl:6px; --r-srf:14px;
   --input-bg:rgba(23,26,32,.04); --input-brd:rgba(23,26,32,.16);
+  --row-hi:rgba(181,52,46,.05);
 }
 html[data-theme="night"]{
   color-scheme:dark;
@@ -56,12 +66,18 @@ html[data-theme="night"]{
   --elev:0 20px 40px -18px rgba(0,0,0,.55);
   --accent:#D2504F; --accent-hi:#DB6362; --accent-2:#9A2E2E; --accent-rgb:210,80,79;
   --grid:rgba(255,255,255,.12);
+  --ok:#4BB877; --warn:#E0B23C;
   --input-bg:rgba(255,255,255,.06); --input-brd:rgba(255,255,255,.16);
+  --row-hi:rgba(210,80,79,.08);
 }
 *{box-sizing:border-box}
 body{margin:0;font:13px/1.5 'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-  background:var(--bg);color:var(--text);padding:24px;transition:background .2s,color .2s}
+  background:var(--bg);color:var(--text);transition:background .2s,color .2s;
+  padding:24px calc(24px + env(safe-area-inset-right)) calc(24px + env(safe-area-inset-bottom))
+          calc(24px + env(safe-area-inset-left))}
 h1{font-size:16px;font-weight:600;margin:0 0 4px;letter-spacing:-.01em}
+h2{font-size:12px;font-weight:600;margin:0 0 10px;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--text-3)}
 .sub{color:var(--text-3);font-size:12px;margin:0 0 20px}
 #theme-btn{position:fixed;top:20px;right:22px;height:32px;padding:0 14px;border-radius:999px;
   border:1px solid var(--brd-2);background:var(--panel-solid);color:var(--text-2);font:inherit;
@@ -76,19 +92,65 @@ h1{font-size:16px;font-weight:600;margin:0 0 4px;letter-spacing:-.01em}
   background:linear-gradient(180deg,var(--accent-hi),var(--accent));color:#fff;
   font:inherit;font-weight:600;font-size:12.5px;cursor:pointer;box-shadow:var(--hi)}
 #gate button:hover{opacity:.92}
+#gate button[disabled]{opacity:.6;cursor:default}
 #gate .err{color:var(--accent-hi);font-size:12px;min-height:32px;margin-top:10px;line-height:1.4}
-#app{display:none;max-width:1180px;margin:0 auto}
-nav{display:flex;gap:6px;margin-bottom:18px;flex-wrap:wrap}
+#app{display:none;max-width:1280px;margin:0 auto}
+nav{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
 nav button{background:var(--panel-solid);border:1px solid var(--brd-2);color:var(--text-2);
   padding:8px 14px;border-radius:999px;font:inherit;font-size:12.5px;font-weight:500;cursor:pointer;
   box-shadow:var(--hi)}
 nav button[aria-pressed="true"]{background:linear-gradient(180deg,var(--accent-hi),var(--accent));
   border-color:var(--accent);color:#fff}
+
+/* ---- toolbar: refresh / as-of / lock ----
+   The page had none of these. You could not re-read a view without clicking
+   away and back, nothing said how old the numbers were, and the credentials
+   stayed in memory until the tab died. */
+.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 14px}
+.toolbar .spacer{flex:1 1 auto}
+.btn{height:30px;padding:0 13px;border-radius:999px;border:1px solid var(--brd-2);
+  background:var(--panel-solid);color:var(--text-2);font:inherit;font-size:12px;font-weight:500;
+  cursor:pointer;box-shadow:var(--hi)}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.asof{color:var(--text-3);font-size:11.5px;font-variant-numeric:tabular-nums}
+
+/* ---- tables ---- */
 table{width:100%;border-collapse:collapse;font-size:12.5px}
 th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--brd)}
-th{color:var(--text-3);font-weight:500;text-transform:uppercase;font-size:10px;letter-spacing:.06em}
-tr:hover td{background:rgba(var(--accent-rgb),.05)}
+th{color:var(--text-3);font-weight:500;text-transform:uppercase;font-size:10px;letter-spacing:.06em;
+  white-space:nowrap}
+tbody tr:hover td{background:var(--row-hi)}
 .num{text-align:right;font-variant-numeric:tabular-nums}
+/* Sticky header, so scrolling a 500-row Players table keeps the labels. The
+   background must be OPAQUE (--panel-solid, not the translucent --panel) or
+   rows show through it as they pass underneath. */
+.tblinner{overflow:auto;max-height:70vh}
+.tblinner thead th{position:sticky;top:0;z-index:1;background:var(--panel-solid);
+  box-shadow:0 1px 0 var(--brd)}
+/* The whole header is a real button, so sorting works from the keyboard and
+   a screen reader gets aria-sort. `all:unset` then re-inherit, rather than
+   restyling from scratch. */
+th .sortbtn{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:5px;width:100%;
+  cursor:pointer;font:inherit;color:inherit;text-transform:inherit;letter-spacing:inherit}
+th.num .sortbtn{justify-content:flex-end}
+th .sortbtn:hover{color:var(--accent)}
+th .sortbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+th[aria-sort] .sortbtn{color:var(--accent)}
+.sortmark{font-size:8px;opacity:.45;flex:0 0 auto}
+th:not([aria-sort]) .sortmark::after{content:'\2195'}
+th[aria-sort="ascending"] .sortmark::after{content:'\25B2';opacity:1}
+th[aria-sort="descending"] .sortmark::after{content:'\25BC';opacity:1}
+.filterbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 10px}
+.filterbar input{height:30px;padding:0 11px;border-radius:var(--r-ctl);width:min(260px,100%);
+  border:1px solid var(--input-brd);background:var(--input-bg);color:var(--text);
+  font:inherit;font-size:12px}
+.filterbar input::placeholder{color:var(--text-4)}
+.tcount{color:var(--text-3);font-size:11.5px}
+.tcount b{color:var(--text-2);font-weight:600}
+/* A capped query is a lie unless it says so. */
+.capped{color:var(--warn)}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px}
+tr.dim td{opacity:.5}
 /* Achievement name over the condition that earns it — the rate is
    unreadable without the condition ("Grand Tour 4%" means nothing until you
    know it wants a shift in every city). Block, not a second column, so a
@@ -102,19 +164,87 @@ tr.zero td{opacity:.55}
   border:1px solid var(--panel-brd);border-radius:var(--r-srf);
   padding:18px;margin-bottom:16px;overflow:auto;box-shadow:var(--elev),var(--hi)}
 .funnel{display:flex;gap:0;flex-wrap:wrap}
-.funnel div{flex:1 1 140px;padding:14px;text-align:center;border-right:1px solid var(--brd)}
+.funnel div{flex:1 1 130px;padding:14px;text-align:center;border-right:1px solid var(--brd)}
 .funnel div:last-child{border-right:0}
 .funnel b{display:block;font-size:26px;font-weight:600;color:var(--accent)}
 .funnel span{color:var(--text-3);font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+/* Milestones are NOT funnel stages and must not look like them — see the
+   comment above renderFunnel(). Same cells, neutral number colour. */
+.funnel.mile b{color:var(--text)}
 .note{color:var(--text-3);font-size:11.5px;margin:0 0 14px}
+.note.warn{color:var(--warn)}
 .loading,.empty{color:var(--text-3);padding:24px;text-align:center}
+
+/* ---- dashboard ---- */
+.topgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(238px,1fr));gap:12px;
+  margin:0 0 20px}
+.topcard{background:var(--panel-solid);border:1px solid var(--brd);border-radius:var(--r-srf);
+  padding:12px 13px 10px;box-shadow:var(--hi);min-width:0}
+.topcard h3{margin:0 0 8px;font-size:10px;font-weight:600;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--text-3);display:flex;gap:6px;align-items:baseline}
+.topcard h3 em{font-style:normal;color:var(--text-4);font-weight:400;letter-spacing:0;
+  text-transform:none;font-size:10.5px}
+/* One row = a label, a value, and a bar behind both scaled to this card's
+   own maximum, so a card reads as a shape before you read any number. The
+   bar is a real element under position:relative children rather than a
+   negative z-index, which would slide behind the card's own background. */
+.toprow{position:relative;display:flex;align-items:baseline;gap:8px;padding:4px 7px;
+  border-radius:5px;font-size:12px;min-width:0}
+.toprow .bar{position:absolute;left:0;top:0;bottom:0;border-radius:5px;
+  background:rgba(var(--accent-rgb),.14)}
+.toprow .k,.toprow .v,.toprow .v2{position:relative}
+.toprow .k{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  color:var(--text-2)}
+.toprow .v{flex:0 0 auto;font-weight:600;font-variant-numeric:tabular-nums}
+.toprow .v2{flex:0 0 auto;color:var(--text-4);font-size:10.5px}
+.topcard .nodata{color:var(--text-4);font-size:11.5px;padding:10px 6px}
+/* NOT `.sub` — that class already belongs to the page-header paragraph
+   ("Unauthenticated telemetry, keyed by a local profile id…"), and naming the
+   dashboard's subsection panels `.sub` too painted a white card behind that
+   header line. Caught by a screenshot, not by any assertion, because both
+   elements were individually valid. */
+.subs{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.subpanel{background:var(--panel-solid);border:1px solid var(--brd);border-radius:var(--r-srf);
+  padding:14px 15px;box-shadow:var(--hi);min-width:0;overflow:auto}
+.subpanel h2{margin:0 0 4px}
+.subpanel .note{margin-bottom:10px}
+.kv{display:flex;justify-content:space-between;gap:10px;padding:3px 0;font-size:12px;
+  border-bottom:1px solid var(--brd)}
+.kv:last-child{border-bottom:0}
+.kv span{color:var(--text-2)}
+.kv b{font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.kv b.ok{color:var(--ok)}
+.kv b.warn{color:var(--warn)}
+.pill{display:inline-block;font-size:9.5px;font-weight:600;letter-spacing:.05em;
+  text-transform:uppercase;padding:2px 6px;border-radius:4px;border:1px solid var(--brd-2);
+  color:var(--text-3)}
+.golink{background:none;border:0;padding:0;margin:10px 0 0;font:inherit;font-size:11px;
+  color:var(--accent);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
 
 /* ---- Cars view ---- */
 .cargrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
 .carcard{background:var(--panel-solid);border:1px solid var(--brd);border-radius:var(--r-srf);
   overflow:hidden;box-shadow:var(--hi)}
-.carcard .art{position:relative;aspect-ratio:16/10;background:#15161a;overflow:hidden}
-.carcard .art img{width:100%;height:100%;object-fit:cover;display:block}
+.carcard .art{position:relative;aspect-ratio:16/10;overflow:hidden;
+  background:radial-gradient(120% 150% at 50% 20%,#22262d 0%,#15161a 70%)}
+/* The body-class name, set large and faint behind the ident — this view is a
+   tuning dashboard, so knowing a row is a 'cross' matters more here than
+   seeing a picture of one. Replaced the /carsimg/ photo in 0.42.0. */
+.carcard .art .shape{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);
+  font-size:26px;letter-spacing:.16em;text-transform:uppercase;font-weight:600;
+  color:rgba(255,255,255,.13);white-space:nowrap}
+/* Pavel's own renders (2026-07-30), same files the game uses at a different
+   crop (16:10 here vs the game's 5:2) — original art of a fictional
+   Axiom-badged car, not a real manufacturer's photo. Sits ON TOP of .shape
+   rather than replacing it, so a photo that fails to load (or a trim with no
+   photo at all) still shows the tuning-dashboard shape label underneath
+   exactly as before 2026-07-30 — see the onerror handler where this class is
+   added. */
+.carcard .art.has-photo img.photo{position:absolute;inset:0;width:100%;
+  height:100%;object-fit:cover;display:block}
+.carcard .art.has-photo .shape{display:none}
+.carcard .art.has-photo.noimg img.photo{display:none}
+.carcard .art.has-photo.noimg .shape{display:block}
 .carcard .art .badge{position:absolute;top:8px;left:8px;background:rgba(0,0,0,.55);
   color:#fff;font-size:10px;font-weight:600;letter-spacing:.04em;padding:3px 7px;border-radius:5px}
 .carcard .art .scrim{position:absolute;inset:auto 0 0 0;height:46%;
@@ -128,11 +258,35 @@ tr.zero td{opacity:.55}
   padding:2px 0}
 .carcard .stat-line b{color:var(--text);font-weight:600}
 .carcard .nodata{text-align:center;color:var(--text-4);font-size:11px;padding:18px 0}
+/* THE .carcard.retired / .ret-tag RULES ARE GONE, 2026-07-30. Crossover Long,
+   Saloon Sport and Crossover Sport had a dimmed card each, kept after the
+   catalogue was trimmed to six trims so historical fleet data under those ids
+   stayed visible. In practice they were three permanently empty cards ("No
+   shifts reported yet") taking a row of the grid, so Pavel asked for them to
+   go. Nothing was lost: a retired id that actually HAS shifts now appears in
+   the ranked table instead, dimmed via the shared tr.dim rule and labelled
+   from RETIRED_MODELS. Only the cards went, not the data. */
 /* Shared legend for the per-axis colours — learn it once above the grid,
    every card's radar then reads without its own key. */
 .axis-legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin:0 0 14px}
 .axis-key{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--text-2)}
 .axis-key i{display:inline-block;width:9px;height:9px;border-radius:50%;flex:0 0 auto}
+hr.sep{border:0;border-top:1px solid var(--brd);margin:22px 0 16px}
+
+/* ---- phone ----
+   Not a separate layout, just the places where a desktop back office is
+   actively unusable at 390px: the fixed theme button overlapping the title,
+   the page gutter, and the multi-column card grids. */
+@media (max-width:700px){
+  body{padding:16px calc(14px + env(safe-area-inset-right)) 28px calc(14px + env(safe-area-inset-left))}
+  #theme-btn{position:static;margin:0 0 12px}
+  .panel{padding:13px}
+  .topgrid,.subs{grid-template-columns:1fr}
+  .cargrid{grid-template-columns:repeat(auto-fill,minmax(190px,1fr))}
+  .tblinner{max-height:none}
+  .funnel div{flex:1 1 100px;padding:11px 8px}
+  .funnel b{font-size:21px}
+}
 </style>
 </head>
 <body>
@@ -143,7 +297,7 @@ tr.zero td{opacity:.55}
   <h1>Deadhead admin</h1>
   <p class="sub">Sign in to view stats. Held in memory only — never stored,
      never sent anywhere but the requests below.</p>
-  <input id="email" type="email" placeholder="Admin email" autocomplete="off">
+  <input id="email" type="email" placeholder="Admin email" autocomplete="off" autofocus>
   <input id="password" type="password" placeholder="Admin password" autocomplete="off">
   <div><button id="enter">Enter</button></div>
   <p class="err" id="gate-err"></p>
@@ -154,13 +308,21 @@ tr.zero td{opacity:.55}
   <p class="sub">Unauthenticated telemetry, keyed by a local profile id — a tuning signal,
      not a leaderboard. See onboardingplan.md §4.</p>
   <nav>
-    <button data-view="players" aria-pressed="true">Players</button>
+    <button data-view="dashboard" aria-pressed="true">Dashboard</button>
+    <button data-view="players" aria-pressed="false">Players</button>
+    <button data-view="geo" aria-pressed="false">Geography</button>
     <button data-view="funnel" aria-pressed="false">Progression funnel</button>
     <button data-view="economics" aria-pressed="false">Per-city economics</button>
     <button data-view="cars" aria-pressed="false">Cars</button>
     <button data-view="achievements" aria-pressed="false">Achievements</button>
     <button data-view="recent" aria-pressed="false">Recent shifts</button>
   </nav>
+  <div class="toolbar">
+    <button class="btn" id="refresh" type="button">Refresh</button>
+    <span class="asof" id="asof"></span>
+    <span class="spacer"></span>
+    <button class="btn" id="lock" type="button">Lock</button>
+  </div>
   <div class="panel" id="view"></div>
 </div>
 
@@ -190,16 +352,133 @@ tr.zero td{opacity:.55}
       return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
     });
   }
-  function money(v){ return v==null?'—':'$'+Number(v).toFixed(0); }
+  /* A negative figure has to read as negative at a glance — the old version
+     rendered -$300 as "$-300" via toFixed on the signed value. */
+  function money(v){ return v==null?'—':(Number(v)<0?'-$':'$')+Math.abs(Number(v)).toFixed(0); }
   function num(v,d){ return v==null?'—':Number(v).toFixed(d==null?0:d); }
-  function fmtTs(v){ return v?new Date(v).toLocaleString():'—'; }
+  function fmtTs(v){ return v?new Date(Number(v)).toLocaleString():'—'; }
   function shortId(v){ return v?String(v).slice(0,8):'—'; }
+  function pctOf(n,total){ return total?Math.round((n/total)*100)+'%':'—'; }
+  /* A last_seen column is read for "how long ago", not for a date — so both
+     are shown: the relative form in the cell, the absolute one in the
+     tooltip. */
+  function rel(v){
+    if(!v) return '—';
+    var s = (Date.now() - Number(v))/1000;
+    if(s < 0) return 'just now';
+    if(s < 90) return Math.round(s)+'s ago';
+    if(s < 5400) return Math.round(s/60)+'m ago';
+    if(s < 172800) return Math.round(s/3600)+'h ago';
+    if(s < 2592000) return Math.round(s/86400)+'d ago';
+    return Math.round(s/2592000)+'mo ago';
+  }
+
+  /* Country code -> readable name, via the browser's own CLDR data. No table
+     to carry and nothing to keep in sync. 'XX' and '??' are Cloudflare's /
+     the Worker's "unknown", 'T1' is a Tor exit node — all three are kept
+     visible rather than folded together, because "we know it was Tor" and
+     "we have no idea" are different findings. */
+  var REGION_NAMES = null;
+  try{ REGION_NAMES = new Intl.DisplayNames(['en'], {type:'region'}); }catch(e){}
+  function countryName(code){
+    if(!code || code==='??' || code==='XX') return 'Unknown';
+    if(code==='T1') return 'Tor exit node';
+    try{
+      var n = REGION_NAMES && REGION_NAMES.of(code);
+      return n && n!==code ? n : code;
+    }catch(e){ return code; }
+  }
+  function countryCell(code){
+    if(!code || code==='??' || code==='XX')
+      return '<span style="color:var(--text-4)">Unknown</span>';
+    return esc(countryName(code))+' <span class="pill">'+esc(code)+'</span>';
+  }
+
+  /* CITY LABELS.
+     The rule used to be "title-case the id", with an explicit comment that
+     the real display names live in CITIES in deadhead.html and are not
+     worth a third copy. That was right for five cities and wrong for the
+     sixth: San Francisco shipped as `sf` in 0.39.5, and this page has been
+     rendering "Sf" ever since.
+     So: title-case is still the default, and a NEW city still shows up here
+     on its own with a sensible label — only the ids the rule gets wrong are
+     written down. test/admin.test.js walks CITIES in deadhead.html and
+     asserts every id resolves to that city's own `name`, so the next id that
+     breaks the rule fails the suite instead of shipping. */
+  var CITY_LABEL = { sf: 'San Francisco' };
+  function cityLabel(id){
+    if(!id) return '—';
+    if(CITY_LABEL[id]) return CITY_LABEL[id];
+    return String(id).replace(/(^|[-_])(\w)/g, function(_,s,c){
+      return (s?' ':'')+c.toUpperCase();
+    });
+  }
+
+  function stampAsOf(){
+    document.getElementById('asof').textContent =
+      'as of ' + new Date().toLocaleTimeString();
+  }
+
+  /* ---- WHY DID THE ADMIN 404? ----
+     The server cannot tell you, by design. But the page can work it out, by
+     asking a PUBLIC endpoint whether there is a Worker on this origin at all:
+
+       /api/params answers 200  ->  the Worker is live and routing /api/*, so
+                                    the 404 came from isAdmin(): the pair was
+                                    rejected.
+       /api/params does not     ->  nothing here reaches the Worker. Every
+                                    /api call will 404 whatever you type,
+                                    because this page is being served by
+                                    something else — a static host like
+                                    GitHub Pages, a file:// copy, or an
+                                    assets-only deploy.
+
+     No information leak: /api/params is unauthenticated and public already
+     (cloud.js fetches it before every login), and the reasoning happens in
+     the browser. A prober learns nothing it could not already read.
+
+     The credentials point is the one that actually bites: the pair lives in
+     src/admin-config.js and is BUNDLED INTO THE WORKER AT DEPLOY TIME. Editing
+     that file changes nothing on the live deployment until the next
+     `wrangler deploy`, and the file is gitignored, so there is no diff to
+     remind you. */
+  async function diagnose404(){
+    var where = location.origin + location.pathname;
+    var live = false;
+    try{
+      const r = await fetch('/api/params', {cache:'no-store'});
+      if(r.ok){
+        const b = await r.json().catch(function(){ return null; });
+        live = !!(b && b.kdfIters);
+      }
+    }catch(e){ live = false; }
+    if(live){
+      return 'The Worker IS deployed and answering on this origin ('+where+'), '+
+        'so the endpoint exists — it rejected this email/password pair. The pair is '+
+        'hardcoded in deploy/src/admin-config.js and bundled into the Worker at deploy '+
+        'time, so if you changed it since the last `wrangler deploy`, the live Worker is '+
+        'still checking the OLD pair — redeploy, or type the old one. The email is '+
+        'trimmed and lower-cased before comparison; the password is compared exactly, '+
+        'including case and any trailing space.';
+    }
+    return 'Nothing on this origin ('+where+') is reaching the Worker: the public '+
+      '/api/params endpoint does not answer either, so every /api request 404s no matter '+
+      'what you type. This page is being served by something that is not the Worker — a '+
+      'static host such as GitHub Pages, a file:// copy, or an assets-only deploy. Open '+
+      'admin.html on the Worker\'s own domain.';
+  }
 
   async function api(view){
     const res = await fetch('/api/admin/stats?view='+encodeURIComponent(view), {
       headers: { 'x-admin-email': EMAIL, 'x-admin-password': PASSWORD }
     });
-    if(res.status===404) throw new Error('wrong email/password, or the endpoint is not deployed');
+    /* 404 is what the Worker returns for BOTH a bad credential pair and a
+       path it does not serve — deliberately, so a prober cannot confirm the
+       endpoint exists (see isAdmin() in src/index.js). That is right for the
+       server and useless for the operator: the old message named all three
+       possible causes and left you to guess. diagnose404() narrows it down
+       from the client side instead. */
+    if(res.status===404) throw new Error(await diagnose404());
     if(!res.ok){
       // Surface the server's own message (e.g. "database tables are missing —
       // run schema.sql...") instead of a bare status code — that message is
@@ -211,55 +490,500 @@ tr.zero td{opacity:.55}
     return res.json();
   }
 
+  /* ============================================================
+     SORTABLE TABLES
+
+     One renderer for every table on the page, replacing five hand-rolled
+     string builders that each concatenated their own <thead>.
+
+     A column is {key, label, type, fmt, ...}:
+       type   'text' | 'num' | 'ts'   — decides BOTH alignment and, more
+              importantly, the comparator. The old tables could not be
+              sorted at all; sorting them as strings would have put '$1,200'
+              above '$900', which is the classic version of this bug.
+       fmt    (value, row) -> display string. Must return ESCAPED HTML when
+              the column sets html:true, plain text otherwise.
+       sort   optional (row) -> comparable, for when the sort key is not the
+              displayed value (the Achievements rate column sorts on the raw
+              count, not on the string "43%").
+
+     NULL ALWAYS SORTS LAST, in both directions: a missing value is not a
+     small value, and letting nulls win an ascending sort would put every
+     legacy row at the top of every table.
+
+     Sorting and filtering are client-side over rows already fetched — no
+     request, no D1 read, no write. See the file header.
+     ============================================================ */
+  var TABLES = {};       // id -> spec, so a header click can re-render just that table
+  var TABLE_SEQ = 0;
+
+  function cmpVals(a, b, type){
+    var an = (a==null || a===''), bn = (b==null || b==='');
+    if(an && bn) return 0;
+    if(an) return 1;        // nulls last, regardless of direction (see above)
+    if(bn) return -1;
+    if(type==='num' || type==='ts'){
+      var x = Number(a), y = Number(b);
+      if(isNaN(x) && isNaN(y)) return 0;
+      if(isNaN(x)) return 1;
+      if(isNaN(y)) return -1;
+      return x<y ? -1 : x>y ? 1 : 0;
+    }
+    return String(a).localeCompare(String(b), undefined, {numeric:true, sensitivity:'base'});
+  }
+
+  function sortValue(col, row){
+    return col.sort ? col.sort(row) : row[col.key];
+  }
+
+  function visibleRows(spec){
+    var rows = spec.rows.slice();
+    var f = (spec.filter||'').trim().toLowerCase();
+    if(f){
+      /* Matches across every column's DISPLAYED text, so filtering by "San
+         Francisco" works on a row that only holds `sf`, and filtering by
+         "Czechia" works on a row that only holds `CZ`. */
+      rows = rows.filter(function(r){
+        return spec.cols.some(function(c){
+          var v = c.fmt ? c.fmt(r[c.key], r) : r[c.key];
+          return String(v==null?'':v).toLowerCase().indexOf(f) !== -1;
+        });
+      });
+    }
+    if(spec.sortKey != null){
+      var col = spec.cols.filter(function(c){ return c.key===spec.sortKey; })[0];
+      if(col){
+        var dir = spec.sortDir==='asc' ? 1 : -1;
+        var type = col.type||'text';
+        rows.sort(function(a,b){
+          /* NULLS ARE DECIDED BEFORE THE DIRECTION IS APPLIED, and that is
+             the whole trick. The obvious version — `dir * cmpVals(...)` —
+             gets it exactly backwards on a descending sort: cmpVals puts
+             nulls last, the -1 flips that, and every legacy row with a
+             missing value lands at the TOP of the table. Caught by
+             test/admin.test.js, which asserts both directions. */
+          var av = sortValue(col,a), bv = sortValue(col,b);
+          var an = (av==null || av===''), bn = (bv==null || bv==='');
+          if(an || bn) return (an && bn) ? 0 : (an ? 1 : -1);
+          return dir * cmpVals(av, bv, type);
+        });
+      }
+    }
+    return rows;
+  }
+
+  function tableInnerHTML(spec){
+    var rows = visibleRows(spec);
+    if(!rows.length){
+      return '<div class="empty">'+esc(spec.empty||'Nothing matches that filter.')+'</div>';
+    }
+    var head = spec.cols.map(function(c){
+      var isNum = (c.type==='num' || c.type==='ts');
+      var sorted = spec.sortKey===c.key
+        ? ' aria-sort="'+(spec.sortDir==='asc'?'ascending':'descending')+'"' : '';
+      return '<th'+(isNum?' class="num"':'')+sorted+
+        (c.title?' title="'+esc(c.title)+'"':'')+'>'+
+        '<button class="sortbtn" type="button" data-sort="'+esc(c.key)+'">'+
+        '<span>'+esc(c.label)+'</span><i class="sortmark"></i></button></th>';
+    }).join('');
+    var body = rows.map(function(r){
+      var cls = spec.rowClass ? spec.rowClass(r) : '';
+      return '<tr'+(cls?' class="'+esc(cls)+'"':'')+'>'+spec.cols.map(function(c){
+        var isNum = (c.type==='num' || c.type==='ts');
+        var v = c.fmt ? c.fmt(r[c.key], r) : r[c.key];
+        var cell = c.html ? (v==null?'':v) : esc(v==null?'—':v);
+        var t = c.cellTitle ? ' title="'+esc(c.cellTitle(r))+'"' : '';
+        var klass = (isNum?'num':'')+(c.cls?(isNum?' ':'')+c.cls:'');
+        return '<td'+(klass?' class="'+esc(klass)+'"':'')+t+'>'+cell+'</td>';
+      }).join('')+'</tr>';
+    }).join('');
+    return '<table><thead><tr>'+head+'</tr></thead><tbody>'+body+'</tbody></table>';
+  }
+
+  function countHTML(spec){
+    var shown = visibleRows(spec).length;
+    var out = '<b>'+shown+'</b> row'+(shown===1?'':'s');
+    if(spec.filter) out += ' matching “'+esc(spec.filter)+'” of '+spec.rows.length;
+    /* A capped query that does not say it is capped is a lie: past the LIMIT
+       the table silently omits people. */
+    if(spec.total != null && spec.total > spec.rows.length){
+      out += ' · <span class="capped">newest '+spec.rows.length+' of '+spec.total+'</span>';
+    }
+    return out;
+  }
+
+  /* Returns the markup for a table. The filter bar sits OUTSIDE the part that
+     gets re-rendered on sort/filter, so typing in it never blows away the
+     focused input mid-keystroke. */
+  function dataTable(opts){
+    var id = 't'+(++TABLE_SEQ);
+    var spec = {
+      id: id, cols: opts.cols, rows: opts.rows||[],
+      sortKey: opts.sortKey!=null ? opts.sortKey : null,
+      sortDir: opts.sortDir || 'desc',
+      filter: '', total: opts.total, empty: opts.empty,
+      rowClass: opts.rowClass
+    };
+    TABLES[id] = spec;
+    var bar = '<div class="filterbar">'+
+      (opts.filter===false ? '' :
+        '<input type="search" data-filter="'+id+'" placeholder="'+
+        esc(opts.placeholder||'Filter…')+'" aria-label="Filter rows">')+
+      '<span class="tcount" data-count="'+id+'">'+countHTML(spec)+'</span></div>';
+    return '<div data-tbl="'+id+'">'+bar+
+      '<div class="tblinner" data-inner="'+id+'">'+tableInnerHTML(spec)+'</div></div>';
+  }
+
+  function repaintTable(id){
+    var spec = TABLES[id];
+    if(!spec) return;
+    var inner = document.querySelector('[data-inner="'+id+'"]');
+    var count = document.querySelector('[data-count="'+id+'"]');
+    if(inner) inner.innerHTML = tableInnerHTML(spec);
+    if(count) count.innerHTML = countHTML(spec);
+  }
+
+  document.getElementById('view').addEventListener('click', function(e){
+    var btn = e.target.closest('[data-sort]');
+    if(!btn) return;
+    var box = btn.closest('[data-tbl]');
+    if(!box) return;
+    var spec = TABLES[box.getAttribute('data-tbl')];
+    if(!spec) return;
+    var key = btn.getAttribute('data-sort');
+    var col = spec.cols.filter(function(c){ return c.key===key; })[0];
+    if(spec.sortKey === key){
+      spec.sortDir = spec.sortDir==='asc' ? 'desc' : 'asc';
+    }else{
+      spec.sortKey = key;
+      /* First click on a number or a date sorts DESCENDING: on this page the
+         interesting end of a numeric column is always the top. Text starts
+         ascending, because A–Z is what you expect of a name. */
+      spec.sortDir = (col && (col.type==='num' || col.type==='ts')) ? 'desc' : 'asc';
+    }
+    repaintTable(spec.id);
+  });
+  document.getElementById('view').addEventListener('input', function(e){
+    var inp = e.target.closest('[data-filter]');
+    if(!inp) return;
+    var spec = TABLES[inp.getAttribute('data-filter')];
+    if(!spec) return;
+    spec.filter = inp.value;
+    repaintTable(spec.id);
+  });
+
+  /* ============================================================
+     DASHBOARD
+     ============================================================ */
+  function kv(label, value, cls){
+    return '<div class="kv"><span>'+esc(label)+'</span><b'+(cls?' class="'+cls+'"':'')+'>'+
+      esc(value)+'</b></div>';
+  }
+
+  function topCard(title, note, rows, opts){
+    opts = opts || {};
+    var label = opts.label || function(r){ return r.k; };
+    var value = opts.value || function(r){ return num(r.v); };
+    var max = opts.barMax || 0;
+    rows.forEach(function(r){ var v = Math.abs(Number(r.v)||0); if(v>max) max=v; });
+    var body = rows.length
+      ? rows.map(function(r){
+          var w = max ? Math.max(3, Math.round((Math.abs(Number(r.v)||0)/max)*100)) : 0;
+          return '<div class="toprow"><i class="bar" style="width:'+w+'%"></i>'+
+            '<span class="k"'+(opts.rowTitle?' title="'+esc(opts.rowTitle(r))+'"':'')+'>'+
+              esc(label(r))+'</span>'+
+            (opts.sub ? '<span class="v2">'+esc(opts.sub(r))+'</span>' : '')+
+            '<b class="v">'+esc(value(r))+'</b></div>';
+        }).join('')
+      /* An empty card says it is empty. It never shows a zero, which would
+         read as a measured result. */
+      : '<div class="nodata">'+esc(opts.empty||'No data yet')+'</div>';
+    return '<div class="topcard"><h3>'+esc(title)+
+      (note?' <em>'+esc(note)+'</em>':'')+'</h3>'+body+'</div>';
+  }
+
+  function renderDashboard(data){
+    var t = data.tops||{}, pulse = data.pulse||{}, health = data.health||{}, fn = data.funnel||{};
+    var total = fn.total||0;
+
+    var cards =
+      topCard('Top countries','players', t.countries||[], {
+        label:function(r){ return countryName(r.k); },
+        rowTitle:function(r){ return r.k; },
+        empty:'No geography yet — see Data health'
+      })+
+      topCard('Top cities','shifts', t.gameCities||[], {
+        label:function(r){ return cityLabel(r.k); },
+        sub:function(r){ return r.v2+'p'; }
+      })+
+      topCard('Most-run cars','shifts', t.cars||[], {
+        label:function(r){ return carName(r.k); },
+        sub:function(r){ return r.v2+'p'; },
+        empty:'No per-model data yet'
+      })+
+      /* barMax is the player base, not this card's own maximum: the five
+         rarest achievements sit within a few percent of each other, so a
+         self-scaled bar was full on every row and said nothing. Against the
+         whole population it reads as "how rare". */
+      topCard('Rarest trophies','players', t.rarestAchv||[], {
+        label:function(r){ return achvName(r.k); },
+        rowTitle:function(r){ return achvSpec(r.k); },
+        barMax: total,
+        empty:'No achievement lists reported yet'
+      })+
+      topCard('Most active players','shifts filed', t.activePlayers||[], {
+        label:function(r){ return r.k || 'Player'; },
+        rowTitle:function(r){ return r.id; }
+      })+
+      topCard('Best cash','peak balance', t.bestCash||[], {
+        label:function(r){ return r.k || 'Player'; },
+        value:function(r){ return money(r.v); },
+        rowTitle:function(r){ return r.id; }
+      })+
+      topCard('Longest runs','day reached', t.longestRuns||[], {
+        label:function(r){ return r.k || 'Player'; },
+        rowTitle:function(r){ return r.id; }
+      })+
+      topCard('Busiest days','shifts', t.busiestDays||[], {
+        label:function(r){ return r.k; },
+        sub:function(r){ return r.v2+'p'; }
+      })+
+      topCard('Newest players','first shift', t.newestPlayers||[], {
+        label:function(r){ return r.k || 'Player'; },
+        value:function(r){ return rel(r.v); },
+        sub:function(r){ return r.v2+' sh'; },
+        rowTitle:function(r){ return fmtTs(r.v); }
+      })+
+      topCard('Last shift reached','players', t.dropoff||[], {
+        label:function(r){ return 'Shift '+r.k; }
+      })+
+      topCard('Accounts by country','registered', t.accountCountries||[], {
+        label:function(r){ return countryName(r.k); },
+        rowTitle:function(r){ return r.k; },
+        empty:'No cloud accounts yet'
+      });
+
+    /* ---- subsections ---- */
+    var pulseSub = '<div class="subpanel"><h2>Right now</h2>'+
+      '<p class="note">Server time throughout. Every timestamp in this admin is the '+
+      'server\'s, never the client\'s — see schema.sql.</p>'+
+      kv('Shifts, last 24h', num(pulse.shifts_24h))+
+      kv('Players, last 24h', num(pulse.players_24h))+
+      kv('Shifts, last 7 days', num(pulse.shifts_7d))+
+      kv('Players, last 7 days', num(pulse.players_7d))+
+      kv('Newest shift', rel(pulse.newest))+
+      kv('Oldest shift', rel(pulse.oldest))+
+      kv('Shifts, all time', num(pulse.shifts_all))+
+      kv('Players, all time', num(pulse.players_all))+
+      '</div>';
+
+    var geoRows = t.countries||[];
+    var geoSub = '<div class="subpanel"><h2>Geography</h2>'+
+      '<p class="note">Country and region come from Cloudflare\'s edge, so they are the '+
+      'only fields on a telemetry row the client does not get to claim. No city is '+
+      'stored — adminplan.md §3.</p>'+
+      (geoRows.length
+        ? geoRows.map(function(r){ return kv(countryName(r.k), num(r.v)+' players'); }).join('')
+        : '<p class="note">Nothing yet. Rows written before this shipped carry no '+
+          'country and count as Unknown.</p>')+
+      '<p class="note warn" style="margin:12px 0 0">This is PLAYER geography. A row '+
+      'exists only once somebody FINISHES a shift, so visitors who never played are not '+
+      'in the database at all — deliberately: the game makes no network call at boot, to '+
+      'protect the free-tier write budget. For raw visitor counts by country use the '+
+      'Cloudflare dashboard → Analytics &amp; Logs → Traffic.</p>'+
+      '<button class="golink" data-goto="geo">Open the full Geography view</button>'+
+      '</div>';
+
+    var funnelSub = '<div class="subpanel"><h2>Progression</h2>'+
+      '<p class="note">Out of '+esc(total)+' players who have filed at least one shift. '+
+      'That is also the first step, so this cannot show the drop-off before it.</p>'+
+      kv('Filed shift 2', num(fn.shift2)+' · '+pctOf(fn.shift2||0,total))+
+      kv('Reached day 2', num(fn.day2)+' · '+pctOf(fn.day2||0,total))+
+      kv('Reached day 5', num(fn.day5)+' · '+pctOf(fn.day5||0,total))+
+      kv('Reached day 10', num(fn.day10)+' · '+pctOf(fn.day10||0,total))+
+      kv('Turned a profit', num(fn.profitable)+' · '+pctOf(fn.profitable||0,total))+
+      kv('Ran 2+ cars', num(fn.fleet2)+' · '+pctOf(fn.fleet2||0,total))+
+      '<button class="golink" data-goto="funnel">Open the full funnel</button>'+
+      '</div>';
+
+    /* The section that tells you a migration did not run. A column that is
+       NULL on every row shows up here as a number, instead of as a
+       mysteriously empty panel three tabs away. */
+    var rowsAll = health.rows_all||0;
+    function healthKv(label, n){
+      var v = num(n)+(rowsAll?' · '+pctOf(n||0,rowsAll):'');
+      return kv(label, v, n ? 'warn' : 'ok');
+    }
+    var healthSub = '<div class="subpanel"><h2>Data health</h2>'+
+      '<p class="note">Columns added after the table shipped are NULL on older rows, so a '+
+      'big number here on a young column is normal. A number EQUAL to the row count means '+
+      'the migration in schema.sql never ran.</p>'+
+      kv('Rows, all time', num(rowsAll))+
+      healthKv('No country (pre-geo rows)', health.no_country)+
+      healthKv('No achievements list', health.no_achv)+
+      healthKv('No per-model breakdown', health.no_models)+
+      healthKv('Legacy array-shaped models', health.legacy_models)+
+      kv('Anonymous (no cloud account)',
+         num(health.anon)+(rowsAll?' · '+pctOf(health.anon||0,rowsAll):''))+
+      '</div>';
+
+    return '<p class="note">Top fives across all telemetry, then the detail underneath. '+
+      'Every number here comes from unauthenticated, client-reported rows and is a tuning '+
+      'signal, never a leaderboard — the exception is country/region/timezone, which come '+
+      'from the edge and are the only fields a client cannot claim.</p>'+
+      '<div class="topgrid">'+cards+'</div>'+
+      '<hr class="sep">'+
+      '<div class="subs">'+pulseSub+geoSub+funnelSub+healthSub+'</div>';
+  }
+
+  /* ============================================================
+     PLAYERS
+     ============================================================ */
   function renderPlayers(data){
     const rows = data.rows||[];
     if(!rows.length) return '<div class="empty">No players yet.</div>';
-    return '<table><thead><tr><th>Name</th><th>Id</th><th>Created</th>'+
-      '<th>First seen</th><th>Last seen</th><th class="num">Shifts</th>'+
-      '<th class="num">Cities</th><th class="num">Best cash</th></tr></thead><tbody>'+
-      rows.map(function(r){
-        return '<tr><td>'+esc(r.name||'Player')+'</td>'+
-          '<td title="'+esc(r.player_id)+'">'+esc(shortId(r.player_id))+'</td>'+
-          '<td>'+esc(fmtTs(r.created))+'</td>'+
-          '<td>'+esc(fmtTs(r.first_seen))+'</td>'+
-          '<td>'+esc(fmtTs(r.last_seen))+'</td>'+
-          '<td class="num">'+esc(r.shifts)+'</td>'+
-          '<td class="num">'+esc(r.cities)+'</td>'+
-          '<td class="num">'+money(r.best_cash)+'</td></tr>';
-      }).join('')+'</tbody></table>';
+    return '<p class="note">One row per local profile id. Name and country are taken from '+
+      'each player\'s MOST RECENT shift, not from whichever of their rows happened to sort '+
+      'last — see the query comment in src/index.js.</p>'+
+      dataTable({
+        rows: rows, total: data.total, sortKey: 'last_seen', sortDir: 'desc',
+        placeholder: 'Filter by name, country, region…',
+        cols: [
+          {key:'name', label:'Name', type:'text', fmt:function(v){ return v||'Player'; }},
+          {key:'country', label:'Country', type:'text', html:true,
+           fmt:function(v){ return countryCell(v); },
+           sort:function(r){ return r.country ? countryName(r.country) : null; }},
+          {key:'region', label:'Region', type:'text', fmt:function(v){ return v||'—'; }},
+          {key:'player_id', label:'Id', type:'text', cls:'mono',
+           fmt:function(v){ return shortId(v); },
+           cellTitle:function(r){ return r.player_id; }},
+          {key:'shifts', label:'Shifts', type:'num'},
+          {key:'days_active', label:'Days', type:'num',
+           title:'Distinct calendar days with at least one shift — nine shifts in one evening is not nine days of play'},
+          {key:'cities', label:'Cities', type:'num'},
+          {key:'best_day', label:'Best day', type:'num'},
+          {key:'best_cars', label:'Cars', type:'num'},
+          {key:'best_cash', label:'Best cash', type:'num', fmt:function(v){ return money(v); }},
+          {key:'first_seen', label:'First seen', type:'ts', fmt:function(v){ return rel(v); },
+           cellTitle:function(r){ return fmtTs(r.first_seen); }},
+          {key:'last_seen', label:'Last seen', type:'ts', fmt:function(v){ return rel(v); },
+           cellTitle:function(r){ return fmtTs(r.last_seen); }}
+        ]
+      });
   }
 
-  /* Cities are NOT listed here. They used to be — two hardcoded columns,
-     Dallas and Miami — and the funnel spent two releases claiming the game
-     had three cities while Tampa and Orlando were live. The server now
-     returns data.cities, derived from the table, so city #6 appears the
-     first time anybody files a shift there and this file never needs
-     touching again. The label is just the id title-cased: the real display
-     names live in CITIES in deadhead.html and are not worth a third copy. */
-  function cityLabel(id){
-    return String(id||'').replace(/(^|[-_])(\w)/g, function(_,s,c){
-      return (s?' ':'')+c.toUpperCase();
-    });
+  /* ============================================================
+     GEOGRAPHY
+     ============================================================ */
+  function renderGeo(data){
+    const rows = data.rows||[];
+    const regions = data.regions||[];
+    if(!rows.length) return '<div class="empty">No telemetry yet.</div>';
+    return '<p class="note">Where players are, from Cloudflare\'s edge — the only fields '+
+      'on a telemetry row that are not client-reported. No city, postcode or lat/lon is '+
+      'stored: a persistent player id plus a city narrows to a household. See '+
+      'adminplan.md §3.</p>'+
+      '<p class="note warn">These are PLAYERS, not visitors. A row exists only once '+
+      'somebody finishes a shift, and the game deliberately makes no network call at boot, '+
+      'so people who loaded the game and never played are not in this database at all. For '+
+      'raw visitor counts by country: Cloudflare dashboard → Analytics &amp; Logs → '+
+      'Traffic.</p>'+
+      dataTable({
+        rows: rows, sortKey: 'players', sortDir: 'desc',
+        placeholder: 'Filter countries…',
+        cols: [
+          {key:'country', label:'Country', type:'text', html:true,
+           fmt:function(v){ return countryCell(v); },
+           sort:function(r){ return countryName(r.country); }},
+          {key:'players', label:'Players', type:'num'},
+          {key:'shifts', label:'Shifts', type:'num'},
+          {key:'regions', label:'Regions', type:'num',
+           title:'Distinct region values seen — on a US connection the region is the state'},
+          {key:'avg_net', label:'Avg net', type:'num', fmt:function(v){ return money(v); }},
+          {key:'best_day', label:'Best day', type:'num'},
+          {key:'last_seen', label:'Last seen', type:'ts', fmt:function(v){ return rel(v); },
+           cellTitle:function(r){ return fmtTs(r.last_seen); }}
+        ]
+      })+
+      '<hr class="sep"><h2>By region</h2>'+
+      '<p class="note">On a US connection the region is the state — the interesting cut '+
+      'for a game set in six American cities. Top 100 by players.</p>'+
+      dataTable({
+        rows: regions, sortKey: 'players', sortDir: 'desc',
+        placeholder: 'Filter regions…',
+        cols: [
+          {key:'country', label:'Country', type:'text', html:true,
+           fmt:function(v){ return countryCell(v); },
+           sort:function(r){ return countryName(r.country); }},
+          {key:'region', label:'Region', type:'text'},
+          {key:'players', label:'Players', type:'num'},
+          {key:'shifts', label:'Shifts', type:'num'}
+        ]
+      });
   }
+
+  /* ============================================================
+     FUNNEL
+
+     ORDERED STAGES AND UNORDERED MILESTONES ARE NOW DRAWN SEPARATELY.
+     This was one flat row of six equal cells, which reads as a sequence —
+     but "turned a profit" and "ran 2+ cars" are not stages after "reached
+     day 5", they are independent flags a player can trip at any point.
+     Putting them in funnel position implied a drop-off that was never being
+     measured.
+
+     The other correction is the denominator. "Filed shift 1 · 100%" was a
+     tautology dressed as a finding: a player does not exist in `stats` until
+     they finish a shift, so the first step IS the population. The largest
+     drop-off in the whole game — opened it, never finished a shift — cannot
+     be seen from this table and never could. That is now said out loud, with
+     a pointer to the one place it can be seen.
+
+     Cities are NOT hardcoded here. They used to be — two literal columns,
+     Dallas and Miami — and the funnel spent two releases claiming the game
+     had three cities while Tampa and Orlando were live. The server returns
+     data.cities, derived from the table, so city #7 appears the first time
+     anybody files a shift there and this file never needs touching again.
+     The label is the id title-cased, with the exceptions in CITY_LABEL.
+     ============================================================ */
   function renderFunnel(data){
     const r = data.row||{};
     const total = r.total||0;
     const cities = data.cities||[];
-    function pct(n){ return total?Math.round((n/total)*100)+'%':'—'; }
+    function pct(n){ return pctOf(n||0, total); }
     function cell(n,label){
       return '<div><b>'+esc(n||0)+'</b><span>'+label+' · '+pct(n||0)+'</span></div>';
     }
-    return '<p class="note">Out of '+esc(total)+' distinct players ever seen.</p>'+
+    return '<p class="note">Out of '+esc(total)+' distinct players who have filed at '+
+      'least one shift.</p>'+
+      '<p class="note warn">That denominator is also the first step, so this cannot '+
+      'measure the biggest drop-off there is: people who opened the game and never '+
+      'finished a shift. They never write a row — the game makes no network call at boot, '+
+      'on purpose. Compare against page views in the Cloudflare dashboard → Analytics '+
+      '&amp; Logs → Traffic to see that gap.</p>'+
+      '<h2>Ordered stages</h2>'+
       '<div class="funnel">'+
-        cell(r.shift1,'Filed shift 1')+
+        cell(total,'Filed shift 1')+
         cell(r.shift2,'Filed shift 2')+
+        cell(r.shift5,'Filed shift 5')+
         cell(r.day2,'Reached day 2')+
         cell(r.day5,'Reached day 5')+
+        cell(r.day10,'Reached day 10')+
+        cell(r.day20,'Reached day 20')+
+      '</div>'+
+      '<h2 style="margin-top:20px">Milestones</h2>'+
+      '<p class="note">Not funnel stages — independent flags, reachable in any order. '+
+      'They used to sit in the row above, which implied a sequence that does not '+
+      'exist.</p>'+
+      '<div class="funnel mile">'+
         cell(r.profitable,'Turned a profit')+
         cell(r.fleet2,'Ran 2+ cars')+
+        cell(r.fleet5,'Ran 5+ cars')+
+        cell(r.city2,'Reached a 2nd city')+
       '</div>'+
-      '<p class="note" style="margin-top:14px">Players who filed at least one shift in each city, '+
-        'most-reached first. Derived from the data, so a new city shows up here on its own.</p>'+
+      '<h2 style="margin-top:20px">Cities reached</h2>'+
+      '<p class="note">Players who filed at least one shift in each city, most-reached '+
+      'first. Derived from the data, so a new city shows up here on its own.</p>'+
       '<div class="funnel">'+
         (cities.length
           ? cities.map(function(c){
@@ -270,7 +994,10 @@ tr.zero td{opacity:.55}
       '</div>';
   }
 
-  /* Name AND the condition that earns it, for every achievement id the
+  /* ============================================================
+     ACHIEVEMENTS
+
+     Name AND the condition that earns it, for every achievement id the
      server whitelists. The name alone was not enough to read a rate
      against: "Grand Tour 4%" only means something once you know it wants a
      shift in every city.
@@ -286,7 +1013,8 @@ tr.zero td{opacity:.55}
 
      An unknown id renders as the raw id rather than blank, so an
      achievement added to the game and forgotten here is visible in the
-     table instead of invisible. */
+     table instead of invisible.
+     ============================================================ */
   const ACHV_INFO = {
     'first-car':        ['Keys',             'Put your first car in service.'],
     'first-ride':       ['Fare One',         'Complete your first ride.'],
@@ -300,8 +1028,8 @@ tr.zero td{opacity:.55}
     'meter-runner':     ['Meter Runner',     'Average $120 an hour over a shift of two hours or more.'],
     'fleet-3':          ['Small Fleet',      'Run three cars at once.'],
     'fleet-5':          ['Operator',         'Run five cars at once.'],
-    'purpose-built':    ['Purpose Built',    'Put a Cybercab in service.'],
-    'why-a-truck':      ['Why a Truck',      'Put a Cybertruck in service. Nobody will stop you.'],
+    'purpose-built':    ['Purpose Built',    'Put a Cab in service.'],
+    'why-a-truck':      ['Why a Truck',      'Put a Truck in service. Nobody will stop you.'],
     'under-review':     ['Under Review',     'Let your safety score fall below 65.'],
     'repossessed':      ['Repossessed',      'Run out of money.'],
     'comeback':         ['Comeback',         'Follow a losing shift with a winning one.'],
@@ -310,15 +1038,26 @@ tr.zero td{opacity:.55}
     'found-the-switch': ['Found the Switch', 'Discover automatic top-up.'],
     'hands-on':         ['Hands On',         'Clear a blocked car yourself.']
   };
+  function achvName(id){ return ACHV_INFO[id] ? ACHV_INFO[id][0] : id; }
+  function achvSpec(id){
+    return ACHV_INFO[id] ? ACHV_INFO[id][1] : 'unknown id — not in ACHV_INFO';
+  }
+
   function renderAchievements(data){
     const rows = data.rows||[];
+    /* THE DENOMINATOR IS PLAYERS WHO REPORTED A LIST.
+       It used to be every player ever, which included everyone whose rows
+       predate the achievements release and therefore carry no list at all —
+       so every rate on this page was understated. Both numbers come back
+       now: the honest denominator, and how many players it excludes. */
     const total = data.totalPlayers||0;
+    const allPlayers = data.allPlayers||0;
+    const excluded = Math.max(0, allPlayers - total);
     if(!rows.length){
       return '<div class="empty">No achievements reported yet. Rows written before '+
         'the achievements release carry no list and are excluded rather than counted '+
         'as zero — those players may well hold some, we just never asked.</div>';
     }
-    function pct(n){ return total?Math.round((n/total)*100)+'%':'—'; }
     /* Achievements the catalogue has but NOBODY has earned are the most
        interesting rows in this table and the query cannot return them —
        json_each() only sees ids that appear in somebody's list. So the
@@ -332,78 +1071,194 @@ tr.zero td{opacity:.55}
     });
     const all = Object.keys(got).map(function(id){
       return { id: id, players: got[id] };
-    }).sort(function(a,b){ return b.players - a.players; });
+    });
 
-    return '<p class="note">Unlock rate across '+esc(total)+' distinct players. '+
-      'A low number on an early achievement is a funnel problem; a low number on a '+
-      'late one is just difficulty. Rows at zero are in the game but nobody has '+
-      'earned them yet.</p>'+
-      '<table><thead><tr><th>Achievement</th><th class="num">Players</th>'+
-      '<th class="num">Rate</th></tr></thead><tbody>'+
-      all.map(function(r){
-        const info = ACHV_INFO[r.id];
-        /* An id the game has and this file does not still renders — as the
-           raw id with a flag, so drift is loud rather than invisible. */
-        const name = info ? info[0] : r.id;
-        const spec = info ? info[1] : 'unknown id — not in ACHV_INFO';
-        return '<tr'+(r.players?'':' class="zero"')+'>'+
-          '<td><b>'+esc(name)+'</b><span class="spec">'+esc(spec)+'</span></td>'+
-          '<td class="num">'+esc(r.players)+'</td>'+
-          '<td class="num">'+pct(r.players)+'</td></tr>';
-      }).join('')+'</tbody></table>';
+    return '<p class="note">Unlock rate across '+esc(total)+' players who have reported '+
+      'an achievement list'+
+      (excluded ? ', excluding '+esc(excluded)+' whose rows all predate the achievements '+
+        'release — they may well hold some, we just never asked' : '')+
+      '. A low number on an early achievement is a funnel problem; a low number on a '+
+      'late one is just difficulty. Rows at zero are in the game but nobody has earned '+
+      'them yet — sort by Players ascending to bring them together.</p>'+
+      dataTable({
+        rows: all, sortKey: 'players', sortDir: 'desc', filter: false,
+        rowClass: function(r){ return r.players ? '' : 'zero'; },
+        cols: [
+          {key:'id', label:'Achievement', type:'text', html:true,
+           fmt:function(v){
+             return '<b>'+esc(achvName(v))+'</b><span class="spec">'+esc(achvSpec(v))+'</span>';
+           },
+           sort:function(r){ return achvName(r.id); }},
+          {key:'players', label:'Players', type:'num'},
+          {key:'rate', label:'Rate', type:'num',
+           fmt:function(_,r){ return pctOf(r.players, total); },
+           sort:function(r){ return r.players; }}
+        ]
+      });
   }
 
+  /* ============================================================
+     PER-CITY ECONOMICS
+     ============================================================ */
   function renderEconomics(data){
     const rows = data.rows||[];
+    const late = data.lateBucket||11;
     if(!rows.length) return '<div class="empty">No shifts recorded yet.</div>';
     return '<p class="note">Median net per shift, by city and shift number — the '+
-      'mistuning detector.</p>'+
-      '<table><thead><tr><th>City</th><th class="num">Shift #</th>'+
-      '<th class="num">Median net</th><th class="num">Rows</th></tr></thead><tbody>'+
-      rows.map(function(r){
-        return '<tr><td>'+esc(r.city||'—')+'</td>'+
-          '<td class="num">'+esc(r.shift_no)+'</td>'+
-          '<td class="num">'+money(r.median_net)+'</td>'+
-          '<td class="num">'+esc(r.n)+'</td></tr>';
-      }).join('')+'</tbody></table>';
+      'mistuning detector. Median, not mean, so one bankruptcy or one whale run cannot '+
+      'drag the number away from what a typical shift looks like.</p>'+
+      '<p class="note">p25 and p75 are the point of the section: a median alone cannot '+
+      'tell a city where everybody nets the same wrong number from one where the spread '+
+      'is enormous and the median is an accident — and those two want opposite fixes. '+
+      'Rows with fewer than 5 samples are dimmed; a median over n=1 is a fact, just not '+
+      'one to tune against. Shift '+esc(late)+'+ is a single bucket.</p>'+
+      dataTable({
+        rows: rows, sortKey: null,
+        placeholder: 'Filter by city…',
+        rowClass: function(r){ return (r.n||0) < 5 ? 'dim' : ''; },
+        cols: [
+          {key:'city', label:'City', type:'text', fmt:function(v){ return cityLabel(v); }},
+          {key:'shift_no', label:'Shift #', type:'num',
+           fmt:function(v){ return v>=late ? late+'+' : num(v); }},
+          {key:'n', label:'Samples', type:'num'},
+          {key:'p25', label:'p25', type:'num', fmt:function(v){ return money(v); }},
+          {key:'median_net', label:'Median net', type:'num', fmt:function(v){ return money(v); }},
+          {key:'p75', label:'p75', type:'num', fmt:function(v){ return money(v); }},
+          {key:'min_net', label:'Worst', type:'num', fmt:function(v){ return money(v); }},
+          {key:'max_net', label:'Best', type:'num', fmt:function(v){ return money(v); }}
+        ]
+      });
   }
 
+  /* ============================================================
+     RECENT SHIFTS
+     ============================================================ */
   function renderRecent(data){
     const rows = data.rows||[];
     if(!rows.length) return '<div class="empty">No shifts recorded yet.</div>';
-    return '<table><thead><tr><th>When</th><th>Player</th><th>City</th>'+
-      '<th class="num">Day</th><th class="num">Shift</th><th>Permit</th>'+
-      '<th class="num">Net</th><th class="num">Cash</th><th class="num">Cars</th></tr></thead><tbody>'+
-      rows.map(function(r){
-        return '<tr><td>'+esc(fmtTs(r.ts))+'</td>'+
-          '<td title="'+esc(r.player_id)+'">'+esc(r.name||'Player')+'</td>'+
-          '<td>'+esc(r.city||'—')+'</td>'+
-          '<td class="num">'+esc(r.day)+'</td>'+
-          '<td class="num">'+esc(r.shift_no)+'</td>'+
-          '<td>'+esc(r.permit||'—')+'</td>'+
-          '<td class="num">'+money(r.net)+'</td>'+
-          '<td class="num">'+money(r.cash)+'</td>'+
-          '<td class="num">'+esc(r.cars)+'</td></tr>';
-      }).join('')+'</tbody></table>';
+    return '<p class="note">Newest first. Timestamps are SERVER time, deliberately — a '+
+      'client clock is not evidence, and trusting it would let one bad row sort itself to '+
+      'the top forever (schema.sql). gross/rides/miles are here because net alone cannot '+
+      'tell a busy shift from a lucky one.</p>'+
+      dataTable({
+        rows: rows, total: data.total, sortKey: 'ts', sortDir: 'desc',
+        placeholder: 'Filter by player, city, country, permit…',
+        cols: [
+          {key:'ts', label:'When', type:'ts', fmt:function(v){ return rel(v); },
+           cellTitle:function(r){ return fmtTs(r.ts)+' (server time)'; }},
+          {key:'name', label:'Player', type:'text', fmt:function(v){ return v||'Player'; },
+           cellTitle:function(r){ return r.player_id; }},
+          {key:'country', label:'Country', type:'text', html:true,
+           fmt:function(v){ return countryCell(v); },
+           sort:function(r){ return r.country ? countryName(r.country) : null; }},
+          {key:'city', label:'City', type:'text', fmt:function(v){ return cityLabel(v); }},
+          {key:'day', label:'Day', type:'num'},
+          {key:'shift_no', label:'Shift', type:'num'},
+          {key:'permit', label:'Permit', type:'text', fmt:function(v){ return v||'—'; }},
+          {key:'worked_h', label:'Hours', type:'num', fmt:function(v){ return num(v,1); }},
+          {key:'rides', label:'Rides', type:'num'},
+          {key:'miles', label:'Miles', type:'num', fmt:function(v){ return num(v,0); }},
+          {key:'gross', label:'Gross', type:'num', fmt:function(v){ return money(v); }},
+          {key:'net', label:'Net', type:'num', fmt:function(v){ return money(v); }},
+          {key:'cash', label:'Cash', type:'num', fmt:function(v){ return money(v); }},
+          {key:'cars', label:'Cars', type:'num'},
+          {key:'safety', label:'Safety', type:'num', fmt:function(v){ return num(v,0); }}
+        ]
+      });
   }
 
-  /* ---- Cars view ----
-     A copy of deadhead.html's CATALOG (id/name/badge/photo/spec — see
-     PHOTO_DIR and the block above CATALOG there) small enough to keep
-     inline. This page has no import path into the game engine, so keeping
-     its own copy is cheaper than building one; catalogue changes are rare
-     and only cosmetic here (name/badge/photo/spec chips), never numeric. */
+  /* ============================================================
+     CARS
+
+     THE CARDS IN THIS SECTION ARE DELIBERATELY UNCHANGED. Pavel,
+     2026-07-30: "keep those cars stats, it is fantastic." The hex radar, the
+     one-colour-per-axis legend, the retired-trim dimming and the
+     photo-over-shape fallback are all exactly as they were. The only two
+     additions are the Avg rides stat line — the query has always returned
+     it and the cards never printed it — and a sortable table UNDER the grid,
+     for the one question a wall of radars cannot answer: which model is
+     fourth by average net.
+
+     A copy of deadhead.html's CATALOG (id/name/badge/body/spec — see the
+     block above CATALOG there) small enough to keep inline. This page has no
+     import path into the game engine, so keeping its own copy is cheaper
+     than building one; catalogue changes are rare and only cosmetic here
+     (name/badge/body/spec chips), never numeric.
+
+     `body` names a shape, not a photo: since 0.42.0 the game draws its cars
+     (see CARART) and there is no /carsimg/ to link. This page shows the
+     badge on a plain ground rather than carrying a second copy of five SVG
+     paths that would then drift out of sync with the game's.
+
+     `photo`, added 2026-07-30: all six SELLABLE trims got real renders (the
+     three base trims first, then Saloon Long / Crossover Six / Truck later
+     the same day — see PHOTO_FOR in deadhead.html) — original Axiom-badged
+     art, not a real manufacturer's photo. Cropped separately for this page's
+     16:10 box (the game's own copies are 5:2), same /cars/ folder. The three
+     RETIRED rows below deliberately have no photo: no render was ever made
+     for a trim that can no longer be bought, and the `body` shape label is
+     the correct thing for a historical row to show.
+
+     seats:2 -> 4 on the Cab, 2026-07-30: the photo shows a two-row pod with
+     clearly more cabin than a two-seater — see the same fix in deadhead.html's
+     CATALOG. Purely cosmetic, no numeric side to keep in step.
+
+     THIS ARRAY IS THE SIX SELLABLE TRIMS ONLY, and matches deadhead.html's
+     CATALOG exactly. Crossover Long / Saloon Sport / Crossover Sport left the
+     game's CATALOG on 2026-07-30 (see THE CATALOGUE there, "trimmed from nine
+     trims to six"); they lingered here as three permanently empty cards until
+     Pavel asked for them to go on the same day.
+
+     They are NOT simply deleted, though — see RETIRED_MODELS below. Real
+     players' cloud stats may still hold shifts filed under these ids
+     (MODEL_ALIAS in deadhead.html folds them into Crossover Six going
+     forward, but it does not rewrite history, and the Worker's MODEL_IDS
+     still accepts them from a client running a cached copy of the game). If
+     such a row exists it must not vanish from this page: hiding historical
+     fleet data is a different act from stopping new sales of a trim, and only
+     one of the two was asked for. So the CARDS are the six sellable trims,
+     and the RANKED TABLE below picks up any id that has data but no card.
+     ============================================================ */
   var CARS_INFO = [
-    {id:'cybercab',    name:'Cybercab',            badge:'CC',  photo:'Cybercab.webp',            kwh:48,  rangeMi:300, seats:2, price:30000},
-    {id:'model3',      name:'Model 3',             badge:'M3',  photo:'Model3.webp',              kwh:62,  rangeMi:321, seats:5, price:36990},
-    {id:'modely',      name:'Model Y',             badge:'MY',  photo:'ModelY.webp',              kwh:70,  rangeMi:321, seats:5, price:39990},
-    {id:'model3prem',  name:'Model 3 Premium',     badge:'M3P', photo:'Model3Premium.webp',       kwh:82,  rangeMi:363, seats:5, price:42490},
-    {id:'modelyprem',  name:'Model Y Premium',     badge:'MYP', photo:'ModelYPremium.webp',       kwh:82,  rangeMi:357, seats:5, price:48990},
-    {id:'modelyl',     name:'Model Y L',           badge:'MYL', photo:'ModelYLPremium.webp',      kwh:85,  rangeMi:330, seats:6, price:52000},
-    {id:'model3perf',  name:'Model 3 Performance', badge:'M3X', photo:'Model3Performance.webp',   kwh:82,  rangeMi:309, seats:5, price:54990},
-    {id:'modelyperf',  name:'Model Y Performance', badge:'MYX', photo:'ModelYPerformance.webp',   kwh:82,  rangeMi:306, seats:5, price:57000},
-    {id:'cybertruck',  name:'Cybertruck',          badge:'CT',  photo:'Cybertruck.webp',          kwh:123, rangeMi:320, seats:5, price:80000}
+    {id:'cab',         name:'Cab',             badge:'CB',  body:'pod',    kwh:48,  rangeMi:300, seats:4, price:30000, photo:'cars/cab-admin.webp'},
+    {id:'saloon',      name:'Saloon',          badge:'SL',  body:'saloon', kwh:62,  rangeMi:321, seats:5, price:36990, photo:'cars/saloon-admin.webp'},
+    {id:'cross',       name:'Crossover',       badge:'CR',  body:'cross',  kwh:70,  rangeMi:321, seats:5, price:39990, photo:'cars/cross-admin.webp'},
+    {id:'saloonlong',  name:'Saloon Long',     badge:'SLL', body:'saloon', kwh:82,  rangeMi:363, seats:5, price:42490, photo:'cars/saloonlong-admin.webp'},
+    {id:'crosssix',    name:'Crossover Six',   badge:'CR6', body:'six',    kwh:85,  rangeMi:330, seats:6, price:52000, photo:'cars/crosssix-admin.webp'},
+    {id:'truck',       name:'Truck',           badge:'TR',  body:'truck',  kwh:123, rangeMi:320, seats:5, price:80000, photo:'cars/truck-admin.webp'}
   ];
+
+  /* NAMES ONLY, FOR IDS THAT NO LONGER HAVE A CARD.
+     Two groups, and neither can be dropped:
+       - the three trims retired on 2026-07-30, and
+       - the pre-0.42.0 Tesla-badged ids the Worker still whitelists in
+         MODEL_IDS (see the comment there: a cached client or an unmigrated
+         save still posts them, and silently discarding those rows would be
+         the worst outcome).
+     A row under one of these ids is history, not a live option — so it gets a
+     label and a dimmed row in the ranked table, but no card and no photo.
+     Anything not listed here still renders as the raw id, same discipline as
+     ACHV_INFO: drift should be loud, not invisible. */
+  var RETIRED_MODELS = {
+    crosslong:   'Crossover Long',
+    saloonsport: 'Saloon Sport',
+    crosssport:  'Crossover Sport',
+    /* pre-0.42.0 ids, kept in step with MODEL_ALIAS in deadhead.html */
+    cybercab:    'Cab (old id)',
+    model3:      'Saloon (old id)',
+    modely:      'Crossover (old id)',
+    model3prem:  'Saloon Long (old id)',
+    modelyprem:  'Crossover Six (old id)',
+    modelyl:     'Crossover Six (old id)',
+    model3perf:  'Saloon Sport (old id)',
+    modelyperf:  'Crossover Sport (old id)',
+    cybertruck:  'Truck (old id)'
+  };
+  /* Model id -> display name, for the dashboard card and the ranked table. */
+  function carName(id){
+    for(var i=0;i<CARS_INFO.length;i++) if(CARS_INFO[i].id===id) return CARS_INFO[i].name;
+    return RETIRED_MODELS[id] || id;
+  }
 
   /* Six axes, each normalized 0..1 against the MAX of that axis across
      whichever models actually have data — so shapes are comparable to each
@@ -510,63 +1365,169 @@ tr.zero td{opacity:.55}
           '<div class="stat-line"><span>Players</span><b>'+esc(r.players)+'</b></div>'+
           '<div class="stat-line"><span>Avg net</span><b>'+money(r.avg_net)+'</b></div>'+
           '<div class="stat-line"><span>Avg miles</span><b>'+num(r.avg_miles,1)+'</b></div>'+
+          /* The Rides axis has been on every radar from the start but the
+             number itself was never printed anywhere. */
+          '<div class="stat-line"><span>Avg rides</span><b>'+num(r.avg_rides,1)+'</b></div>'+
           '<div class="stat-line"><span>Avg safety</span><b>'+num(r.avg_safety,0)+'</b></div>';
       }
+      const photoImg = c.photo ? '<img class="photo" src="'+esc(c.photo)+'" alt="" '+
+        'loading="lazy" onerror="this.parentElement.classList.add(\'noimg\')">' : '';
       return '<div class="carcard">'+
-        '<div class="art"><img src="/carsimg/'+encodeURIComponent(c.photo)+'" alt="'+esc(c.name)+'" '+
-          'loading="lazy" onerror="this.style.display=\'none\'">'+
+        '<div class="art'+(c.photo?' has-photo':'')+'">'+photoImg+
+          '<span class="shape">'+esc(c.body)+'</span>'+
           '<div class="scrim"></div><span class="badge">'+esc(c.badge)+'</span>'+
           '<span class="nm">'+esc(c.name)+'</span></div>'+
         '<div class="body"><div class="specs">'+specs+'</div>'+body+'</div>'+
         '</div>';
     }).join('');
 
+    /* The ranked table under the cards. Every sellable model appears, even one
+       nobody runs — a model with no data is a finding, and its nulls sort to
+       the bottom either way.
+       PLUS any id the DATA holds that has no card: a retired trim, or a
+       pre-0.42.0 id from a cached client. Those get a dimmed row and their
+       RETIRED_MODELS label, so removing the three empty retired cards did not
+       also make real historical shifts disappear from this page. */
+    function statRow(name, id, price, retired, r){
+      r = r || {};
+      return {
+        model: name + (retired ? ' · retired' : ''), id: id, retired: retired,
+        shifts: r.shifts==null ? null : r.shifts,
+        players: r.players==null ? null : r.players,
+        share: (total && r.shifts!=null) ? r.shifts/total : null,
+        avg_net: r.avg_net==null ? null : r.avg_net,
+        avg_miles: r.avg_miles==null ? null : r.avg_miles,
+        avg_rides: r.avg_rides==null ? null : r.avg_rides,
+        avg_safety: r.avg_safety==null ? null : r.avg_safety,
+        price: price==null ? null : price
+      };
+    }
+    const known = {};
+    CARS_INFO.forEach(function(c){ known[c.id] = true; });
+    const tableRows = CARS_INFO.map(function(c){
+      return statRow(c.name, c.id, c.price, false, byModel[c.id]);
+    }).concat(rows.filter(function(r){ return !known[r.model]; }).map(function(r){
+      return statRow(carName(r.model), r.model, null, true, r);
+    }));
+
     return '<p class="note">Per model, across every reported shift that had it in the fleet. A '+
       'mixed fleet counts toward every model present, so this is a tuning signal — which cars '+
       'players actually run and how they perform — not an exact per-vehicle ledger.</p>'+
       axisLegendHTML(['Popularity','Net','Miles','Rides','Safety','Reach'])+
-      '<div class="cargrid">'+cards+'</div>';
+      '<div class="cargrid">'+cards+'</div>'+
+      '<hr class="sep"><h2>Ranked</h2>'+
+      '<p class="note">The same numbers as the cards above, sortable — for the question a '+
+      'wall of radars cannot answer. A retired trim or a pre-0.42.0 model id appears here, '+
+      'dimmed and labelled, only if real shifts were filed under it: it has no card because '+
+      'it cannot be bought any more, but historical fleet data should not disappear.</p>'+
+      dataTable({
+        rows: tableRows, sortKey: 'shifts', sortDir: 'desc', filter: false,
+        rowClass: function(r){ return r.retired ? 'dim' : ''; },
+        cols: [
+          {key:'model', label:'Model', type:'text'},
+          {key:'shifts', label:'Shifts', type:'num'},
+          {key:'share', label:'Share', type:'num',
+           fmt:function(v){ return v==null?'—':Math.round(v*100)+'%'; },
+           title:'Share of all reported shifts that had this model in the fleet'},
+          {key:'players', label:'Players', type:'num'},
+          {key:'avg_net', label:'Avg net', type:'num', fmt:function(v){ return money(v); }},
+          {key:'avg_miles', label:'Avg miles', type:'num', fmt:function(v){ return num(v,1); }},
+          {key:'avg_rides', label:'Avg rides', type:'num', fmt:function(v){ return num(v,1); }},
+          {key:'avg_safety', label:'Avg safety', type:'num', fmt:function(v){ return num(v,0); }},
+          {key:'price', label:'List price', type:'num', fmt:function(v){ return money(v); }}
+        ]
+      });
   }
 
-  const RENDERERS = { players: renderPlayers, funnel: renderFunnel,
-    economics: renderEconomics, cars: renderCars, recent: renderRecent,
-    achievements: renderAchievements };
+  const RENDERERS = { dashboard: renderDashboard, players: renderPlayers, geo: renderGeo,
+    funnel: renderFunnel, economics: renderEconomics, cars: renderCars,
+    achievements: renderAchievements, recent: renderRecent };
+
+  var currentView = 'dashboard';
 
   async function loadView(view){
+    currentView = view;
     const el = document.getElementById('view');
     el.innerHTML = '<div class="loading">Loading…</div>';
+    /* Table specs belong to the view being replaced; dropping them keeps
+       TABLES from growing for the life of the tab. */
+    TABLES = {};
     try{
       const data = await api(view);
       el.innerHTML = RENDERERS[view](data);
+      stampAsOf();
     }catch(err){
       el.innerHTML = '<div class="empty">'+esc(err.message)+'</div>';
     }
   }
 
-  document.querySelectorAll('nav button').forEach(function(btn){
-    btn.addEventListener('click', function(){
-      document.querySelectorAll('nav button').forEach(function(b){
-        b.setAttribute('aria-pressed', String(b===btn));
-      });
-      loadView(btn.dataset.view);
+  function selectView(view){
+    document.querySelectorAll('nav button').forEach(function(b){
+      b.setAttribute('aria-pressed', String(b.dataset.view===view));
     });
+    loadView(view);
+  }
+
+  document.querySelectorAll('nav button').forEach(function(btn){
+    btn.addEventListener('click', function(){ selectView(btn.dataset.view); });
+  });
+  // The dashboard's subsections link through to their own full views.
+  document.getElementById('view').addEventListener('click', function(e){
+    var go = e.target.closest('[data-goto]');
+    if(go) selectView(go.getAttribute('data-goto'));
+  });
+  document.getElementById('refresh').addEventListener('click', function(){
+    loadView(currentView);
+  });
+  /* Drops the credentials and returns to the gate. They were previously held
+     for the life of the tab with no way to let go of them short of a
+     reload. */
+  document.getElementById('lock').addEventListener('click', function(){
+    EMAIL = null; PASSWORD = null;
+    TABLES = {};
+    document.getElementById('view').innerHTML = '';
+    document.getElementById('asof').textContent = '';
+    document.getElementById('password').value = '';
+    document.getElementById('app').style.display = 'none';
+    document.getElementById('gate').style.display = '';
+    document.getElementById('gate-err').textContent = '';
+    document.getElementById('password').focus();
   });
 
   document.getElementById('enter').addEventListener('click', async function(){
+    const btn = this;
     const e = document.getElementById('email').value.trim();
     const p = document.getElementById('password').value;
     if(!e || !p) return;
     EMAIL = e; PASSWORD = p;
-    // Prove the pair works before switching views, so a wrong email/password
-    // shows one clear error instead of four broken panels.
+    /* Pending state: this used to look dead on a slow link, and a second
+       impatient click fired a second request. */
+    btn.disabled = true;
+    const label = btn.textContent;
+    btn.textContent = 'Checking…';
+    document.getElementById('gate-err').textContent = '';
+    /* Prove the pair works before switching views, so a wrong email/password
+       shows one clear error instead of several broken panels.
+
+       PROBE THE OLDEST VIEW, NOT THE NEWEST. This briefly probed `dashboard`
+       — the view added the same day — which quietly made the ability to LOG IN
+       depend on the newest server code being deployed: against a Worker that
+       predates the dashboard, a perfectly good password would have been met
+       with "unknown view" at the gate and no way past it. `players` has
+       existed for as long as this endpoint has, so the gate now tests
+       authentication and nothing else, and a stale Worker fails in the one
+       panel that is actually missing instead of locking the door. */
     try{
       await api('players');
       document.getElementById('gate').style.display='none';
       document.getElementById('app').style.display='block';
-      loadView('players');
+      selectView('dashboard');
     }catch(err){
       EMAIL = null; PASSWORD = null;
       document.getElementById('gate-err').textContent = err.message;
+    }finally{
+      btn.disabled = false;
+      btn.textContent = label;
     }
   });
   ['email','password'].forEach(function(id){

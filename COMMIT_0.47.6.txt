@@ -1,0 +1,37 @@
+0.47.6 — Permit chip removed from the topbar
+
+WHAT WAS WRONG
+
+The topbar showed "PERMIT Supervised" as one of its readouts — a holdover
+from when the game's vehicles were Tesla and the regulatory permit tier
+(Supervised/Unsupervised) was framed as something worth surfacing up top.
+Pavel asked for it gone now that the game isn't Tesla-branded.
+
+WHAT CHANGED (scope, by explicit choice)
+
+Removed the chip only — the underlying mechanic stays untouched:
+S.permit still flips to "Under review" when the safety score drops below
+65, still halves platform demand until it recovers, still drives the
+Incidents panel copy and the "Fixed (lease, permits)" line in the Books
+breakdown. None of that reads the topbar chip; it was always driven off
+S.permit directly.
+
+  - Deleted the Permit <div class="tb-item tb-opt"> from .tb-info. Trophies
+    keeps .tb-opt to itself now.
+  - render() no longer writes S.permit into a #tb-permit that doesn't exist.
+  - paintSoloSeat() no longer sets #tb-permit's title for the SF soloSeat
+    1×-lock explanation — redundant anyway, since the individual speed
+    buttons and the slider already carry the same tooltip.
+  - Updated two comments that referenced Permit as a live topbar element
+    (the T4a width-budget note, and the 2250px one-line measurement note,
+    which was already flagged stale in 0.47.5 for city-tab count — now also
+    stale for readout count, noted rather than guessed at).
+
+TESTS
+
+No test referenced #tb-permit or "Permit" text, so nothing needed updating.
+Full suite: same pre-existing, unrelated real-clock flake as 0.47.5
+("three real days parked bills exactly three days of fixed cost" — that
+fixture builds off Date.now() at run time and this run again landed close
+to local midnight). Confirmed unrelated: this release only touches the
+topbar chip and two comments, nothing in the billing/date path.

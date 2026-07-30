@@ -1,0 +1,44 @@
+0.39.4 — Phoenix and Las Vegas, as a mockup only
+
+Pavel, asked about future cities: "how about just making the tab in top bar with the lock and
+when clicked Paolo will say something... No development, just graphic mockup button."
+
+WHAT THIS IS NOT
+
+Not a scenario. No CITIES entry, no ZONES_BY_CITY, no CHARGERS_BY_CITY, no economy, no gate,
+no save data. Phoenix and Las Vegas do not exist anywhere gateMet()/cityUnlocked()/cityList()
+can see them, on purpose — those all assume a real, playable city behind the lock, and there
+isn't one yet. If either becomes real later, it goes through the same process San Francisco
+just did (research the real launch, add it to CITIES properly) and drops out of this list
+entirely.
+
+WHAT IT IS
+
+Two permanently-locked cards appended to the end of the city tab strip after the six real
+ones, rendered from a new PLANNED_CITIES array kept deliberately separate from CITIES. Clicking
+one reuses the existing #lockmsg element and positioning logic (see cityLockMsg) but shows a
+single Paolo line — no second "requirement" bubble, because there is no gate to name:
+
+  Phoenix: "Tesla's talked about it out loud, but nobody's signed anything I've seen. Keep
+  clearing shifts here — you'll be first through that door whenever it's actually a door."
+
+  Las Vegas: "A rumor with good odds, way I hear it. Nothing's running yet. Clock your shifts,
+  and I'll be the one who tells you the day that stops being true."
+
+Both decline to promise a date, which is the honest thing to say about either city right now.
+
+HOW IT STAYS OUT OF THE WAY
+
+renderCityTabs() appends the two mockup buttons after the real cityList() ones, keyed
+data-planned="phx"/"lv" instead of data-city, with no tone colour at all (there is no
+scenario's colour to show) rather than inheriting the live city's tint. The existing city-tab
+click handler gets one new branch ahead of its data-city check, so a click on a planned card
+never reaches cityUnlocked()/switchCity() and can't accidentally "unlock" into a city that
+doesn't exist. Every existing city-tab test that iterates ".citytab" was narrowed to
+".citytab[data-city]" so the six real-city checks (tone colours, night-mode repaint, "every
+city gets a card") don't see the two mockup cards and misread them as CITIES entries missing a
+tone. Three new checks cover the mockup itself: both cards render locked with no data-city,
+neither id exists in cityList()/CITIES, and clicking one shows Paolo's line without touching
+S.city.
+
+Existing suite (8 files) and check-parity pass.

@@ -1,0 +1,68 @@
+0.39.0 — cars turn the short way, and the newest offer is the one you see
+
+Pavel: "very often car is turning 270 degrees instead of turning 90 deg
+normally." Also: "can I have the newest offers on the top in the list. I do
+not want to scroll."
+
+CAR ROTATION
+
+carHeading() returns a compass bearing wrapped to 0-360, and that raw number
+was written straight onto .cp-rot's transform every frame. .cp-rot has
+`transition:transform .25s linear` so the turn animates — but a CSS
+transition animates the literal number it is given, not the shortest way
+around a circle. Going from rotate(350deg) to rotate(10deg) is a real 20
+degree turn, but the transition doesn't know 350 and 10 are 20 degrees
+apart the short way; it interpolates 350 down to 10 and the car visibly
+spins backward through 340 degrees to get there. That is the "270 instead
+of 90" report exactly: a genuine ~90 degree turn that happened to straddle
+the 0/360 seam rendered as a ~270 degree turn instead, and a compass bearing
+crosses that seam constantly — Doral is nearly due north of the pickup in
+the screenshot, so this fired on ordinary road-following, not on some edge
+case.
+
+Fixed by keeping an UNWRAPPED, continuous angle per marker (m._hdg, stored
+on the Leaflet marker object, not on the car — it is view state, not sim
+state, and never touches snapshot()/restore()). Each frame, drawMap() steps
+that value toward the new bearing by the signed delta ((target-cur+540)%360
+-180), which is always the shortest turn, then writes the running total
+(which can go past 360 or below 0) to the transform. The CSS transition now
+only ever animates the real angular distance, in either direction.
+
+OFFER ORDERING
+
+$('offer-list') rendered S.offers in push order — oldest first — so a fresh
+offer with a live countdown landed at the BOTTOM of the list, under
+whatever had already arrived that shift. Combined with #waiting-list
+(already-accepted rides still waiting for a free car, which has no cap and
+only grows) sitting ABOVE #offer-list in the markup, an actionable "Accept /
+Decline, 37s" offer could end up under two or three waiting entries — which
+is exactly Pavel's screenshot.
+
+Two changes:
+  - #offer-list and #waiting-list swapped in the markup, so the list that
+    demands a decision sits above the list that is just "still pending,
+    nothing to do."
+  - Both lists now render newest-first. offer-list takes S.offers.slice(
+    -CFG.offerCap) (the most recent offerCap entries, in case more exist
+    than the cap shows) and reverses it; waiting-list reverses its filtered
+    array the same way. Neither array's actual order changes — S.offers is
+    still pushed to and read from CFG.offerCap-first elsewhere (offerNet
+    sort, the best-offer CTA, etc.) — this only touches what render() prints
+    into the two lists.
+
+Verified with jsdom (7 checks): the unwrap step function takes +20 (not
+-340) across the 350->10 seam and the reverse -20 across 10->350, a clean
+0->90 turn stays 90, and a repeated target produces zero delta; three
+offers pushed in order A, B, C render as C, B, A in #offer-list; #offer-list
+precedes #waiting-list in document order. Existing suite (8 files) and
+check-parity pass.
+
+STILL OPEN
+- Both D1 migrations unrun (carried from 0.33.2).
+- The Cloudflare rate limiting rule on /api/stat.
+- The DISPATCH OFFLINE banner.
+- The Camera nav icon's no-incident fallback still only flashes the wing.
+- Auto-follow's on/off state is not saved across reloads (0.38.0).
+- PROG (achievements, eggs, city unlocks) is still per-origin and is not
+  synced to the account even when signed in.
+- deploy/public/Inside_The_Brutal…mp4, 9.8 MB, referenced by nothing.

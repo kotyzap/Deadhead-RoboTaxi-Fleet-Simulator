@@ -1,0 +1,63 @@
+0.65.2 — Austin's brewery crawl loses two taprooms it never actually had, plus Mueller
+
+Pavel: three ZONES_BY_CITY.austin entries removed outright — Mueller (p:'home'),
+Zilker Brewing (p:'brewery') and Hold Out Brewing (p:'brewery'). Zilker itself
+(the park, p:'leisure') and Lazarus Brewing (the one remaining real taproom)
+are untouched — they were never the target, and the comment above the old
+brewery block existed specifically to keep 'Zilker Brewing' distinct from
+'Zilker' in a reader's head. With only one brewery left there is nothing left
+to disambiguate, so that comment is gone too rather than kept as dead
+explanation.
+
+
+WHAT CHANGED
+
+  1. ZONES_BY_CITY.austin (deadhead.html / deploy/public/index.html, identical
+     forks) drops the three entries. The "three real taprooms" comment above
+     Lazarus Brewing is rewritten to describe the one that remains; the
+     now-pointless note about the airport zone being one of "four" optional
+     zones is corrected to "the other optional zones" since the count changed.
+
+  2. ROADS_BY_CITY.austin loses every baked-geometry key with Mueller,
+     'Zilker Brewing' or 'Hold Out Brewing' on either side of the `|` — 42
+     entries gone (some names appeared on both sides of several keys, which is
+     why 42 and not a clean per-name count). Plain 'Zilker' and 'Lazarus
+     Brewing' keys are untouched. The block was rewritten with a script rather
+     than by hand — hand-editing 100+ single-line coordinate arrays invites a
+     dangling comma, and a script can also normalize the trailing comma on
+     whatever entry ends up last once removal shifts it.
+
+  3. Two test fixtures used 'Mueller' purely as an arbitrary offer-origin
+     label, not to exercise the zone table — swapped to 'Rainey St', an
+     existing zone, in deploy/test/ray-arrows.test.js:199 and
+     deploy/test/decline-cta.test.js:215.
+
+  4. deploy/test/city.test.js's v6->v8 migration test hardcoded "index 7 in
+     Austin's authored order is the airport" — true when Mueller sat at index
+     6 ahead of it, false now that removing Mueller shifts AUS airport down to
+     index 6. Fixed the index (and the comment) rather than leaving a test
+     that still passed by coincidence.
+
+  5. A historical, unrelated 'Mueller' survives on purpose: the comment above
+     THE RAPID NETWORK (~line 5041) explains that '6th & Red River', 'Barton
+     Springs', 'Rainey St' and 'Mueller' were the four INVENTED charger names
+     the real Supercharger sites replaced, back before the network was made
+     honest. That is charger history, not the zone being deleted here, and
+     reads correctly either way.
+
+
+NOT TOUCHED, ON PURPOSE
+
+  shell.html and the "Game UI glassmorphism directions" mockups still say
+  'Mueller' in a few static HTML snippets. Neither file is loaded by the live
+  game (shell.html isn't referenced from deadhead.html or the deploy build;
+  the glassmorphism folder is a design reference, not shipped code), so they
+  are out of scope for a zone-removal pass. Flagging here so a future pass
+  doesn't mistake the silence for an oversight.
+
+
+TESTS
+
+  Full suite run from deploy/: all green after the two label swaps and the
+  city.test.js index fix. No other test asserted a zone count, name or
+  position that the removal touched.

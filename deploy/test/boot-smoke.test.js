@@ -15,6 +15,39 @@
  * Run: node test/boot-smoke.test.js
  * (or: npm test)
  */
+/* NESTED HTML COMMENTS. 0.52.0 shipped a comment whose body quoted another
+   comment's closing marker; the inner `-->` ended the comment early and the
+   remaining prose rendered as visible text in the topbar. HTML comments do NOT
+   nest — the first `-->` always wins — and the failure is silent in every tool
+   that does not actually look at the page. Checked against the source text
+   because jsdom will happily parse the broken document too. */
+function commentSanity(src) {
+  const bad = [];
+  const spans = [];
+  let i = 0;
+  while (true) {
+    const s = src.indexOf('<!--', i);
+    if (s < 0) break;
+    const e = src.indexOf('-->', s + 4);
+    if (e < 0) { bad.push('unterminated comment at offset ' + s); break }
+    if (src.slice(s + 4, e).includes('<!--')) {
+      bad.push('nested <!-- inside a comment at offset ' + s);
+    }
+    spans.push([s, e + 3]);
+    i = e + 3;
+  }
+  // A `-->` outside every comment span is the tail of a comment that closed early.
+  let m;
+  const re = /-->/g;
+  while ((m = re.exec(src))) {
+    const at = m.index;
+    if (!spans.some(([a, b]) => at >= a && at < b)) {
+      bad.push('stray --> outside any comment at offset ' + at);
+    }
+  }
+  return bad;
+}
+
 const fs = require('fs');
 const path = require('path');
 const { JSDOM } = require('jsdom');
@@ -90,6 +123,24 @@ async function bootAndCheck(file) {
     // Regression guard for the exact bug this test exists to catch: `owns`
     // must never reappear as a dangling reference in the export literal.
     ['DH_ACT1 has no stray "owns" reference', () => !('owns' in w.DH_ACT1)],
+    /* 0.52.1: a comment that quoted another comment's closing marker ended
+       early, and its remaining prose rendered as visible text in the topbar.
+       See commentSanity() above for why this is checked against the source
+       rather than the parsed DOM. */
+    ['no nested or early-closed HTML comments', () => {
+      const bad = commentSanity(fs.readFileSync(file, 'utf8'));
+      if (bad.length) console.error('       ' + bad.slice(0, 3).join('; '));
+      return bad.length === 0;
+    }],
+    /* The same bug's visible symptom, caught from the other side: prose that
+       escapes a comment lands as a text node directly inside a layout
+       container, which never legitimately holds bare text. */
+    ['no stray text nodes in the topbar or the settings popover', () => {
+      const sel = '.topbar, .tb-ctrls, .tb-info, #settings-pop';
+      return [].every.call(w.document.querySelectorAll(sel), (el) =>
+        [].every.call(el.childNodes, (n) =>
+          n.nodeType !== 3 || !n.textContent.trim()));
+    }],
   ];
 
   let ok = true;

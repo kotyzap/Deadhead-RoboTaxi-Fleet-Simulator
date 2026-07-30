@@ -3,13 +3,13 @@
 The in-car console spec for **Deadhead: Robotaxi Fleet Simulator** (short form:
 *Deadhead*). Derived from the real in-vehicle interface, not the marketing website.
 
-- **Companion to:** `DESIGN.md` (game design), `TeslaDesignSystem.md` (brand reference)
+- **Companion to:** `DESIGN.md` (game design), `InCarDesignLanguage.md` (visual reference)
 - **Date:** 2026-07-25
 
 ---
 
 > **Revision 2 — 2026-07-25.** Rewritten against screenshots of the real Model S
-> v7/v8 portrait console. Revision 1 was written against the Model 3/Y landscape UI and
+> v7/v8 portrait console. Revision 1 was written against the Saloon/Y landscape UI and
 > got several things wrong; corrections are marked **[R2]** throughout. Implemented and
 > verified in `shell.html`.
 
@@ -102,9 +102,9 @@ Only Leaflet, its CSS, OSM tiles, and Inter remain external. All degrade gracefu
 
 ---
 
-## 0. Relationship to TeslaDesignSystem.md
+## 0. Relationship to InCarDesignLanguage.md
 
-`TeslaDesignSystem.md` documents **tesla.com** — a marketing showroom. It is white,
+`InCarDesignLanguage.md` documents a **marketing showroom** pattern. It is white,
 photography-led, sets body text at 14px, and states outright that semantic status
 colours do not exist in the system.
 
@@ -143,15 +143,21 @@ These rules carry more legal weight than the title does. A console styled after 
 in-car interface *combined with* a robotaxi title is what could imply affiliation —
 either element alone is unremarkable. Do not relax this section.
 
-The look is *inspired by* an in-car interface. It must contain **no Tesla intellectual
-property**:
+The look is *inspired by* the general idiom of an in-car interface. It must contain **no
+manufacturer's intellectual property** — and as of 0.42.0 it contains none:
 
-- No Tesla wordmark, T mark, or vehicle silhouettes
-- No "Model 3/S/X/Y", "Cybercab", "Supercharger", "Autopilot", "Full Self-Driving"/"FSD"
-- No Universal Sans or Gotham (both commercially licensed, neither ours)
-- In-game marque and terminology use the fictional names fixed in `DESIGN.md`
-- In-game charging network is **"Rapid"**, not Supercharger
-- The rival operator is fictional, not Waymo
+- No manufacturer wordmark, badge, or press photography of any kind
+- No real model names, no real charging-network name, no driver-assistance product name
+- No commercially licensed typeface (Inter is the shipped face, open-licensed)
+- The marque is **Axiom** and every vehicle name is a category noun: Cab, Saloon,
+  Crossover, and the trims of each. See `DESIGN.md` §9.2
+- The charging network is **Rapid**
+- Rival operators are **Meridian** and **Halo**, both fictional
+- Car art is five original SVG bodies (`CARART`), drawn here, owned by us
+
+What layout conventions, a blue accent, flat surfaces and rounded rectangles are: not
+protectable. What names, logos, typefaces and photographs are: protectable. The line
+between those two sentences is the whole of this section.
 
 Layout conventions, a blue accent, flat surfaces, and rounded rectangles are not
 protectable. Names, logos, and typefaces are. The line sits there.
@@ -360,6 +366,24 @@ price attached: `Dispatch to Rainey St ▸ 1.4× surge / 4 waiting`. Implemented
 `clip-path: polygon(0 0, calc(100% - 20px) 0, 100% 50%, calc(100% - 20px) 100%, 0 100%)`
 on the main half over a darker base.
 
+*Its refusal sits beside it, not inside it.* As of 0.43.0 the CTA shares a `.t-cta-row`
+with a square red Decline (`.t-dec`) — a bare white X, no word, because the CTA's own
+label is already the longest string on the card. Rules that follow from that pairing:
+
+- **The row owns the margin, the CTA owns only its height.** Two siblings each holding
+  `margin:10px` inset themselves separately and sat unevenly in the card — once per
+  breakpoint, since all five responsive tiers re-set that margin.
+- **One custom property is the height authority; never infer a square.** `--cta-h` on the
+  row is read by the CTA for its height and by Decline on both axes. The tiers move only
+  that number. Squaring Decline with `aspect-ratio:1` off `align-items:stretch` was tried
+  and rendered a ~310px button beside a 52px one — the ratio wants the item's cross size
+  and the line's cross size wants the tallest item, so the browser resolves the width from
+  available space and squares that instead.
+- **Destructive controls go grey when disabled, not faded red.** A dimmed red still reads
+  as armed.
+- **A refusal names the same thing the acceptance does.** Both sort by net-of-commission
+  fare and act on `[0]`. Two controls sitting on one seam must describe one decision.
+
 **The three-column metric row.** The real `ETA / Travel / Distance` row: grey uppercase
 label above a dark value, three equal cells with hairline dividers. Adopted unchanged for
 `Arrival SoC / Fare / Drop-off`, which turns amber below 20% and red below 10%. No
@@ -461,4 +485,4 @@ free and looks close enough; evaluate in the prototype.
 - [Tesla infotainment review: Tesla UI touchscreen tech tested vs rivals — Auto Express](https://www.autoexpress.co.uk/best/car-infotainment-systems/tesla-ui)
 - [First look at Tesla's new user interface — Electrek](https://electrek.co/2021/06/11/tesla-new-user-interface-first-look/)
 - [Tesla's 'Robotaxi' trademark refused for being too generic](https://www.aol.com/teslas-robotaxi-trademark-refused-being-225006216.html)
-- [Tesla hits trademark roadblock for 'Cybercab' — Electrek](https://electrek.co/2026/01/05/tesla-hits-trademark-roadblock-for-cybercab-due-squatter-incompetence/)
+- [Tesla hits trademark roadblock for 'Cybercab' — Electrek](https://electrek.co/2026/01/05/tesla-hits-trademark-roadblock-for-cab-due-squatter-incompetence/) — the source behind DESIGN.md §9.3's "radioactive" note. Citation titles are quoted as published; they are not game copy.

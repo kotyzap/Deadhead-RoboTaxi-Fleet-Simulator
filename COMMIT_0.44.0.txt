@@ -1,0 +1,101 @@
+0.44.0 — New cold-open video, and the reason it used to feel like a hang
+
+WHAT LANDED
+
+The intro video is replaced. The old 66-second clip becomes a 2:05 narrated
+tour of the actual console — the six-city map, the one shared bank, the fleet
+roster, the two platforms and their commissions, the real time-of-use tariff,
+the real Superchargers, the geofence, the books, and the three numbers on an
+offer. Same element, same showIntro(), same "press play yourself" behaviour.
+
+Assets, all in deploy/public/ and mirrored beside the standalone deadhead.html:
+
+  Deadhead-intro-video-v2.mp4    11.1 MB, H.264 High/1080p30 + AAC stereo
+  deadhead-intro-poster-v2.jpg   82 KB, frame at 1.6s ("Six cities, two
+                                 padlocked") — the first callout, so the
+                                 unplayed frame already says something
+  Deadhead-intro-video-v2.vtt    3.7 KB English captions
+
+THE ACTUAL BUG IN THE SOURCE FILE
+
+The export had its moov atom at the END of the container, behind mdat. So did
+the old 0.26-era clip, which is why that one felt slow too and nobody traced
+it. A browser cannot start decoding until it has read moov: with it at the
+tail, `preload="none"` plus a click means the player pulls all 11 MB before
+the first frame paints. On a slow connection that is fifteen seconds of a
+black rectangle with a spinner — indistinguishable from a broken file, and the
+player has no reason to wait it out.
+
+  ffmpeg -i in.mp4 -c copy -movflags +faststart out.mp4
+
+Lossless (stream copy, no re-encode), one second of work, moov moves to byte
+36. Playback now begins on the first few hundred KB. Any replacement video
+MUST go through this — it is the single thing about the file that matters, and
+nothing in the app can detect or compensate for its absence.
+
+SELF-HOSTED, NOT A YOUTUBE EMBED
+
+Considered and rejected, for three reasons in descending order of weight:
+
+  · deadhead.html must run from file:// with no network at all. An iframe
+    embed is simply dead there, and the standalone build is not a
+    second-class target — it is how the game gets handed to people.
+  · An embed drags in third-party cookies and the consent surface that
+    follows. This game currently has none and does not want one for a
+    68-second saving.
+  · Bandwidth is the argument FOR an embed, and it does not apply. Static
+    assets on Cloudflare are free and unmetered, and `preload="none"` means
+    a visitor who never presses play transfers 82 KB of poster and no video
+    at all. The 11 MB is also comfortably under the 25 MiB per-file limit on
+    Workers static assets, and under GitHub's 100 MB, so no LFS.
+
+WHY -v2 IN THE FILENAME
+
+The old files are left in place and the new ones are versioned rather than
+overwritten. Cloudflare's edge and every browser cache will keep serving a
+stale mp4 under an unchanged URL, and a rename is the only cache bust that
+needs neither a purge nor a Cache-Control change. Next video is -v3. Do not
+reuse a name.
+
+CAPTIONS
+
+The mp4 carried an auto-generated mov_text subtitle track, which browsers
+ignore entirely. It is extracted to WebVTT, hand-corrected, and attached as a
+<track> — the transcription had "Hitcher"/"Zip" for Hitchr/Zipp, "row
+geometry" for road geometry, "PKW" for peak kW, "5141" for $51.41, and "miles
+to been empty" for miles of deadhead. The mov_text track is dropped from the
+container; it was dead weight in every player.
+
+The track is deliberately NOT `default`. The video already carries burnt-in
+callout panels, so captions-on doubles the text on screen. The native CC
+button turns them on. Under file:// the opaque origin blocks the track fetch;
+it fails silently and the video plays regardless, which is the right
+degradation for the standalone build.
+
+KNOWN, NOT FIXED — THE VIDEO PREDATES THE 0.42.0 REBRAND
+
+The recording was made on a pre-0.42.0 build, so it shows branding the game no
+longer ships. Two places:
+
+  · The Selected-vehicle panel reads "Cybercab · CC-01" for essentially the
+    whole 2:05 runtime. The shipping game reads "Cab · CB-01" under MAKE
+    'Axiom'. A player watches two minutes of one product and is then dropped
+    into a differently-named one.
+  · The first callout, on screen from 0:00 and therefore also on the poster
+    frame, reads "Tesla hasn't launched there, so neither has the game."
+
+Neither is a code defect and neither blocks the deploy — the numbers, panels,
+cities and mechanics in the video are all still accurate. But the marque was
+removed deliberately in 0.42.0 and this puts it back on the first screen a new
+player sees, which is the most visible surface in the whole product. Re-record
+against 0.44.0 when there is time; the captions in the .vtt are already
+written against the current names (Hitchr, Zipp) and will not need redoing.
+
+FILES
+
+  deadhead.html                        VERSION 0.43.0 -> 0.44.0; the <video>
+                                       element's src/poster + a new <track>,
+                                       and the comment block above it
+  deploy/public/index.html             byte-identical copy
+  deploy/public/*-v2.{mp4,jpg,vtt}     new
+  ./*-v2.{mp4,jpg,vtt}                 same three, beside the standalone html

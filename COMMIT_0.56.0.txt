@@ -1,0 +1,72 @@
+0.56.0 — splash screen, and a fresh run starts at the city's real local time
+
+WHAT WAS WRONG
+
+Two asks from Pavel (2026-07-30):
+
+  1. Reaching a city's evening rush was too hard. Every fresh run (first-ever
+     boot, first entry into a newly-unlocked city, the "New fleet" button)
+     hardcoded the clock to CFG.dayStart (06:00), so a player opening the
+     game in the evening still had to sit through or fast-forward past most
+     of a working day before demand climbed toward the ~16:00-21:00 peak.
+  2. Pavel supplied two new title-card renders and asked for a splash screen
+     shown before the resume-save dialog, the account prompt, and the intro
+     video — with "loading" and a few animated dots for a couple of seconds.
+
+WHAT CHANGED
+
+Clock seed: newFleet() now seeds S.t from the city's real local time via a
+new cityLocalSeconds(cityId, now) (Intl.DateTimeFormat against the tz IANA
+string every CITIES[id] entry already carried but nothing read) and
+freshRunClockSeed(cityId), which clamps the result to
+CFG.dayStart..CFG.dayEnd — real local hours before 06:00 still fall back to
+06:00, since that pre-dawn window was never designed or tested as playable,
+so this only ever seeds INTO the existing day. Only touches a genuinely
+fresh run: a resumed save's S.t is restored as-is, and every day after the
+first still opens at the fixed dayStart via startFastForward()/
+nextDayStart(), untouched. Weather already did the "grounded in the real
+city" thing correctly (fetchWeather() already runs on boot and on every city
+switch, keyed to real coordinates) — nothing to fix there.
+
+A 0.35.0 note warned that a real-world clock was tried before and removed
+for reading as "broken" next to a 20x sim clock — read the exact reasoning
+before touching anything. That removal was a SECOND, continuously-ticking
+real-clock UI element racing the sim clock; this is a one-time READ used
+only to pick a fresh run's starting value, never shown or re-read again, so
+it doesn't reintroduce that bug.
+
+Splash screen: a new #splash overlay is now the first element painted in
+<body>, above #bgmap/#bgtint/.app and effectively above #intro too (z-index
+200 vs 90), showing one of two new title-card images — a wide crop and a
+portrait crop (cropped by hand out of a phone-mockup render to remove the
+device bezel) — swapped by `@media (orientation:portrait)` rather than a
+fixed device-width breakpoint, plus a small pill reading "Loading" with four
+staggered pulsing dots. It has no JS gating its initial visibility (visible
+by default, only ever hidden by script) so a slow first paint can't race a
+hidden attribute into never being removed. A fixed 4-second timer (not tied
+to a boot-completion promise) triggers a 0.5s CSS fade, then sets [hidden];
+prefers-reduced-motion drops the animations and the fade in favour of an
+instant hide on the same timer. Because #intro starts `hidden` in markup and
+nothing reveals it until deep in the async boot chain, the splash simply
+times itself out before #intro (or the resume dialog, or an account prompt)
+could ever appear underneath it — no stacking-order fight was actually
+needed, just sequencing.
+
+TESTS
+
+New test/fresh-run-clock.test.js (8 checks): cityLocalSeconds() reads a
+pinned UTC instant as 18:40 in Austin and 03:15 pre-dawn correctly, returns
+null for an unknown city, and reads a different hour in San Francisco than
+in Austin at the same instant (proving the tz is actually used);
+freshRunClockSeed() stays inside dayStart..dayEnd; a fresh newFleet() run's
+S.t lands in range and day 1; CFG.dayStart is unchanged for later days.
+
+New test/splash-screen.test.js: #splash exists, is visible (no [hidden]) by
+default in markup, sits before #bgmap/#bgtint/.app in DOM order, is the
+first element with real visual content in <body>; both splash images exist
+on disk and are referenced from the stylesheet; the boot script schedules
+exactly one splash-out timer and one hidden-setting timer; prefers-reduced-
+motion is handled in CSS.
+
+Full suite passes clean, and check-parity is green — deploy/public/index.html
+is byte-identical to deadhead.html.

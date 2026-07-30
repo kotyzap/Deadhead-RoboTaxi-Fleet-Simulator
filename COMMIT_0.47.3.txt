@@ -1,0 +1,28 @@
+0.47.3 — Shift stays tied to Clock
+
+WHAT WAS WRONG
+
+.tb-shiftitem carried margin-right:auto, which pinned the Shift readout to
+the far-left edge of the topbar's second line while .tb-ctrls's own
+justify-content:flex-end clustered everything else — Clock, the speed
+segment, Garage/Saves/Night/Sound/profile/units — on the right. At most
+widths that read as a wide dead gap between a label nobody presses and the
+Clock button it's describing, rather than the two looking related.
+
+WHAT CHANGED
+
+Dropped the margin-right:auto. Shift is still the first child of .tb-ctrls
+(unchanged HTML order), so it now sits in normal flow immediately before
+Clock, and justify-content:flex-end clusters the whole line — Shift, Clock,
+speeds, buttons — together against the right edge instead of splitting it
+into a pinned label and a separate cluster.
+
+TESTS
+
+test/city.test.js's "the shift readout is pushed left, the controls stay
+right" check asserted the OLD behaviour (.tb-shiftitem{margin-right:auto}
+present). Replaced it with "the shift readout sits with the controls, not
+pinned to the edge", asserting the rule is gone and justify-content:flex-end
+still holds. The neighbouring check ("Shift leads the control line, not the
+readouts" — Shift is .tb-ctrls's first child) needed no change: that part of
+the layout didn't move, only the auto-margin did.

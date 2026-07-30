@@ -1,0 +1,28 @@
+0.46.2 — the way out pulses, once
+
+A full-screen modal, nothing left that MUST be done, and the only move is a
+small button in the top-right corner that was deliberately styled to be quiet.
+For a first-time player that is a dead end: the cards all still look clickable
+and nothing says the garage is finished with you.
+
+#gar-close now takes `.call` in addition to `.go` when BOTH:
+
+  - a car is in service (an empty fleet still faces a forced decision, and
+    pulsing the exit then would be telling the player to leave with no car), and
+  - S.shiftNo === 0 — no shift has ever been clocked on, i.e. this is the first
+    visit of a new run. From the second visit on it is a plain accent outline.
+
+Unlike .avail's three-cycle pulse (0.45.1) this one does not stop, and the
+difference is deliberate: .avail marks several buttons across nine cards and an
+endless animation there is a fairground, whereas this is exactly one element,
+it is wayfinding rather than emphasis, and it ends the moment it is clicked.
+
+prefers-reduced-motion needs its own rule again — the global animation:none
+would otherwise leave a flat filled button with no draw at all, so the ring
+becomes a held state instead of a pulse.
+
+TESTS
+
+test/opening-fleet.test.js: no pulse on an empty fleet, pulse once a car is in
+service on the first visit, gone for good after S.shiftNo moves, and `.go`
+retained in every case.

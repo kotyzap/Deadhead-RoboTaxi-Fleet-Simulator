@@ -1,0 +1,70 @@
+0.38.3 — the charge-policy switch is always on the strip
+
+Pavel: "battery icon is not visible again."
+
+It was not a regression — my recent diff touches none of this — and it was
+not broken. The Charge policy control was hidden behind the autocharge
+Easter egg (v0.26.0): five clicks on the version chip inside three seconds,
+recorded in the progress record as PROG.eggs.autocharge.
+
+WHY IT KEPT VANISHING
+
+The progress record is per ORIGIN. A local file:// copy and
+game.deadhead.workers.dev keep entirely separate IndexedDB stores, so an egg
+found while playing locally was still unfound on the deployed site —
+confirmed live there: PROG.eggs was {} and dp-charge was hidden=true. The
+same file, opened two ways, showed a different set of controls.
+
+That is the second problem this week caused by "same file, different
+environment" (see 0.38.2 and the extension that owned .cp-body). A secret
+that un-finds itself when you change browser, profile or origin is not a
+secret, it is a missing button — and this one gates a real gameplay lever,
+not a cosmetic. So the gate is retired: Pavel's call, of three options, was
+to stop hiding it.
+
+WHAT CHANGED
+
+render()'s `$('dp-charge').hidden = !eggFound('autocharge')` becomes
+`hidden = false`. Written as an explicit un-hide rather than deleting the
+line, because an older build could have left the attribute set on a live
+session — dropping the line entirely would leave the control stuck
+off-screen for anyone who did not reload.
+
+The egg itself is NOT removed. The five-tap gesture still fires, still calls
+findEgg(), still turns the policy on, still logs its line, and the "Found
+the Switch" achievement is still earnable exactly as before — the ACHV entry
+reads eggFound('autocharge'), which is untouched. Discovery is now a
+shortcut and a trophy rather than the only way to see the control.
+
+The default is unchanged: autoCharge stays OFF. The v0.26.0 reasoning for
+that is intact and still in the source — deciding when and where to charge
+is the one lever in Act 1 that spends time as well as money, and automating
+it quietly takes that away. What changed is only whether you can SEE the
+switch, not which way it starts.
+
+Two checks in city.test.js encoded the retired gate ("the switch is hidden
+until the egg is found", and the auto-charge-off save asserting hidden===true).
+Rewritten rather than deleted: the first now asserts the control can no longer
+be gated away at all, and the second still asserts the thing that does matter —
+restoring a save with the policy off must not fabricate a find, so eggFound
+stays false and the achievement stays unearned — while dropping the
+visibility clause. The CSS check for .t-ctl .icons button[hidden]{display:none}
+is left in place; the rule still guards the attribute generally.
+
+Verified with jsdom (12 checks): on a fresh profile with no egg found the
+button is visible before and after a render() pass, carries no hidden
+attribute, and reads aria-pressed=false; clicking it really toggles
+S.autoCharge both ways and the pressed state follows; the five-tap gesture
+still registers the find, still switches the policy on, and the achievement
+is still awarded. Existing suite (8 files) and check-parity pass.
+
+STILL OPEN
+- Both D1 migrations unrun (carried from 0.33.2).
+- The Cloudflare rate limiting rule on /api/stat.
+- The DISPATCH OFFLINE banner.
+- The Camera nav icon's no-incident fallback still only flashes the wing.
+- Auto-follow's on/off state is not saved across reloads (0.38.0).
+- PROG (achievements, eggs, city unlocks) is still per-origin and is not
+  synced to the account even when signed in. Retiring this gate removes the
+  worst symptom, not the cause.
+- deploy/public/Inside_The_Brutal…mp4, 9.8 MB, referenced by nothing.

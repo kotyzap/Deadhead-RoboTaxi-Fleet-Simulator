@@ -1,0 +1,50 @@
+0.52.1 — comment text leaked into the topbar, and the gear was lopsided
+
+WHAT WAS WRONG
+
+Two things, both mine, both shipped in 0.52.0.
+
+1. HTML COMMENTS DO NOT NEST. The comment above #settings-btn tried to point
+   the reader at the popover's markup by quoting the marker it sits after:
+
+     It is a sibling of .app instead — see the markup after </div><!--
+     /.app -->, and setPopPlace() for the anchoring. -->
+
+   The inner `-->` closed the comment. Everything after it — ", and
+   setPopPlace() for the anchoring. -->" — became a text node inside
+   .tb-ctrls and rendered in the topbar, between Saves and the gear. The first
+   `-->` always wins; there is no nesting, and no tool in the pipeline noticed
+   because the document is still perfectly valid HTML, just with prose in it.
+
+2. The gear glyph was hand-waved rather than constructed. Its teeth were an
+   ad-hoc run of line segments at eyeballed coordinates, so they were unevenly
+   sized and unevenly spaced — visibly lopsided at 48px and mush at 16px.
+
+WHAT CHANGED
+
+The comment says the same thing without quoting a closing marker.
+
+#i-gear is computed geometry now: 6 teeth on exact 60° centres, tips as true
+arcs at r=9.5, valleys as true arcs at r=7.15, flanks purely radial (tip edge
+and valley edge share an angle, so each flank is a clean spoke), inner circle
+r=3.05. Six rather than eight deliberately — at the icon set's 1.7 stroke,
+eight teeth close their gaps at 16px and the outline reads as a blurred ring.
+
+TESTS
+
+boot-smoke.test.js gains two checks, one per side of the same bug:
+
+  - commentSanity() walks the raw source for nested `<!--`, unterminated
+    comments, and any `-->` sitting outside every comment span (the tell-tale
+    tail of a comment that closed early). Checked against the SOURCE, because
+    jsdom parses the broken document happily — the DOM is not where this shows.
+  - a DOM check that no text node sits directly inside .topbar, .tb-ctrls,
+    .tb-info or #settings-pop. Those are layout containers and never
+    legitimately hold bare text, so prose escaping a comment lands there and is
+    caught even if it escapes by some route commentSanity() doesn't model.
+
+Both were verified to FAIL against a deliberately reintroduced copy of the
+original broken comment, then pass once reverted — a guard that has never been
+seen to fail is not yet a guard.
+
+Full suite passes clean (405 checks).

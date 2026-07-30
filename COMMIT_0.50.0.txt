@@ -1,0 +1,63 @@
+0.50.0 — the shift report gets admin's hexagraph
+
+WHAT WAS WRONG
+
+The shift report was fifteen numeric rows and nothing else. The single most
+important thing it says — you worked 0.0 hours of a 24-hour billed day — sat
+in the same 13px grey row as "Platform take rate", and the one figure that
+carried any emphasis was the red net. There was no way to see the SHAPE of a
+shift: which part failed, or whether tonight beat last night.
+
+Meanwhile admin/Cars already had exactly the right component for it: a
+six-axis hexagonal radar, one fixed colour per axis, one shared legend above
+the grid. Pavel asked for that graph to come into the game.
+
+WHAT CHANGED
+
+rpHexRadar() is a port of hexRadar() from deploy/public/admin.html, keeping
+that page's presentation deliberately: a fixed colour per axis (Net always
+green, Safety always violet, etc.), spokes tinted by their own axis colour,
+a neutral var(--accent) fill, chart above the stat lines, one shared legend.
+Kept as its own copy rather than shared code — admin.html is a separate
+standalone document with no module boundary to share across, and
+check-parity.js only ever compares deadhead.html to its own deploy mirror.
+
+The axes differ from admin's, on purpose. Admin's six are Pop./Net/Miles/
+Rides/Safety/Reach, normalised against the max across MODELS on that page
+load — a comparison that only exists because nine cars are on screen at
+once. A single shift has no peer set, and Popularity/Reach are cross-player
+aggregates that mean nothing for one night. So Net/Miles/Rides/Safety carry
+over unchanged and the other two become Utilisation and Margin, which are
+what Act 1 is actually about. Per-axis normalisation, and why:
+
+  Util    worked/billed. Self-normalising, and the thesis of the whole act —
+          no invented target needed.
+  Net     against 3x the daily floor. A loss reads as zero: a loss has no
+          degree worth drawing, the axis just collapses.
+  Miles   against the player's own best, so it reads as progress not verdict.
+  Rides   likewise.
+  Safety  /100, the only axis already on a 0-100 scale.
+  Margin  net/gross against a 40% target.
+
+The dashed ghost outline is the best PREVIOUS shift IN THIS CITY, by net.
+Three traps it had to avoid, all covered by tests: appendHistoryRow() runs
+immediately before shiftReport() (see stopFastForward()), so the row being
+reported is already HISTORY's last entry and must be dropped or a new
+personal best ghosts itself; both shapes must share their Miles/Rides
+denominators or each would normalise against itself and every comparison
+would read as a tie; and shift 1 has no previous row, so it gets no ghost
+and an empty ghost key that .rp-ghost:empty collapses.
+
+TESTS
+
+New test/shift-radar.test.js, wired into npm test — 32 checks. The
+normalisation ones matter most: every axis feeds a polygon coordinate, so an
+unclamped value draws outside the outer ring and a NaN yields "NaN,NaN" in a
+points attribute, which renders as NOTHING rather than as an error. Both
+divide-by-zero cases are real shifts (zero gross for Margin, zero billed
+hours for Utilisation) and both are asserted, along with clamping at the top
+end, a loss flooring at zero, the ghost picking the right row, other cities
+not polluting this city's benchmark, and the chart landing above the first
+stat row.
+
+Full suite passes clean (351 checks, up from 319).

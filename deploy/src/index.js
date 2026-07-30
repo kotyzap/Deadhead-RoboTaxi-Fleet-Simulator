@@ -14,13 +14,50 @@ import { ADMIN_EMAIL, ADMIN_PASSWORD } from './admin-config.js';
 const SLOTS = ['auto', 'slot1', 'slot2', 'slot3'];
 const MAX_SAVE_BYTES = 256 * 1024;   // a real save is ~1–15 KB; this is abuse defence
 
+/* Several shapes of write land here that are NOT one of the four player-
+   visible slots above:
+     - 'auto:<city>' — deadhead.html's physKey() rewrites the logical key
+       'auto' to a per-city slot (see the comment above physKey() in
+       deadhead.html) so Austin's autosave can't clobber Dallas's. This
+       route's regex and this whitelist both predate that change, so every
+       such write 404'd/400'd — the client fell back to a local-only save
+       and logged "autosave failed" every cycle, silently.
+     - 'progress' — progSave()'s record (city unlocks, achievements, Easter
+       eggs). It was never added here either, so cloud accounts have never
+       actually synced that record; it only ever lived in that browser's
+       IndexedDB, which is why a found Easter egg or achievement can look
+       like it "didn't take" after a reload on another device, or once
+       local storage is cleared.
+     - 'profile' — profileSave()'s record (deadhead.html, PROFILE.id/name).
+     - 'history' — appendHistoryRow()'s shift-history log (deadhead.html,
+       HISTORY).
+   Both 'profile' and 'history' had the exact same bug as 'progress' above:
+   never whitelisted, so every write from a signed-in player 400'd silently
+   (the client swallows Store.put() rejections) and neither the player's
+   display name nor their shift history has ever actually synced to the
+   cloud — see improvements.md P0-1.
+   None of the four are a player-chosen save slot, so they stay out of
+   SLOTS (which /api/saves still enumerates verbatim for the Saves-modal
+   UI) and are accepted here instead. */
+function slotAllowed(slot) {
+  if (SLOTS.includes(slot) || slot === 'progress' || slot === 'profile' || slot === 'history') return true;
+  return slot.indexOf('auto:') === 0 && /^[A-Za-z0-9_-]{1,16}$/.test(slot.slice(5));
+}
+
 /* CATALOG ids from deadhead.html's CATALOG const, copied rather than shared
    — this Worker has no import path back into the game engine, and the list
    changes rarely enough that a copy is cheaper than building one. Used only
    to whitelist body.models on the way into `stats` (see /api/stat below);
    admin.html keeps its OWN copy (name/badge/photo) for rendering the Cars
    view, since that file never touches the server's module graph either. */
-const MODEL_IDS = ['cybercab','model3','modely','model3prem','modelyprem',
+const MODEL_IDS = ['cab','saloon','cross','saloonlong','crosslong',
+  'crosssix','saloonsport','crosssport','truck',
+  /* Pre-0.42.0 ids. A client running a cached copy of the game, or replaying
+     a save it has not yet migrated, still posts these — dropping them here
+     would silently discard that player's per-model stats rather than fail
+     loudly, which is the worst of both outcomes. Kept indefinitely; they cost
+     nine strings. See MODEL_ALIAS in deadhead.html. */
+  'cybercab','model3','modely','model3prem','modelyprem',
   'modelyl','model3perf','modelyperf','cybertruck'];
 
 /* The achievement catalogue, id-only — the same copy-not-import trade as
@@ -336,6 +373,32 @@ function sanitizeAchv(v) {
 function clientIp(request) {
   return request.headers.get('cf-connecting-ip') || 'unknown';
 }
+/* ---- edge geo (adminplan.md §3) ----
+   The ONLY facts about a telemetry row that the client does not get to
+   claim. Cloudflare attaches request.cf at the edge before this Worker is
+   invoked, so these three cost no request, no latency and no D1 row — they
+   ride along in an INSERT that was happening anyway.
+
+   country falls back to the CF-IPCountry header, which is set even in some
+   configurations where request.cf is absent; both are missing under
+   `wrangler dev --local` and in tests, which is the null case the admin
+   renders as "Unknown".
+
+   'T1' is Cloudflare's code for a Tor exit node and 'XX' for "no country
+   could be determined". Both are kept rather than nulled — "we know it was
+   Tor" is information, and quietly folding it into Unknown would hide it.
+
+   NO CITY, NO POSTCODE, NO LAT/LON, NO ASN, even though request.cf offers
+   all four: player_id is a persistent per-browser uuid and a persistent id
+   plus a city narrows to a household. See the geo block in schema.sql. */
+function edgeGeo(request) {
+  const cf = request.cf || {};
+  return {
+    country: clampStr(cf.country || request.headers.get('cf-ipcountry'), 8),
+    region: clampStr(cf.region, 64),
+    tz: clampStr(cf.timezone, 64),
+  };
+}
 /* THE /api/stat THROTTLE, AND WHY IT NO LONGER TOUCHES D1.
 
    This used to be a `stat_attempts` table: a SELECT plus an INSERT/UPDATE
@@ -394,16 +457,34 @@ function statThrottled(playerId, ip) {
    Both sides are hashed before comparison so it stays constant-time
    regardless of what a prober sends, same discipline as the session-token
    checks above. A missing/mismatched pair returns 404, not 401/403, so a
-   probe cannot even confirm the endpoint exists (onboardingplan.md §4). */
-async function isAdmin(request) {
+   probe cannot even confirm the endpoint exists (onboardingplan.md §4).
+
+   THROTTLED NOW, LIKE EVERY OTHER LOGIN (improvements.md P0-3). This used
+   to be the one auth path with no rate limit at all — /api/login throttles
+   per-username via login_attempts, but isAdmin() ran the hash comparison on
+   every single call with nothing above it, which made it an unlimited
+   guessing oracle against a password whose only defence was its own length.
+   There is exactly one admin identity, so it reuses the same
+   throttled()/noteFail()/clearFails() helpers /api/login already uses
+   against login_attempts, keyed on a fixed sentinel row rather than a
+   per-user one — same discipline (8 fails / 15 min), same table, no new
+   schema. A throttled attempt returns false here, which the caller turns
+   into the same 404 a wrong password gets, so a prober still learns
+   nothing beyond "this path 404s". */
+const ADMIN_THROTTLE_KEY = '__admin__';
+async function isAdmin(request, env) {
   const email = request.headers.get('x-admin-email');
   const password = request.headers.get('x-admin-password');
   if (!email || !password) return false;
+  if (await throttled(env, ADMIN_THROTTLE_KEY)) return false;
   const [a1, a2, b1, b2] = await Promise.all([
     sha256raw(email.trim().toLowerCase()), sha256raw(ADMIN_EMAIL.trim().toLowerCase()),
     sha256raw(password), sha256raw(ADMIN_PASSWORD)
   ]);
-  return timingSafeEqual(a1, a2) && timingSafeEqual(b1, b2);
+  const ok = timingSafeEqual(a1, a2) && timingSafeEqual(b1, b2);
+  if (ok) await clearFails(env, ADMIN_THROTTLE_KEY);
+  else await noteFail(env, ADMIN_THROTTLE_KEY);
+  return ok;
 }
 
 /* ---------------- the leaderboard ----------------
@@ -530,8 +611,14 @@ async function handleApi(request, env, url, ctx) {
 
     const id = newId();
     try {
-      await env.DB.prepare('INSERT INTO users (id, username, pw, created, last_seen) VALUES (?,?,?,?,?)')
-        .bind(id, username, await hashAuthKey(body.authKey), now(), now()).run();
+      // country is stamped here and never touched again on later logins:
+      // "where the account was opened" is the stable, more useful answer,
+      // and re-writing it on every login would spend a write to make the
+      // column noisier. Free — see edgeGeo().
+      await env.DB.prepare(
+        'INSERT INTO users (id, username, pw, created, last_seen, country) VALUES (?,?,?,?,?,?)'
+      ).bind(id, username, await hashAuthKey(body.authKey), now(), now(),
+             edgeGeo(request).country).run();
     } catch (err) {
       // UNIQUE violation: another request registered this username between
       // the SELECT above and this INSERT.
@@ -630,23 +717,27 @@ async function handleApi(request, env, url, ctx) {
     // downstream can't survive.
     const models = sanitizeModels(body.models);
     const achv = sanitizeAchv(body.achv);
+    // The three columns on this row the payload does not get a vote on.
+    const geo = edgeGeo(request);
 
     await env.DB.prepare(
       `INSERT INTO stats (
          player_id, user_id, name, created, ts,
+         country, region, tz,
          city, day, shift_no, permit,
          worked_h, billed_h,
          gross, commission, cost, net,
          energy, dep, maint, ins, soft, fixed,
          miles, rides, cancels, safety,
          cash, cars, models, achv
-       ) VALUES (?,?,?,?,?, ?,?,?,?, ?,?, ?,?,?,?, ?,?,?,?,?,?, ?,?,?,?, ?,?,?,?)`
+       ) VALUES (?,?,?,?,?, ?,?,?, ?,?,?,?, ?,?, ?,?,?,?, ?,?,?,?,?,?, ?,?,?,?, ?,?,?,?)`
     ).bind(
       playerId,
       sessionUser ? sessionUser.id : null,
       clampStr(body.name, 24),
       clampNum(body.created, 0, 4102444800000, null),   // 0 .. year 2100
       now(),
+      geo.country, geo.region, geo.tz,
       clampStr(body.city, 32),
       clampNum(body.day, 0, 100000, null),
       clampNum(body.shiftNo, 0, 100000, null),
@@ -681,22 +772,71 @@ async function handleApi(request, env, url, ctx) {
      check happens BEFORE anything else about the request is inspected, so
      an unauthorized prober learns nothing beyond "this path 404s". */
   if (p === '/api/admin/stats' && method === 'GET') {
-    if (!(await isAdmin(request))) return bad('no such endpoint', 404);
+    if (!(await isAdmin(request, env))) return bad('no such endpoint', 404);
 
     const view = url.searchParams.get('view') || 'players';
 
     if (view === 'players') {
-      const { results } = await env.DB.prepare(
-        `SELECT player_id, MAX(name) AS name, MAX(created) AS created,
-                MIN(ts) AS first_seen, MAX(ts) AS last_seen,
-                COUNT(*) AS shifts, COUNT(DISTINCT city) AS cities,
-                MAX(cash) AS best_cash
-           FROM stats
-          GROUP BY player_id
-          ORDER BY last_seen DESC
-          LIMIT 500`
-      ).all();
-      return json({ view, rows: results || [] });
+      /* THE NAME IS THE NEWEST ONE, NOT MAX(name).
+
+         This was `MAX(name)` — the alphabetically last name a player has
+         ever used — so anyone who renamed themselves showed up under
+         whichever of their names happened to sort last, forever. Same
+         question now applies to country: a player's CURRENT location, not
+         their alphabetically-last one.
+
+         The tempting fix is SQLite's bare-column rule (with exactly one
+         min/max aggregate, bare columns come from the row that supplied it).
+         It is NOT usable here: that guarantee holds only for a single
+         min/max in the query, and this one has five. With more than one the
+         row a bare column comes from is explicitly arbitrary — it would
+         look right in testing and be quietly wrong later. So the newest row
+         is selected properly, with ROW_NUMBER(), and joined on.
+
+         days_active is the retention column that was missing: shifts alone
+         cannot tell one long evening apart from a fortnight of play.
+
+         LIMIT is 500 and `total` comes back alongside, so the page can say
+         "showing 500 of 812" instead of silently omitting 312 people. */
+      const [list, tot] = await env.DB.batch([
+        env.DB.prepare(
+          `SELECT g.player_id, g.created, g.first_seen, g.last_seen,
+                  g.shifts, g.cities, g.days_active,
+                  g.best_day, g.best_cash, g.best_cars,
+                  n.name, n.country, n.region, n.tz
+             FROM (
+               SELECT player_id,
+                      MAX(created) AS created,
+                      MIN(ts) AS first_seen,
+                      MAX(ts) AS last_seen,
+                      COUNT(*) AS shifts,
+                      COUNT(DISTINCT city) AS cities,
+                      COUNT(DISTINCT date(ts/1000,'unixepoch')) AS days_active,
+                      MAX(day) AS best_day,
+                      MAX(cash) AS best_cash,
+                      MAX(cars) AS best_cars
+                 FROM stats
+                GROUP BY player_id
+             ) g
+             JOIN (
+               SELECT player_id, name, country, region, tz FROM (
+                 SELECT player_id, name, country, region, tz,
+                        ROW_NUMBER() OVER (PARTITION BY player_id
+                                           ORDER BY ts DESC) AS rn
+                   FROM stats
+               ) WHERE rn = 1
+             ) n ON n.player_id = g.player_id
+            ORDER BY g.last_seen DESC
+            LIMIT 500`
+        ),
+        env.DB.prepare(`SELECT COUNT(DISTINCT player_id) AS n FROM stats`),
+      ]);
+      return json({
+        view,
+        rows: list.results || [],
+        total: (tot.results && tot.results[0] && tot.results[0].n) || 0,
+        limit: 500,
+      });
     }
 
     if (view === 'funnel') {
@@ -709,17 +849,45 @@ async function handleApi(request, env, url, ctx) {
          file is a list that will be wrong again the next time one ships —
          so the cities now come out of the data, and city #6 appears in the
          admin the first time anybody files a shift there. */
+      /* ORDERED STAGES AND UNORDERED MILESTONES ARE NOW SEPARATE.
+         They used to be one flat row of six equal cells, which reads as a
+         sequence — but "turned a profit" and "ran 2+ cars" are not stages
+         after "reached day 5", they are independent flags a player can trip
+         at any point. Presenting them in funnel position implied a drop-off
+         that was never being measured. The client renders `stages` as a
+         funnel and `milestones` as a separate strip.
+
+         day10/day20 and city2 are new: runs go far past day 5 now, and city
+         unlock is the main Act 2 gate, so it belongs in the funnel that
+         claims to describe progression. */
       const row = await env.DB.prepare(
         `SELECT
            COUNT(DISTINCT CASE WHEN shift_no >= 1 THEN player_id END) AS shift1,
            COUNT(DISTINCT CASE WHEN shift_no >= 2 THEN player_id END) AS shift2,
+           COUNT(DISTINCT CASE WHEN shift_no >= 5 THEN player_id END) AS shift5,
            COUNT(DISTINCT CASE WHEN day >= 2 THEN player_id END) AS day2,
            COUNT(DISTINCT CASE WHEN day >= 5 THEN player_id END) AS day5,
+           COUNT(DISTINCT CASE WHEN day >= 10 THEN player_id END) AS day10,
+           COUNT(DISTINCT CASE WHEN day >= 20 THEN player_id END) AS day20,
            COUNT(DISTINCT CASE WHEN cars >= 2 THEN player_id END) AS fleet2,
+           COUNT(DISTINCT CASE WHEN cars >= 5 THEN player_id END) AS fleet5,
            COUNT(DISTINCT CASE WHEN net > 0 THEN player_id END) AS profitable,
            COUNT(DISTINCT player_id) AS total
          FROM stats`
       ).first();
+      /* Players who have filed a shift in two or more DIFFERENT cities —
+         i.e. who got through a city unlock. Cannot be expressed as a CASE in
+         the row above (it is a property of a player's whole history, not of
+         any one row), so it is its own count over the per-player grouping. */
+      const city2 = await env.DB.prepare(
+        `SELECT COUNT(*) AS n FROM (
+           SELECT player_id FROM stats
+            WHERE city IS NOT NULL AND city <> ''
+            GROUP BY player_id
+           HAVING COUNT(DISTINCT city) >= 2
+         )`
+      ).first();
+      if (row) row.city2 = (city2 && city2.n) || 0;
       /* Ordered by reach rather than by the game's own city order: the
          Worker does not know that order (it lives in CITIES in
          deadhead.html) and inventing a second copy of it here is the exact
@@ -749,10 +917,32 @@ async function handleApi(request, env, url, ctx) {
           GROUP BY je.value
           ORDER BY players DESC`
       ).all();
-      const total = await env.DB.prepare(
-        `SELECT COUNT(DISTINCT player_id) AS n FROM stats`
-      ).first();
-      return json({ view, rows: results || [], totalPlayers: (total && total.n) || 0 });
+      /* THE DENOMINATOR IS PLAYERS WHO REPORTED A LIST, NOT ALL PLAYERS.
+
+         This was COUNT(DISTINCT player_id) over the whole table, which
+         includes everyone whose rows predate the achievements release and so
+         carry no `achv` column at all. Those players may well hold a dozen
+         achievements each — we simply never asked — and dividing by them
+         understated every single unlock rate on the page. The empty state
+         already explained this carefully; the populated state divided by it
+         anyway. Both denominators are returned now: `totalPlayers` is the
+         honest one used for the rates, `allPlayers` is shown beside it so
+         the size of the excluded group is visible rather than hidden. */
+      const [rep, all] = await env.DB.batch([
+        env.DB.prepare(
+          `SELECT COUNT(DISTINCT player_id) AS n FROM stats
+            WHERE achv IS NOT NULL AND json_valid(achv)
+              AND json_type(achv) = 'array'`
+        ),
+        env.DB.prepare(`SELECT COUNT(DISTINCT player_id) AS n FROM stats`),
+      ]);
+      const one = (r) => (r.results && r.results[0] && r.results[0].n) || 0;
+      return json({
+        view,
+        rows: results || [],
+        totalPlayers: one(rep),
+        allPlayers: one(all),
+      });
     }
 
     if (view === 'economics') {
@@ -760,19 +950,43 @@ async function handleApi(request, env, url, ctx) {
          would otherwise swing an average past what a typical shift looks
          like. Standard SQLite median trick: rank each row within its
          (city, shift_no) group and average the one or two middle ranks. */
+      /* MEDIAN ALONE COULD NOT DO THE JOB THIS SECTION EXISTS FOR.
+         "The mistuning detector" has to distinguish a city where every
+         player nets about the same wrong number from one where the spread is
+         enormous and the median is an accident — those want opposite fixes.
+         So p25 and p75 come back too, from the same single ranked pass:
+         rank each row within its (city, shift_no) group once, then pick the
+         middle one or two ranks for the median and the quarter/three-quarter
+         ranks for the fences.
+
+         `shift_no` is also bucketed now. It used to be raw, so a player on
+         shift 61 added a row of its own to a table that then grew without
+         bound; anything past 10 is now rolled into one bucket, which is also
+         where the sample sizes stop meaning much. The client dims low-n rows
+         rather than hiding them — a median over n=1 is still a fact, just
+         not one to tune against. */
       const { results } = await env.DB.prepare(
-        `SELECT city, shift_no, AVG(net) AS median_net, COUNT(*) AS n
+        `SELECT city, bucket AS shift_no, COUNT(*) AS n,
+                AVG(CASE WHEN rn IN ((cnt+1)/2, (cnt+2)/2) THEN net END) AS median_net,
+                MIN(CASE WHEN rn >= (cnt+3)/4 THEN net END) AS p25,
+                MIN(CASE WHEN rn >= (cnt*3+3)/4 THEN net END) AS p75,
+                MIN(net) AS min_net, MAX(net) AS max_net
            FROM (
-             SELECT city, shift_no, net,
-                    ROW_NUMBER() OVER (PARTITION BY city, shift_no ORDER BY net) AS rn,
-                    COUNT(*) OVER (PARTITION BY city, shift_no) AS cnt
+             SELECT city, net,
+                    MIN(shift_no, 11) AS bucket,
+                    ROW_NUMBER() OVER (PARTITION BY city, MIN(shift_no, 11)
+                                       ORDER BY net) AS rn,
+                    COUNT(*) OVER (PARTITION BY city, MIN(shift_no, 11)) AS cnt
                FROM stats
+              WHERE shift_no IS NOT NULL
            )
-          WHERE rn IN ((cnt + 1) / 2, (cnt + 2) / 2)
-          GROUP BY city, shift_no
-          ORDER BY city, shift_no`
+          GROUP BY city, bucket
+          ORDER BY city, bucket`
       ).all();
-      return json({ view, rows: results || [] });
+      /* bucket 11 means "shift 11 or later" — the client labels it "11+".
+         Sent as a flag rather than left for the page to infer from a magic
+         number. */
+      return json({ view, rows: results || [], lateBucket: 11 });
     }
 
     if (view === 'cars') {
@@ -782,7 +996,7 @@ async function handleApi(request, env, url, ctx) {
          present, same as before. What changed (Pavel's fix for identical
          numbers across models sharing a fleet): each model's own gross/cost/
          miles/rides now come from json_extract() on ITS OWN entry, not from
-         the whole-shift stats.* columns — a Cybercab and a Model 3 in the
+         the whole-shift stats.* columns — a Cab and a Saloon in the
          same shift now genuinely diverge. avg_safety is the one exception,
          averaged from the shift-level stats.safety column because safety is
          an operator behaviour stat, not a per-vehicle one — there is nothing
@@ -816,13 +1030,229 @@ async function handleApi(request, env, url, ctx) {
     }
 
     if (view === 'recent') {
+      /* gross/rides/miles/worked_h added: net alone cannot tell a busy shift
+         from a lucky one, which is the first thing you want to know when a
+         row looks odd. country comes along for free now that it is stored. */
+      const [list, tot] = await env.DB.batch([
+        env.DB.prepare(
+          `SELECT ts, player_id, name, country, region, city, day, shift_no,
+                  permit, worked_h, gross, net, cash, cars, rides, miles, safety
+             FROM stats
+            ORDER BY ts DESC
+            LIMIT 200`
+        ),
+        env.DB.prepare(`SELECT COUNT(*) AS n FROM stats`),
+      ]);
+      return json({
+        view,
+        rows: list.results || [],
+        total: (tot.results && tot.results[0] && tot.results[0].n) || 0,
+        limit: 200,
+      });
+    }
+
+    /* --- geography: the country view (adminplan.md §3) ---
+       Counts NULL country as 'Unknown' rather than dropping it: every row
+       written before geo shipped has one, and those are real players whose
+       omission would understate every total on the page. */
+    if (view === 'geo') {
       const { results } = await env.DB.prepare(
-        `SELECT ts, player_id, name, city, day, shift_no, permit, net, cash, cars
+        `SELECT COALESCE(NULLIF(country,''),'??') AS country,
+                COUNT(DISTINCT player_id) AS players,
+                COUNT(*) AS shifts,
+                COUNT(DISTINCT region) AS regions,
+                AVG(net) AS avg_net,
+                MAX(day) AS best_day,
+                MAX(ts) AS last_seen
            FROM stats
-          ORDER BY ts DESC
+          GROUP BY 1
+          ORDER BY players DESC, shifts DESC`
+      ).all();
+      /* Region breakdown, capped — on a US-heavy audience this is the state
+         list, which is the genuinely interesting cut for a game set in six
+         American cities. */
+      const { results: regions } = await env.DB.prepare(
+        `SELECT COALESCE(NULLIF(country,''),'??') AS country,
+                COALESCE(NULLIF(region,''),'—') AS region,
+                COUNT(DISTINCT player_id) AS players,
+                COUNT(*) AS shifts
+           FROM stats
+          GROUP BY 1,2
+          ORDER BY players DESC, shifts DESC
           LIMIT 100`
       ).all();
-      return json({ view, rows: results || [] });
+      return json({ view, rows: results || [], regions: regions || [] });
+    }
+
+    /* ---------------- the dashboard ----------------
+       The landing view: ten TOP 5 cards over four summary subsections
+       (adminplan.md §5).
+
+       ONE ROUND TRIP. Every block below is a GROUP BY scan of `stats`, and
+       fourteen sequential `await`s would be fourteen round trips to D1 for a
+       page that could have made one. env.DB.batch() sends them together.
+
+       WHY THE READ COST IS FINE, given how carefully this file counts
+       writes: D1's free plan allows 5,000,000 ROWS READ per day against
+       100,000 rows written. Reads are the cheap side of that ledger by a
+       factor of fifty, and this page is opened by one person. It is the same
+       reasoning schema.sql uses to justify letting the `recent` view scan
+       rather than paying for an index — and, importantly, this adds no
+       writes at all.
+
+       It also does not threaten the Workers 10 ms CPU limit (the limit that
+       forced PBKDF2 into the browser — see the top of this file): D1 query
+       time is I/O wait, not CPU. */
+    if (view === 'dashboard') {
+      const TOP = 5;
+      const q = [
+        // --- 0: top countries by distinct players
+        env.DB.prepare(
+          `SELECT COALESCE(NULLIF(country,''),'??') AS k,
+                  COUNT(DISTINCT player_id) AS v
+             FROM stats GROUP BY 1 ORDER BY v DESC, k LIMIT ${TOP}`),
+        // --- 1: top in-game cities by shifts filed
+        env.DB.prepare(
+          `SELECT city AS k, COUNT(*) AS v, COUNT(DISTINCT player_id) AS v2
+             FROM stats WHERE city IS NOT NULL AND city <> ''
+            GROUP BY 1 ORDER BY v DESC LIMIT ${TOP}`),
+        // --- 2: top car models by shifts run.
+        // json_type(models)='object' skips the legacy array shape, same
+        // filter the Cars view uses — see its comment.
+        env.DB.prepare(
+          `SELECT je.key AS k, COUNT(*) AS v, COUNT(DISTINCT s.player_id) AS v2
+             FROM stats s, json_each(s.models) je
+            WHERE json_type(s.models) = 'object'
+            GROUP BY 1 ORDER BY v DESC LIMIT ${TOP}`),
+        // --- 3: RAREST achievements that at least one player holds.
+        // Deliberately not the zero rows: "in the game, nobody has it" is a
+        // catalogue fact the Achievements view already reports properly by
+        // walking the catalogue, and it cannot be seen from this query at
+        // all (json_each only knows ids somebody has). What this card
+        // answers is the different question of which EARNED achievement is
+        // hardest.
+        env.DB.prepare(
+          `SELECT je.value AS k, COUNT(DISTINCT s.player_id) AS v
+             FROM stats s, json_each(s.achv) je
+            WHERE s.achv IS NOT NULL AND json_valid(s.achv)
+              AND json_type(s.achv) = 'array'
+            GROUP BY 1 ORDER BY v ASC, k LIMIT ${TOP}`),
+        /* --- 4,5,6: the three per-player cards.
+           THE BARE `name` IS DELIBERATE AND IS SAFE HERE.
+           SQLite guarantees that when a grouped query contains EXACTLY ONE
+           min()/max() aggregate, every bare column in the result comes from
+           the row that supplied that extreme. Each of these three has
+           exactly one — so `name` is the name from the newest row (4), from
+           the row where they hit their best balance (5), and from their
+           deepest day (6). All three are the name you would want beside that
+           number.
+           This is the same rule the `players` view could NOT use, because it
+           has five min/max aggregates and the guarantee only holds for one;
+           see the long comment there. Never add a second min/max to these
+           without switching them to the ROW_NUMBER() join. */
+        // --- 4: most active players by shifts filed
+        env.DB.prepare(
+          `SELECT player_id AS id, name AS k, COUNT(*) AS v, MAX(ts) AS t
+             FROM stats GROUP BY player_id ORDER BY v DESC LIMIT ${TOP}`),
+        // --- 5: best cash
+        env.DB.prepare(
+          `SELECT player_id AS id, name AS k, MAX(cash) AS v
+             FROM stats GROUP BY player_id ORDER BY v DESC LIMIT ${TOP}`),
+        // --- 6: longest runs by day reached
+        env.DB.prepare(
+          `SELECT player_id AS id, name AS k, MAX(day) AS v
+             FROM stats GROUP BY player_id ORDER BY v DESC LIMIT ${TOP}`),
+        // --- 7: busiest calendar days (SERVER time — see schema.sql)
+        env.DB.prepare(
+          `SELECT date(ts/1000,'unixepoch') AS k, COUNT(*) AS v,
+                  COUNT(DISTINCT player_id) AS v2
+             FROM stats GROUP BY 1 ORDER BY v DESC LIMIT ${TOP}`),
+        // --- 8: newest players, by their first ever shift. One min/max, so
+        // `name` is the name on that first row — the name they arrived with.
+        env.DB.prepare(
+          `SELECT player_id AS id, name AS k, MIN(ts) AS v,
+                  COUNT(*) AS v2
+             FROM stats GROUP BY player_id ORDER BY v DESC LIMIT ${TOP}`),
+        // --- 9: DROP-OFF — the shift number a player was last seen on.
+        // Read this one carefully and note the caveat the client prints: it
+        // conflates "quit here" with "still playing, just hasn't come back
+        // yet today", and it always will. It is a shape, not a verdict.
+        env.DB.prepare(
+          `SELECT last_shift AS k, COUNT(*) AS v FROM (
+             SELECT player_id, MAX(shift_no) AS last_shift
+               FROM stats WHERE shift_no IS NOT NULL GROUP BY player_id
+           ) GROUP BY 1 ORDER BY v DESC LIMIT ${TOP}`),
+        // --- 10: right now
+        env.DB.prepare(
+          `SELECT
+             COUNT(*) AS shifts_all,
+             COUNT(DISTINCT player_id) AS players_all,
+             MAX(ts) AS newest,
+             MIN(ts) AS oldest,
+             SUM(CASE WHEN ts >= ? THEN 1 ELSE 0 END) AS shifts_24h,
+             COUNT(DISTINCT CASE WHEN ts >= ? THEN player_id END) AS players_24h,
+             SUM(CASE WHEN ts >= ? THEN 1 ELSE 0 END) AS shifts_7d,
+             COUNT(DISTINCT CASE WHEN ts >= ? THEN player_id END) AS players_7d
+           FROM stats`
+        ).bind(now() - 864e5, now() - 864e5, now() - 6048e5, now() - 6048e5),
+        // --- 11: HEALTH. The section that tells you a migration did not
+        // run: a legacy-shape or all-NULL column shows up as a count here
+        // instead of as a mysteriously empty panel somewhere else.
+        env.DB.prepare(
+          `SELECT
+             COUNT(*) AS rows_all,
+             SUM(CASE WHEN models IS NULL THEN 1 ELSE 0 END) AS no_models,
+             SUM(CASE WHEN models IS NOT NULL
+                       AND json_valid(models)
+                       AND json_type(models) <> 'object' THEN 1 ELSE 0 END) AS legacy_models,
+             SUM(CASE WHEN achv IS NULL THEN 1 ELSE 0 END) AS no_achv,
+             SUM(CASE WHEN country IS NULL OR country = '' THEN 1 ELSE 0 END) AS no_country,
+             SUM(CASE WHEN user_id IS NULL THEN 1 ELSE 0 END) AS anon
+           FROM stats`),
+        // --- 12: the funnel, compact — same numbers as the funnel view so
+        // the two can never disagree.
+        env.DB.prepare(
+          `SELECT
+             COUNT(DISTINCT player_id) AS total,
+             COUNT(DISTINCT CASE WHEN shift_no >= 2 THEN player_id END) AS shift2,
+             COUNT(DISTINCT CASE WHEN day >= 2 THEN player_id END) AS day2,
+             COUNT(DISTINCT CASE WHEN day >= 5 THEN player_id END) AS day5,
+             COUNT(DISTINCT CASE WHEN day >= 10 THEN player_id END) AS day10,
+             COUNT(DISTINCT CASE WHEN net > 0 THEN player_id END) AS profitable,
+             COUNT(DISTINCT CASE WHEN cars >= 2 THEN player_id END) AS fleet2
+           FROM stats`),
+        // --- 13: registered accounts by country (users, not stats — a
+        // different population: an account is opened once, a shift is filed
+        // many times).
+        env.DB.prepare(
+          `SELECT COALESCE(NULLIF(country,''),'??') AS k, COUNT(*) AS v
+             FROM users GROUP BY 1 ORDER BY v DESC, k LIMIT ${TOP}`),
+      ];
+
+      const res = await env.DB.batch(q);
+      const rows = (i) => (res[i] && res[i].results) || [];
+      const one = (i) => rows(i)[0] || {};
+
+      return json({
+        view,
+        tops: {
+          countries: rows(0),
+          gameCities: rows(1),
+          cars: rows(2),
+          rarestAchv: rows(3),
+          activePlayers: rows(4),
+          bestCash: rows(5),
+          longestRuns: rows(6),
+          busiestDays: rows(7),
+          newestPlayers: rows(8),
+          dropoff: rows(9),
+          accountCountries: rows(13),
+        },
+        pulse: one(10),
+        health: one(11),
+        funnel: one(12),
+        serverTime: now(),
+      });
     }
 
     return bad('unknown view');
@@ -832,24 +1262,47 @@ async function handleApi(request, env, url, ctx) {
   const user = await currentUser(request, env);
   if (!user) return bad('not signed in', 401);
 
-  /* --- list slots (metadata only, so the UI stays cheap) --- */
+  /* --- list slots (metadata only, so the UI stays cheap) ---
+     FOLD auto:<city> INTO 'auto' (improvements.md P0-2, part 2). deadhead.html's
+     physKey() rewrites every autosave write to 'auto:<city>' (see the long
+     comment above physKey()), so a signed-in player never actually has a row
+     under the bare 'auto' slot — this endpoint returned out.auto = null
+     forever, and the Saves modal (renderSaves() reads exactly `all.auto`,
+     nothing else) showed an empty autosave row for every signed-in player
+     even though real autosave data existed under 'auto:austin' etc.
+     Mirrors LocalStore.list() client-side, which does the same fold for the
+     CURRENT city's key — this can't key off "current city" (this endpoint
+     has no idea what city the caller is even looking at), so it takes the
+     most recently written auto:<city> row instead, which is the one the
+     Saves modal actually wants to show. */
   if (p === '/api/saves' && method === 'GET') {
     const { results } = await env.DB.prepare(
       'SELECT slot, version, ts, day, cash, cars, clock FROM saves WHERE user_id = ?'
     ).bind(user.id).all();
     const out = {};
     for (const s of SLOTS) out[s] = null;
+    let newestAuto = null;
     for (const r of results || []) {
-      out[r.slot] = { v: r.version, ts: r.ts, meta: { day: r.day, cash: r.cash, cars: r.cars, clock: r.clock } };
+      const meta = { v: r.version, ts: r.ts, meta: { day: r.day, cash: r.cash, cars: r.cars, clock: r.clock } };
+      if (r.slot === 'auto') {
+        out.auto = meta;
+      } else if (r.slot.indexOf('auto:') === 0) {
+        if (!newestAuto || r.ts > newestAuto.ts) newestAuto = meta;
+      } else if (SLOTS.includes(r.slot)) {
+        out[r.slot] = meta;
+      }
     }
+    if (!out.auto && newestAuto) out.auto = newestAuto;
     return json(out);
   }
 
-  /* --- one slot: read / write / delete --- */
-  const m = p.match(/^\/api\/save\/([A-Za-z0-9_-]{1,16})$/);
+  /* --- one slot: read / write / delete ---
+     Colon is in the charset so 'auto:<city>' matches at all; slotAllowed()
+     is the actual whitelist (see its comment above). */
+  const m = p.match(/^\/api\/save\/([A-Za-z0-9_:-]{1,24})$/);
   if (m) {
     const slot = m[1];
-    if (!SLOTS.includes(slot)) return bad('unknown slot');
+    if (!slotAllowed(slot)) return bad('unknown slot');
 
     if (method === 'GET') {
       const row = await env.DB.prepare(
@@ -866,7 +1319,15 @@ async function handleApi(request, env, url, ctx) {
       if (text.length > MAX_SAVE_BYTES) return bad('save too large', 413);
       let save;
       try { save = JSON.parse(text) } catch { return bad('save is not valid JSON') }
-      if (!save || typeof save !== 'object' || !save.s || typeof save.v !== 'number') {
+      /* progSave()/profileSave()/appendHistoryRow()'s records have no `.s` —
+         none of them is a gameplay snapshot (progress is {unlocked, results,
+         eggs, achv, ...}, profile is {id, name, created}, history is
+         {rows}), and none has ever been shaped like one. Requiring `.s` for
+         every slot is what made every write to these three 400 as "not a
+         Deadhead save" — see improvements.md P0-1 for 'profile'/'history',
+         which had the exact bug 'progress' was already carved out for. */
+      if (!save || typeof save !== 'object' || typeof save.v !== 'number' ||
+          (slot !== 'progress' && slot !== 'profile' && slot !== 'history' && !save.s)) {
         return bad('not a Deadhead save');
       }
       const meta = save.meta || {};

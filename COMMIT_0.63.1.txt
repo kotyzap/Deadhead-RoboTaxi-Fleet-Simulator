@@ -1,0 +1,61 @@
+0.63.1 — Landscape intro: fix the account card overflowing its own frame
+
+WHAT WAS WRONG
+
+0.63.0 shipped the video-left/form-right landscape layout, but screenshot
+verification against the actual target width (a real wide monitor) caught
+two overflow bugs that a quick check hadn't:
+
+  1. The row's children (video + gap + the 380px .intro-right column)
+     could exceed .intro-frame's own width, and because .intro-right has
+     flex-shrink:0, the overflow didn't wrap or clip — it rendered PAST
+     the frame's own dark plate background, so part of the account card
+     visibly sat outside its backing, fading straight into the raw photo
+     behind it.
+  2. On a landscape window that's more square than wide (e.g. a windowed
+     1300x1000), sizing the video purely off viewport HEIGHT (as 0.63.0
+     did) produced a video wide enough that video + gap + form still
+     didn't fit within the frame's own max-width, even though nothing
+     was reserving extra space for wings any more — the frame can only be
+     as wide as its widest constraint allows, and an over-tall video just
+     dragged the whole row past the edge of the screen on either side.
+
+WHAT CHANGED
+
+Root cause of (1): .intro-frame stayed confined to the CENTER grid track of
+#intro's original 3-column wing/center/wing grid, whatever that track's
+width worked out to (100vw minus both wings) — a grid item cannot exceed
+its own track's width no matter what max-width says, so widening the
+formula alone could never have fixed it. Fixed the same way the existing
+<=1499px tier already solves an unrelated version of this problem: the
+landscape media query now also collapses #intro to a single full-width
+track and hides the ornamental .intro-wing columns, so .intro-frame's
+max-width is the only limit that matters. The wings were never the only
+thing softening the sides — .splash-fill (the always-on, always-blurred
+full-bleed copy of the same photo, sitting behind everything) is still
+there regardless of whether .intro-wing renders.
+
+Root cause of (2): #intro-video's height was capped only by vh values
+(66vh/680px, 58vh/560px on short windows), with no upper bound tied to the
+available WIDTH. It now also caps at
+`calc((94vw - 412px)*9/16)` — the height that would make the video's 16:9
+width exactly fill whatever's left of 94vw once the 32px gap and 380px
+form column are accounted for — and takes whichever of the three caps is
+smallest. A screen with height to spare AND width to spare gets the full
+66vh; a screen that's short on width gets throttled by the calc() term
+instead, so the row can never ask for more horizontal space than actually
+exists.
+
+TESTS
+
+No test changes — same reasoning as 0.63.0: neither test/intro-video.test.js
+nor test/splash-screen.test.js assert on DOM nesting depth or on absolute
+pixel geometry, so these were CSS-only fixes with nothing new to assert
+against beyond what already existed. Verified instead by rendering four
+real viewport shapes headlessly (a wide short window, an ultra-wide
+window, a near-square landscape window, and a narrow landscape phone) and
+reading back computed layout rects to confirm .intro-frame's width now
+always exceeds its own children's combined width, at every shape tested.
+
+Full suite passes clean, and check-parity is green — deploy/public/index.html
+is byte-identical to deadhead.html.

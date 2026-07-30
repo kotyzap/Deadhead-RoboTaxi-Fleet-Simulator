@@ -1,0 +1,55 @@
+0.36.0 — Fleet/Energy/Books/Ops/Comms/Trophies show on the main display
+
+Pavel: Trophies opened as a separate full-screen modal, and the wing
+panels (Fleet roster, Rapid network, Books, Platforms, Messages) only
+flashed in place when their nav icon was clicked — neither showed more
+than the ~440-520px wing column ever had room for. He wanted the black
+nav strip's icons to actually bring their content onto the console's own
+screen, the same way "Take control" already does for Camera, so there's
+room to see more rows than the side ever could.
+
+WHAT CHANGED
+
+A new #console-panel sits inside .map-wrap, layered over #map exactly the
+way #dodge-incar already is — Leaflet is never hidden, resized, or torn
+down; the overlay just covers it. Clicking Fleet/Energy/Books/Ops/Comms
+now RELOCATES the real wing panel into it (via showInConsole()) rather
+than flashing a highlight or cloning content: render() writes to these
+ids wherever they live in the DOM, so moving the actual node is what
+keeps everything staying in sync for free, with no second copy that
+could drift. The wing slot the panel came from gets a quiet
+"<name> is shown on the main display" placeholder card so the grid
+doesn't collapse; switching straight from one panel to another restores
+the first before showing the second, so at most one panel is ever
+missing from the wing at a time.
+
+Trophies moves the same way, just without a wing home to leave a
+placeholder in — #trophy-card (its actual achievement grid + board,
+pulled out of what used to be the full-screen #trophy modal) relocates
+into the console instead, and #trophy itself stays permanently hidden/
+empty from now on. openTrophies() is still the one entry point (called
+from both the nav icon and the shift report's "Trophies · N new"
+button), so neither caller needed to change.
+
+Map closes whichever overlay is showing (dodge OR a console panel) and
+returns to the map, same as before. Escape now closes an open
+console-panel too, matching the dodge camera's existing Escape handling.
+A small × in the corner (#cp-close) does the same thing for a mouse.
+
+Verified with jsdom: clicking Fleet moves #panel-fleet into #cp-body and
+drops a placeholder in the wing; clicking Energy right after restores
+Fleet to the wing (placeholder gone) and shows Rapid network instead;
+clicking Map restores whichever panel was showing and hides the overlay;
+Trophies moves #trophy-card in and back out via the close button, with
+#trophy itself staying hidden throughout; Escape closes an open panel.
+Existing suite (8 files) and check-parity both still pass.
+
+STILL OPEN
+- Both D1 migrations unrun (carried from 0.33.2).
+- The Cloudflare rate limiting rule on /api/stat.
+- The DISPATCH OFFLINE banner.
+- The Camera nav icon's fallback (flashSection('panel-incidents') when
+  nothing is blocked) still just flashes the wing — left alone since it's
+  a secondary behavior of Camera, not one of the six data-panel icons this
+  pass covers, but a natural next step for consistency.
+- deploy/public/Inside_The_Brutal…mp4, 9.8 MB, referenced by nothing.

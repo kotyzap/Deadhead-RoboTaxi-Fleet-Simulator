@@ -1,0 +1,34 @@
+0.47.7 — operator/profile badge hidden, not removed
+
+WHAT WAS WRONG
+
+#profile-btn sat in the topbar as a headset-icon "operator" badge showing
+the account EMAIL (kotyza@gmail.com), while the Saved-fleets modal shows
+"Signed in as pavelk" — PROFILE.name, a different identity string entirely.
+Two disagreeing names for "who you are," visible one modal-open away from
+each other, with the topbar one carrying no real function beyond a rename
+prompt nobody asked for.
+
+WHAT CHANGED
+
+Added the plain `hidden` attribute to #profile-btn rather than deleting it —
+Pavel wants it back if/when team operators (plural) becomes a real feature
+worth badging. PROFILE, profileSave(), and playerName() are all untouched:
+Paolo's {NAME} greeting, the shift report's driver line, and the Saves
+modal's own name field all still read PROFILE.name exactly as before — only
+the topbar's OWN rename affordance is hidden.
+
+Added .ghost[hidden]{display:none}. Bare `hidden` alone would NOT have
+worked: .ghost{display:flex} is an author rule, and author rules beat the
+user-agent's default [hidden]{display:none} regardless of specificity —
+the identical trap that made "Take control" look dead in the dodge-game
+z-index bug. Spelled out in a comment on both the CSS rule and the button
+itself so the next person hiding a .ghost button doesn't rediscover it.
+
+TESTS
+
+No test referenced #profile-btn. Full suite: same pre-existing, unrelated
+real-clock flake as 0.47.5/0.47.6 ("three real days parked bills exactly
+three days of fixed cost" — Date.now()-built fixture, run landed near local
+midnight again). This release touches only the profile badge's visibility
+and a shared .ghost[hidden] rule; nothing in the billing/date path.

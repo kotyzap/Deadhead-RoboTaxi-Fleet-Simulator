@@ -1,0 +1,27 @@
+0.41.0 — the in-car rail is always beside the map, never under it
+
+The console's data rail (SELECTED VEHICLE / STATUS / SoC / charge /
+NOW / LIVE ACTIVITY) now sits to the RIGHT of the map at every desktop
+width. The portrait stack — a letterbox map strip with a wide white
+block of readouts bolted underneath — is gone above phone width.
+
+Cause: the split is a container query on .console and it required
+980px of console (940px as of 0.40.1). Even after 0.40.1 widened the
+centre column, any narrower window or a scaled display could still
+fall back to the stack. The layout the game is designed around should
+not be conditional on a threshold nobody can see.
+
+Changes:
+- Container threshold 940px -> 620px. 620px is where a readable rail
+  and a usable map both genuinely fit; below it (phones) the stack
+  stays, including the one-row charge collapse that buys map height.
+- Rail is fluid from 620-939px: flex 0 0 min(340px, 38cqi), so a 650px
+  console does not hand 340px to text and leave the map smaller than
+  its own labels. Fixed 340px from 940px, 400px from 1500px, unchanged.
+- .t-ctl's fixed track widths and wide icon gaps moved into the 940px
+  tier — they overflow a 620px console.
+
+Together with 0.40.1's wing change, Full HD now shows the map at
+roughly 640x400 with the rail at 340px beside it.
+
+No behaviour, economy, or save-format change. CSS and layout only.

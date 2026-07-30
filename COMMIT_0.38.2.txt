@@ -1,0 +1,74 @@
+0.38.2 — namespace every console-panel hook; a browser extension owned `.cp-body`
+
+Pavel: the console panel looked right locally and wrong on
+game.deadhead.workers.dev — buttons rendered as 100x32 bright-green pills in
+Poppins, a font this game does not use and does not load.
+
+WHAT IT ACTUALLY WAS
+
+Not the deploy, not the Worker (it serves the asset unmodified), not
+cloud.js, not Cloudflare, and nothing in this file. A browser extension on
+the machine ships a stylesheet that claims the class name `.cp-body`, which
+is what 0.36.0 named the console panel's scroll container.
+
+It was invisible from the inside, which is why it took a live browser to
+find. The diagnosis, in order:
+
+  - `.ihelp` in a wing computed 15x15 / transparent / Inter. The same class
+    inside the panel computed 100x32 / rgb(43,182,115) / Poppins.
+  - Setting `disabled = true` on all four of the page's stylesheets changed
+    nothing. Clearing `document.adoptedStyleSheets` changed nothing. A
+    user-origin sheet is neither readable nor disableable from page script.
+  - `#dh-console-panel` computed Inter while its child `.cp-body` computed
+    Poppins, so the boundary was exactly that one element.
+  - The clincher: a bare `<div class="cp-body">` planted in document.body —
+    nowhere near the console — turned Poppins with a green 100px button,
+    while `class="zz-nothing"` in the same place stayed clean. The class
+    NAME was the hook, not the location.
+  - Local was fine because extensions do not run on file:// unless "Allow
+    access to file URLs" is switched on. Same file, different origin.
+
+THE FIX
+
+Every hook this feature introduced is now dh- prefixed, matching the prefix
+cloud.js already uses for its own injected ids (#dh-form, #dh-submit):
+
+  cp-body -> dh-cpbody          console-panel -> dh-console-panel
+  cp-close -> dh-cp-close       panel-placeholder -> dh-ph
+  ph-msg -> dh-ph-msg           fleet-scroll -> dh-fleet-scroll
+  recenter -> dh-recenter
+
+Checked the rest of the family the same way before renaming: of every class
+this feature added, only `.cp-body` collided. `.tr-grid`, `.panel` and
+`.metrics` showed width differences in the probe, but those are this file's
+own grid/flex rules acting on a planted child, not outside interference.
+
+DEFENCE IN DEPTH
+
+The type stack is now a token, `--font`, declared once in :root and used by
+body — and re-asserted on #dh-console-panel. Inheritance is precisely the
+channel that carried Poppins in: the container picked it up, and 0.38.1's
+`font-family:inherit` floor on the panel's buttons dutifully passed it down.
+Re-asserting from the token means an external sheet that hits an ancestor
+cannot reach inside the panel, and using the token rather than repeating the
+stack means it cannot drift from what body sets.
+
+The comment above #dh-console-panel records all of this, including a plain
+instruction not to un-prefix these names or add an unprefixed one.
+
+Tests updated for the new ids (achievements.test.js, city.test.js). CSS
+re-validated for balanced braces and stray `*/`. Existing suite (8 files) and
+check-parity pass.
+
+NOTE FOR THE NEXT PERSON: a page cannot detect or defend against
+user-origin CSS in general. Prefixing is the only real protection, and it is
+cheap. Generic class names in a single-file app that other people's
+extensions will also style are a latent bug, not a style preference.
+
+STILL OPEN
+- Both D1 migrations unrun (carried from 0.33.2).
+- The Cloudflare rate limiting rule on /api/stat.
+- The DISPATCH OFFLINE banner.
+- The Camera nav icon's no-incident fallback still only flashes the wing.
+- Auto-follow's on/off state is not saved across reloads (0.38.0).
+- deploy/public/Inside_The_Brutal…mp4, 9.8 MB, referenced by nothing.

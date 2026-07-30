@@ -1,0 +1,76 @@
+0.64.0 — Autoplay reverted, splash subtitle clears the intro card, and account errors say what actually went wrong
+
+WHAT WAS WRONG
+
+Three things, all reported by Pavel on 2026-07-30:
+
+  1. "Stop autoplay. I am not able to stop video." The autoplay added one
+     round earlier (0.62.0, at his own request) turned out to be in direct
+     conflict with being able to PAUSE: a native <video controls> element
+     auto-hides its own control bar a couple of seconds after playback
+     starts if the pointer isn't moving. That hide behaviour belongs to the
+     browser's built-in controls UI and cannot be pinned open from CSS or
+     JS, so an autoplaying video is in practice a video with no visible
+     pause button.
+  2. "what about removing the top frame of the video and form and display
+     the subtitle." The intro card's top edge cut straight through
+     "ROBOTAXI FLEET SIMULATOR" in the splash art behind it — the title
+     line above it was clear, the subtitle was sliced in half.
+  3. "cannot sign in, cannot register... error was on local." The account
+     form showed a bare "Failed to fetch" when the game is opened as a
+     local file. Correct behaviour (a file:// page has no origin to resolve
+     /api/* against, so there is no server to reach) but a useless message
+     — it reads as "the game is broken" rather than "this build has no
+     server, and the local-save button beside this works fine".
+
+WHAT CHANGED
+
+(1) The v.play() call is gone. Left as a documented no-op rather than
+deleted silently: if autoplay is ever wanted again it needs a CUSTOM,
+always-visible control bar shipped in the same change, not a bare play()
+call. This restores the original "Autoplay is deliberately NOT attempted
+here" reasoning already written above showIntro().
+
+(2) .intro-frame is now bottom-aligned (align-self:end, margin-bottom:3vh)
+instead of vertically centred. Deliberately NOT a padding-top on a still-
+centred frame: the art is CONTAIN-fitted, so where its title block lands as
+a fraction of the viewport changes with the window's aspect ratio, and any
+fixed top offset would be right for one shape and wrong for the rest.
+Measured across five shapes before the change, the frame started at 14–25%
+of viewport height while the subtitle ran to ~21% — overlapping on most of
+them. Bottoming it out makes the clearance a function of everything left
+above it, which is the entire top of the screen on every shape; after the
+change the frame starts at 25–47% on those same five shapes. What the card
+now covers instead is the marketing strapline along the bottom of the art
+(the URL / "PLAY NOW ON THE WEB" band), which is the right thing to lose —
+the player is already here.
+
+(3) cloud.js now detects location.protocol === 'file:' up front and fails
+every /api/* call with a written explanation instead of letting fetch's
+own error surface raw. Separately, a request that never reaches a server on
+a SERVED page (genuinely offline, Worker down) is now distinguished by
+having no HTTP status — every server-produced error above it sets one — and
+gets "Could not reach the server. Check your connection..." rather than the
+browser's own wording, which varies per engine and explains nothing. Both
+messages point at "Play on this device only" as the working alternative,
+because it is one.
+
+TESTS
+
+No test changes needed — (1) removed a line no test asserted on, (2) is
+CSS-only with no selector or nesting change, and (3) touches cloud.js,
+which test/cloud-budget.test.js exercises for its request BUDGET (how many
+/api/* calls a page load costs) rather than for error copy; that test runs
+against a mock page on http://localhost, so the new file:// branch does not
+alter its counts. Full suite re-run clean, including cloud-budget.
+
+Verified instead by rendering five viewport shapes headlessly and reading
+back computed geometry (frame top moved from 14–25% to 25–47% of viewport
+height, so the subtitle clears on all of them), by confirming the video
+sits paused with controls visible six seconds after the intro opens, and
+by driving the Create-account form on a real file:// page to confirm the
+new message replaces "Failed to fetch".
+
+Full suite passes clean, and check-parity is green — deploy/public/index.html
+is byte-identical to deadhead.html. cloud.js is mirrored to the project
+root as well as deploy/public/.

@@ -1,0 +1,63 @@
+0.37.0 — shifts start at 4x, and Paolo has something to say about 1x
+
+Pavel: the game was built as a real-time job simulator and has been drifting
+toward something you can actually sit through — the overnight jump on clock
+off, the ride queue, the console panels. Starting every shift at the wall
+clock was the last piece pulling the other way. 4x is the default now.
+
+WHAT CHANGED
+
+CFG.defaultSpeed (4) replaces the two hardcoded setSpeed(1) calls: clockOn()
+and the resume-a-saved-run path. Nothing else about the economy moves —
+speed multiplies the clock, never the money, which the speed control's own
+help text already promised and still does. Boot still comes up PAUSED; this
+is the speed a shift runs at once it starts, not an autoplay.
+
+The topbar segment's markup default moved from 1x to 4x to match (cosmetic —
+setSpeed() rewrites aria-pressed on the first call either way, but a stale
+literal in the markup is how these drift).
+
+1x IS STILL THERE AND STILL THE HONEST ONE. A 5.5 km trip really does take
+eleven real minutes at the wall clock, and that is still the thesis the
+shift report's worked-vs-billed line rests on — it is just now something you
+CHOOSE rather than something you start in. Choosing it gets Paolo's blessing
+instead of silence:
+
+  Paolo · real time. Thirty-one years I drove at that speed and nobody
+  ever offered me a 4× button. The waiting is most of the job — and it is
+  the part nobody pays for.
+
+A Comms line, not a #ray card, for the reason paoloBoardCall() already
+documents: the card dims the screen, spotlights a control and waits to be
+dismissed, which is absurd ceremony for having pressed a speed button.
+Once per SESSION and deliberately NOT once ever — no PROG flag. This is
+flavour, not instruction; contrast PROG.achvTold, which is once-ever because
+it tells you where something lives and is dead weight the second time.
+Somebody who comes back tomorrow and reaches for real time again should hear
+it again.
+
+The hook lives in the two input handlers (segment click, range slider), NOT
+in setSpeed() — setSpeed is called programmatically by clockOn, closeDodge
+restoring the pre-mini-game speed, bankruptcy, and boot, and Paolo remarking
+on a speed the player did not choose would be nonsense. Verified: a
+programmatic setSpeed(1) stays quiet, a click on the 1x button does not.
+
+Beat 9 (the tutorial card that spotlights the speed segment) no longer has
+to sell the idea of speeding up, since a shift already starts sped up. It
+points at the two ends instead — 20x when nothing is moving, 1x "if you ever
+want to feel what I felt."
+
+Verified with jsdom: defaultSpeed is 4 and is a real CFG.speeds entry;
+clockOn() lands on 4x with the 4x button pressed, 1x unpressed, and the
+range slider on 4x's index; Paolo is silent through a programmatic
+setSpeed(1); a real click on 1x drops to real time AND logs him exactly
+once; re-picking 1x in the same session does not repeat him; the slider path
+still drives setSpeed. Existing suite (8 files) and check-parity both pass.
+
+STILL OPEN
+- Both D1 migrations unrun (carried from 0.33.2).
+- The Cloudflare rate limiting rule on /api/stat.
+- The DISPATCH OFFLINE banner.
+- The Camera nav icon's no-incident fallback still only flashes the wing
+  panel rather than showing it in the console (carried from 0.36.0).
+- deploy/public/Inside_The_Brutal…mp4, 9.8 MB, referenced by nothing.

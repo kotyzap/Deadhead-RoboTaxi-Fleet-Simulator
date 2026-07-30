@@ -1,0 +1,56 @@
+0.39.1 — the Trophies button on the shift report actually shows Trophies now
+
+Pavel: "trophies button in the Daily Summary does not work. It looks like it
+is displayed behind this modal" — screenshot of the Shift complete report
+with a "Trophies · 4 new" button, click had no visible effect.
+
+WHAT IT ACTUALLY WAS
+
+openTrophies() was working correctly — CP was set, #trophy-card really did
+relocate into #dh-cpbody, #dh-console-panel really was un-hidden. It just
+painted in the wrong layer. #report is a .modal, z-index:60. #dh-console-
+panel is z-index:1200 — comfortably higher on paper — but it lives inside
+.app, and .app is itself `position:relative;z-index:2` specifically so the
+whole game sits above #bgmap/#bgtint (z 0/1) and below every modal, #ray and
+#dimscrim (z 60/70/70/90) — see the #dimscrim comment. That makes .app its
+own stacking context: no z-index given to anything inside it, no matter how
+large, can climb out and beat a sibling of .app. #dh-console-panel's 1200 is
+only ever compared against other things inside .app; against #report's 60 it
+counts as .app's 2. Every other panel this feature shows (Fleet, Energy,
+Books, Ops, Comms, and Trophies itself from the nav icon) had this same
+ceiling and it never mattered, because none of them are ever opened while a
+modal is on screen. openTrophies() from the report is the one path that
+does exactly that on purpose — the code comment even said the report "stays
+open underneath" — and stacking context doesn't care about intent.
+
+THE FIX
+
+Rather than fight a z-index a descendant cannot escape, #report is hidden
+for as long as Trophies is showing (only when it was actually open — the
+plain nav-icon path leaves it alone) and restored the instant Trophies stops
+being what CP is tracking. That restore lives in restoreConsolePanel(),
+the one function every "stop showing Trophies" path already funnels through
+— the close button, Escape, and switching straight to another nav panel
+mid-session all call it, so all three put the report back correctly with no
+new call sites. The shift itself is untouched: hiding #report only toggles
+its `hidden` attribute, nothing in S or the report's own numbers changes,
+and the existing MutationObserver on MODAL_IDS handles focus both ways —
+hiding #report hands focus back to whatever had it, and un-hiding it pulls
+focus back inside the dialog, exactly like closing/opening it normally.
+
+Verified with jsdom (8 checks): opening Trophies with #report open hides
+#report and relocates #trophy-card into #dh-cpbody; closing the console
+panel restores #report; opening Trophies from the nav icon with no report
+open leaves #report alone throughout; and switching from Trophies straight
+to another console panel (Fleet) — without an explicit close — still
+restores #report. Existing suite (8 files) and check-parity pass.
+
+STILL OPEN
+- Both D1 migrations unrun (carried from 0.33.2).
+- The Cloudflare rate limiting rule on /api/stat.
+- The DISPATCH OFFLINE banner.
+- The Camera nav icon's no-incident fallback still only flashes the wing.
+- Auto-follow's on/off state is not saved across reloads (0.38.0).
+- PROG (achievements, eggs, city unlocks) is still per-origin and is not
+  synced to the account even when signed in.
+- deploy/public/Inside_The_Brutal…mp4, 9.8 MB, referenced by nothing.

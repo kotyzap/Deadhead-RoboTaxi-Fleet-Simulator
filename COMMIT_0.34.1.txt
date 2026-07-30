@@ -1,0 +1,38 @@
+0.34.1 — Clock off jumps straight to 06:00, no more "Advancing…"
+
+Pavel: after Clock off the topbar sat on "Advancing…" for a few real
+seconds while the overnight fast-forward played out, with the speed/pause
+segment next to it still showing a highlighted button as if it were live.
+Nothing happens overnight worth watching — cars are parked, at most
+finishing a charge — so the animation was just a delay with a confusing
+control sitting next to it, not a paced moment.
+
+WHAT CHANGED
+
+startFastForward() no longer hands the overnight gap to the tick interval
+to drip-feed at CFG.ffwdSimPerReal (7200x) over several real seconds. It
+now calls step(target-S.t) once, synchronously, then stopFastForward()
+immediately after — same tick-by-tick math (billMidnight, per-car
+charging, the day counter, bankruptcy's early exit) as before, just run
+back-to-back in one JS call instead of spread across real-time frames.
+S.ffwd/S.ffwdTarget are still set for the instant that call is on the
+stack, so clockOn()'s guard and restore()'s defensive reset still mean
+something — but no render() ever happens while S.ffwd reads true any
+more, so the "Advancing…" topbar text and the disabled clock button are
+now vestigial rather than something a player can see. Left in as a
+safety net (documented at both call sites) rather than deleted, same
+treatment as the tick loop's now-dead-in-practice `if(S.ffwd)` branch.
+
+Verified with a throwaway jsdom script (clockOn → clockOff with the game
+at 23:26): the whole jump to next 06:00 completes inside the clockOff()
+call itself (elapsed real time <500ms, no interval ticks involved), S.t
+lands exactly on nextDayStart(), S.day advances, and render() afterward
+shows the normal "Clock on" button rather than a stuck "Advancing…".
+Existing suite (8 files) and check-parity still pass; nothing in it
+exercised the old animated path, so nothing needed updating there.
+
+STILL OPEN
+- Both D1 migrations unrun (carried from 0.33.2).
+- The Cloudflare rate limiting rule on /api/stat.
+- The DISPATCH OFFLINE banner.
+- deploy/public/Inside_The_Brutal…mp4, 9.8 MB, referenced by nothing.

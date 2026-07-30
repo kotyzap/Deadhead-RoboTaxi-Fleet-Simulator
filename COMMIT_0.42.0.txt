@@ -1,0 +1,66 @@
+0.42.0 — un-Tesla'd: the marque is Axiom, the cars are drawn
+
+The catalogue no longer names, badges or photographs any real manufacturer.
+Nine cars from an invented marque, Axiom, with every spec, price and cost
+figure exactly as it was. DESIGN.md §9.4 records the reasoning; this note
+records the work.
+
+WHY NOW. §9.3 of DESIGN.md has said "never appears in code, assets, copy or
+store listing" since before the cars arrived — then 0.11.0 shipped nine real
+product names and nine press photographs anyway. The rule was right and the
+shortcut was wrong. Two exposures, ranked honestly:
+
+  1. THE PHOTOGRAPHS were the real problem, not the names. A press kit
+     licenses editorial use; a game is not editorial use. A trademark
+     dispute opens with a letter, an image claim opens with an invoice.
+  2. THE NAMES are defensible as nominative use in prose, and much less
+     defensible on nine store-facing product cards in a game whose whole
+     argument is that the business model does not close.
+
+NAMES. Cab, Saloon, Crossover, Saloon Long, Crossover Long, Crossover Six,
+Saloon Sport, Crossover Sport, Truck — category nouns, no marque can own
+them. The marque itself is one string, `const MAKE`, so the next rename is
+one edit rather than forty. Meridian was considered and rejected: it is
+already the incumbent rival operator in this game's own fiction.
+
+ART. Five original SVG bodies (`CARART`) cover nine cars, because a trim is a
+spec change and not a new shape. Filled bodywork, glass, wheels and a contact
+shadow, tinted green when the car is in your fleet. The whole photo pipeline
+went with them: no <img>, no /carsimg/, no onerror fallback, no .noimg state,
+no first-paint reflow — and deadhead.html opened straight off disk now looks
+identical to the deployed build, which was never true before.
+
+SAVES — the part that could have hurt. `c.model` is written into every local
+save, every cloud slot and every stats row, so 'cybercab' and friends are out
+in the world on other people's machines. They are translated, never retired:
+
+  - MODEL_ALIAS + modelId() resolve old ids inside catalog() and hasModel(),
+    so a save that never reaches the migration still works.
+  - Resolving INSIDE catalog() is load-bearing. The v8 loan migration calls
+    catalog() with whatever id the save holds; had aliasing lived only in a
+    v9 step, principal would have computed as 0 and every financed car in a
+    v7 save would have arrived owned outright — the financing exploit
+    reopened by a rename. There is a test for exactly that.
+  - SAVE_V 8 -> 9 rewrites ids on load so the old strings stop propagating.
+  - hasModel() normalises BOTH sides, so Purpose Built does not un-earn
+    itself for a returning player whose car is still saved as 'cybercab'.
+  - The Worker's MODEL_IDS whitelist accepts old AND new ids. Dropping the
+    old ones would have silently discarded a player's per-model stats.
+
+WHAT DELIBERATELY DID NOT CHANGE. Real city names, real service-area
+geometry, real electricity tariffs, real permit regimes, real charger
+locations, and the sourcing comments in deadhead.html that say where each of
+those came from. Those are factual statements about public information and
+they are the reason the economy is worth arguing with. "Robotaxi" stays too:
+the bare word was refused registration as generic.
+
+NEW: test/rebrand.test.js — nine alias resolutions, the spec()-fallback trap,
+the v7 financed-car trap, achievement continuity, and a brand grep over both
+shipped documents that strips comments and MODEL_ALIAS first (the allowlist
+and its reasoning are written into the test, not left implicit).
+
+ALSO: docs, marketing copy and all generated OG/explainer images regenerated.
+TeslaDesignSystem.md is superseded by InCarDesignLanguage.md.
+
+Not touched: the economy. city.test.js's Act 1 invariants — finance exactly
+four, buy none, rent any — pass unchanged, which is the point.

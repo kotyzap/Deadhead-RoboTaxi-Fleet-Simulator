@@ -1,0 +1,67 @@
+0.63.0 — Landscape intro: video beside the form, sized to actually fill the screen
+
+WHAT WAS WRONG
+
+Pavel's reports (2026-07-30), on a wide-but-short (landscape) window:
+
+  1. "position form below the title of the image. video on the left,
+     forms on the right. We need to see Title of the image." The stacked
+     layout's total height is video-height + form-height; on a landscape
+     window that total routinely exceeded the viewport, and #intro's own
+     vertical centering pushed the frame up over the splash art's own
+     baked-in title.
+  2. Relaxed a moment later: "use the size of the display to make video
+     bigger. Forms can be below or on the side" — the video itself was
+     also sized off the AVAILABLE WIDTH only, which on a landscape window
+     (wide, short) is the wrong axis to size from; it left the video
+     smaller than the screen actually had room for while still being tall
+     enough to crowd out the title above it.
+  3. "it was really hard to pause the video" — almost certainly the
+     autoplay-with-sound added in 0.62.0: a video that starts paused shows
+     its native controls at rest; one that starts PLAYING has its native
+     controls auto-hide after a couple of seconds of no mouse movement,
+     per ordinary browser behaviour, which is not something CSS or JS can
+     override for the native <video controls> UI. Noted below rather than
+     "fixed" — there is no code bug here to point at, only a trade-off
+     that shipped with autoplay.
+
+WHAT CHANGED
+
+The two real asks turned out to be the same fix. A new landscape media
+query (`orientation:landscape` and at least 700px wide, so a genuinely
+narrow landscape phone stays on the existing stacked layout) turns
+.intro-frame into a row: the video on the left, and a new .intro-right
+wrapper (holding the account card + Play-on-this-device button, previously
+direct children of .intro-frame) as a fixed-width column on the right.
+Side by side, the frame's total height is the TALLER of the two halves
+rather than their sum — shorter than stacked by a wide margin, which is
+what actually clears the title.
+
+#intro-video is now sized off viewport HEIGHT in that same media query
+(66vh, capped at 680px; 58vh/560px on a short window under 560px tall)
+rather than width — on a landscape screen height is almost always the
+scarcer axis, so sizing from it means "bigger video" and "room for the
+title" stop being competing goals. A taller landscape window hands the
+video more room automatically, the same reasoning the width-based sizing
+already used for portrait.
+
+.intro-right is a plain flex column (display:flex;flex-direction:column;
+gap:18px) unconditionally, so the DEFAULT stacked layout looks pixel-
+identical to before the wrapper existed — .intro-frame's own gap still
+separates the video from the whole block, and .intro-right's own gap
+supplies what used to be the direct gap between the account card and the
+button. Only the landscape query gives it a fixed 340px width and centres
+it vertically. The 30px push added to the account card in 0.62.0 (for
+separating it from a video stacked directly above) is zeroed out in
+landscape, where .intro-right is already vertically centred as its own
+column and the extra offset just left it sitting oddly low.
+
+TESTS
+
+No test changes needed: test/intro-video.test.js has no assertions on
+.intro-acct/.intro-btns being direct children of .intro-frame, and
+test/splash-screen.test.js's `#intro.intro-onsplash .intro-acct` selector
+check is unaffected by the new nesting depth. Full suite re-run clean.
+
+Full suite passes clean, and check-parity is green — deploy/public/index.html
+is byte-identical to deadhead.html.

@@ -1,0 +1,60 @@
+0.49.0 — Paolo warns before you clock off with the apps still connected
+
+WHAT WAS WRONG
+
+clockOff() wipes S.offers, every car's queue, and S.rides outright the
+instant the shift ends — any accepted-but-unfinished ride, and the fare with
+it, is just gone. Disconnecting a platform only stops NEW offers from
+arriving; it does nothing to rides already on the board. There was no signal
+telling the player that, so clocking off with a live feed or a backlog
+quietly threw money away with no way to know it in advance.
+
+WHAT CHANGED
+
+Clicking Clock off while connected to a live platform now shows a Paolo card
+before anything is touched — "Sign off the apps first," naming the connected
+platform(s) by name and quoting the real dollar amount at risk (S.rides
+summed through offerNet(), the same function the CTA and Decline button
+already trust — never a hardcoded number). Two ways out: "Got it" just
+closes the card, nothing happens; "Clock off anyway" is a real action — it
+calls clockOff() directly.
+
+The trigger is livePlatforms().length, not S.rides.length: a connected
+fleet with an empty board can still have a ride land the instant you click,
+so it warns even then, worded for "whatever lands gets thrown away" instead
+of naming a ride count of zero.
+
+This intercepts the Clock button's own click handler rather than living
+inside clockOff() itself — clockOff(true), the bankruptcy/game-over path, is
+not a voluntary click and must never hand out advice on the way to a game
+over screen. Confirmed it doesn't: a live platform + pending ride, run
+through clockOff(true) directly, shows no card.
+
+'clockoff' joins 'advice'/'coffee'/'dodge'/'cityunlock' as one of Paolo's
+string-tagged ad-hoc cards, not a scripted beat number — rayDismiss()'s
+typeof guard already knew to leave those alone. "Clock off anyway" was
+routed to avoid raySkip(): that call permanently sets S.ray.skipped and
+silences every future tutorial beat and piece of advice, and choosing to
+proceed here despite the warning is not the same gesture as telling Paolo to
+go away for good. Skips entirely — Clock off just proceeds — if the player
+already has S.ray.skipped set, or a scripted beat is already on screen; in
+both cases this feature has nothing of its own to interrupt.
+
+TESTS
+
+New test/clockoff-warn.test.js, added to the npm test script. Covers: no
+card when unconnected; the card fires even with an empty board while
+connected; the copy names the platform and quotes the true at-risk total via
+offerNet/money; "Got it" dismisses without clocking off or touching
+S.ray.skipped; "Clock off anyway" really clocks off and does NOT set
+S.ray.skipped; S.ray.skipped and an active scripted beat both bypass the
+card; clockOff(true) (bankruptcy) never shows it. The fixture marks every
+scripted beat seen and every city pre-unlocked, because clockOff() runs
+progGates() and startFastForward() synchronously — without that, an
+unrelated "Dallas unlocked" or next-day "connect a platform" advice card
+would fire during the same click and get mistaken for this feature's own.
+
+Full suite passes clean (317 checks), including the pre-existing company-
+bank real-clock check this run. This release only touches the Clock
+button's click handler, rayDismiss()'s ray-skip branch, restore()'s ray-cur
+reset list, and the DH_ACT1 export — nothing in the billing/date path.

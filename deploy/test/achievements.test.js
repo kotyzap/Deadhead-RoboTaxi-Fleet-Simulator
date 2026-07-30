@@ -241,7 +241,17 @@ function loadableScript(html) {
   try { A.openTrophies() } catch (e) { openErr = e }
   check('openTrophies() survives an offline board', openErr === null,
     openErr && openErr.message);
-  check('the modal is open after openTrophies()', !!tm && tm.hidden === false);
+  /* Trophies shows in #dh-console-panel now, not as a full-screen #trophy
+     modal (0.36.0) — #trophy itself stays hidden permanently, and
+     #trophy-card (the actual grid/board) relocates into #dh-cpbody instead.
+     See showInConsole()/openTrophies(). */
+  check('#trophy itself stays hidden — it is not the visible container any more',
+    !!tm && tm.hidden === true);
+  check('the console panel is open after openTrophies()',
+    w.document.getElementById('dh-console-panel').hidden === false
+      && !!A.consolePanel() && A.consolePanel().panelId === 'trophy');
+  check('#trophy-card relocated into #dh-cpbody',
+    w.document.getElementById('dh-cpbody').contains(w.document.getElementById('trophy-card')));
   check('the achievement grid rendered',
     w.document.getElementById('tr-list').children.length === A.ACHV.length);
 
@@ -259,14 +269,16 @@ function loadableScript(html) {
       === A.achvList().length + '/' + A.ACHV.length);
 
   /* Opening is what counts as seeing. The badge must clear, and reopening
-     must not resurrect it. */
+     must not resurrect it. closeConsolePanel() between opens — not a raw
+     #trophy.hidden flip, which no longer means anything (0.36.0) — is the
+     real "player switched away" path. */
   A.openTrophies();
   check('opening clears the unread badge',
     A.achvUnread().length === 0 && badge.hidden === true);
-  w.document.getElementById('trophy').hidden = true;
+  A.closeConsolePanel();
   A.openTrophies();
   check('reopening leaves the badge clear', badge.hidden === true);
-  w.document.getElementById('trophy').hidden = true;
+  A.closeConsolePanel();
 
   /* Paolo's pointer is once ever, not once per achievement — the flag lives
      in PROG so it survives a new city too. */

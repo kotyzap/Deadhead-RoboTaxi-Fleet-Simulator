@@ -7,7 +7,7 @@ Scope reviewed: `deadhead.html`, `deploy/public/index.html`, `deploy/public/clou
 ## 0. Fixed in this pass (already applied to both copies)
 
 1. **Game-breaking: `CFG.platformCut` did not exist.** Fare completion in `stepCar()` computed `cut = f * CFG.platformCut` → `NaN`, so the first completed ride turned `S.cash`, `S.d.gross` totals and the whole economy into NaN (and `S.cash < 0` bankrupt check never fires on NaN). Now uses the ride's own platform cut: `platform(c.ride.plat).cut`.
-2. **Books didn't match cash.** `drive()` recorded per-mile costs into the day ledger using per-vehicle spec cpm + fleet insurance, but deducted cash using the flat legacy `CFG.cpm`. Choosing a cheaper-to-run Cybercab changed the Books display but not what you actually paid. Cash deduction now uses spec cpm + `insPerMile()`.
+2. **Books didn't match cash.** `drive()` recorded per-mile costs into the day ledger using per-vehicle spec cpm + fleet insurance, but deducted cash using the flat legacy `CFG.cpm`. Choosing a cheaper-to-run Cab changed the Books display but not what you actually paid. Cash deduction now uses spec cpm + `insPerMile()`.
 3. **Arrival SoC used the wrong battery.** `render()` called `socNeeded(remainKm(sel))` without the car, so the console rail projected arrival charge using the default 75 kWh/0.19 pack for every model. Now passes `sel`.
 4. **Charging froze while clocked off.** `stepCar` only ran when on-clock, so a car left on a charger overnight stayed at e.g. 40% forever (and Ray's "charge at 4 a.m. when power's cheap" advice was mechanically impossible — off-peak is 23:00–07:00 but the demand day ends at 24:00 and you clock off). Charging cars now progress regardless of the clock.
 
@@ -19,7 +19,7 @@ Scope reviewed: `deadhead.html`, `deploy/public/index.html`, `deploy/public/clou
 - **Cost-per-mile is defined two different ways.** The Books panel `bk-cpm` uses `d.cost/d.miles` (includes commission + midnight fixed), the shift report deliberately uses operating-only. Same label, different number — the panel should adopt the report's operating-only definition (the report's comment already argues why).
 - **Ray beat 12/14 spotlight a hidden element.** `spot:'rp-body'` is inside the report modal; if the card fires while the modal is closed the ring lands on an invisible node and the whole screen just dims. Guard `raySpot()` to skip targets whose `offsetParent` is null.
 - **`migrate()` chain order.** Blocks run v4→5 before v3→4 before v<3, so a v1/v2 save is upgraded to v3 *after* the v4→5 block already ran, and never gets its car `model`/`hold` normalisation from that block (it works today only because the v<3 block duplicates it). Reorder ascending (v<2, v<3, v<4, v<5) so future bumps don't silently skip steps.
-- **Double-billing edge on rented cars in `canAfford`.** Renting only needs 2 days runway but midnight bills `fixed + rent` (e.g. Model Y $52+$44 = $96/day); $88 runway on a $96/day car passes the check and bankrupts before the second midnight. Base the runway test on `fixed + rent`.
+- **Double-billing edge on rented cars in `canAfford`.** Renting only needs 2 days runway but midnight bills `fixed + rent` (e.g. Crossover $52+$44 = $96/day); $88 runway on a $96/day car passes the check and bankrupts before the second midnight. Base the runway test on `fixed + rent`.
 
 ## 2. Mechanics consistency (vs GameMechanics.md / DESIGN.md)
 

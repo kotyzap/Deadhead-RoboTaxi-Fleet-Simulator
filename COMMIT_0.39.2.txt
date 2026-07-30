@@ -1,0 +1,47 @@
+0.39.2 — Paolo reacts to your first real Decline
+
+Pavel: on the Decline button — "There should be Paolo sending him message
+like: Yes, it hurts to Decline, but you need to balance demand and
+availability ... or similar. You know the style of Paolo."
+
+WHAT WAS MISSING
+
+Beat 13 already answers a decline-adjacent question ("they're scoring you"),
+but only once a CANCELLATION happens (rayReady case 13: d.cancels>0). The
+moment a player presses the Decline button itself — plainly a harder,
+more hesitant click than Accept — went unremarked. Nothing in the RAY beats
+or DAY1_ORDER touches it: the DAY1_ORDER comment is explicit that forcing a
+decline would fight the very lesson ("accept a ride") day 1 is teaching, so
+beat 13 stays organic, tied to cancellations, not to the button.
+
+THE FIX
+
+A new one-off, rayFirstDecline(), fires from declineOffer() the first time a
+player actually presses Decline — guarded by !silent, so an offer that times
+out unattended (the silent path, used for the housekeeping sweep in the main
+loop) never triggers it; walking away from a ride is not the same choice as
+letting the countdown run out. Written in Paolo's register: acknowledges the
+hesitation, then reframes declining as keeping enough of the fleet in
+reserve to catch what's coming next, rather than losing a fare.
+
+Tracked as S.ray.declineSeen (default false, coerced on load exactly like
+dodgeSeen), so it survives a save and fires only once ever. Guarded by
+!S.ray.skipped and !S.ray.cur so it never fires after the player has opted
+out of Paolo entirely, and never interrupts a card already on screen.
+S.ray.cur='decline' is added to the reset-on-load list alongside
+'advice'/'coffee'/'dodge' so a save captured mid-card doesn't restore a
+stuck decline card with nothing on screen to show it. Uses the same #ray
+card, rayFoot, and raySpot machinery as rayAdvise/rayDodgeBrief/rayCoffee —
+no new UI, no new CSS.
+
+Existing suite (8 files) and check-parity pass.
+
+STILL OPEN
+- Both D1 migrations unrun (carried from 0.33.2).
+- The Cloudflare rate limiting rule on /api/stat.
+- The DISPATCH OFFLINE banner.
+- The Camera nav icon's no-incident fallback still only flashes the wing.
+- Auto-follow's on/off state is not saved across reloads (0.38.0).
+- PROG (achievements, eggs, city unlocks) is still per-origin and is not
+  synced to the account even when signed in.
+- deploy/public/Inside_The_Brutal…mp4, 9.8 MB, referenced by nothing.

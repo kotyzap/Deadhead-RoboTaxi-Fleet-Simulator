@@ -88,28 +88,28 @@ Renting is the only option that leaves the balance untouched, which makes it the
 first move and the most expensive one over a week. Discovering that is the first lesson the
 game teaches, and it teaches it with arithmetic rather than a warning.
 
-Financing a Cybercab costs $1,500 down and leaves $1,500 — close to the old fixed start,
+Financing a Cab costs $1,500 down and leaves $1,500 — close to the old fixed start,
 but chosen. A player who rents instead keeps $3,000 and pays $73/day against $42.
 
 **On the $42.** The base is what you owe whether or not you clock on:
 
 | Component | Per car per day |
 |---|---|
-| Base — insurance minimum, permit fees, platform subscription, parking, autonomy licence | **$42** (Cybercab) |
+| Base — insurance minimum, permit fees, platform subscription, parking, autonomy licence | **$42** (Cab) |
 | *plus* rental day rate | $31 → $73 total |
 | *plus* loan payment, if financed (§8.1) | $13.60 → $55.60 total |
 | *plus* nothing, if owned outright | **$42** |
 
-The base is per vehicle, not global: a Model 3 is $48 and a Model Y $52, because a dearer
+The base is per vehicle, not global: a Saloon is $48 and a Crossover $52, because a dearer
 car costs more to insure and depreciate. See §3.1a.
 
 ### 3.1a The catalogue
 
 Three vehicles, all of which drive themselves. **Autonomy is the setting, not a spec you
-shop for** — it is never a difference between two cards. The Cybercab simply has no
+shop for** — it is never a difference between two cards. The Cab simply has no
 steering wheel to remove.
 
-| | **Cybercab** | **Model 3** | **Model Y** |
+| | **Cab** | **Saloon** | **Crossover** |
 |---|---|---|---|
 | Battery | 48 kWh | 75 kWh | 75 kWh |
 | Motor | 163 kW | 208 kW | 208 kW |
@@ -121,7 +121,7 @@ steering wheel to remove.
 | Rent | $31/day | $39/day | $44/day |
 | Base fixed | $42/day | $48/day | $52/day |
 
-Technical figures are the published ones; the Cybercab's come from its EPA filing, and it
+Technical figures are the published ones; the Cab's come from its EPA filing, and it
 is really deployed in Austin, which is where this game is set. **Prices are not MSRP.** They
 are balanced against a fare model where a ride nets about $8 — real sticker prices would
 need the whole economy rescaling, and that is a deliberate deferral, not an oversight.
@@ -129,9 +129,9 @@ need the whole economy rescaling, and that is a deliberate deferral, not an over
 Every spec feeds a system that already exists, so the choice is mechanical rather than
 cosmetic:
 
-- **Battery and consumption** drive `socNeeded`, `drive` and charging. The Cybercab is the
+- **Battery and consumption** drive `socNeeded`, `drive` and charging. The Cab is the
   cheapest to run *and* spends the most time plugged in: 50 km costs it 18.2% of its pack
-  against a Model 3's 14.3%. Cheap capital, expensive attention — which is the trilemma
+  against a Saloon's 14.3%. Cheap capital, expensive attention — which is the trilemma
   again, expressed in hardware.
 - **Seats** are recorded but inert until group and airport rides exist (§14).
 
@@ -668,6 +668,14 @@ Vandalism, towing, and regulatory events stay deferred to Act 2.
 
 ### 8.1 The financing offer
 
+> **As shipped (0.45.0):** the opening is no longer strictly one car. The garage allows a
+> fleet of **one or two** before the first shift is clocked on (`OPENING_CAP`, applied by
+> `effCap()`), and says so — a dashed "2nd vehicle — optional" slot chip rather than a modal
+> that closes and leaves the rule unstated. What follows is still the shape of the choice:
+> a second car is bought on finance or rent, not out of pocket, and it doubles the daily bill
+> before it earns anything. `effCap()` only ever *lowers* a city's `fleetCap`, so SF's
+> one-seat scenario is unaffected.
+
 Car #2 costs $18,000 cash, which one car will never generate. Financing is therefore
 **pulled forward from `DESIGN.md`'s deferred list** — Act 1 does not function without it,
 because the gig-worker debt trap *is* the mechanic.
@@ -1064,9 +1072,9 @@ This document supersedes parts of `DESIGN.md`, which has not been updated:
   game where a ride nets ~$8. Real MSRPs are roughly 50% higher and would need the fare
   model, the shift length, or both rescaled. Deliberately deferred — but the cards now
   invite the comparison, so somebody will notice.
-- **Seats are inert.** The Cybercab's two seats against five is recorded and shown on the
+- **Seats are inert.** The Cab's two seats against five is recorded and shown on the
   card, but nothing in the sim asks for more than one rider. Until group or airport rides
-  exist, the Cybercab's only real cost is its 48 kWh pack. That makes it close to
+  exist, the Cab's only real cost is its 48 kWh pack. That makes it close to
   strictly-best at present, which is a balance problem the catalogue created.
 - **Rent has no exit.** You can rent a car but not hand it back, so the option that should
   be flexible is currently just expensive. `hold` is stored per car, so returning one is a

@@ -1,0 +1,53 @@
+0.46.0 — Paolo notices a dead board
+
+WHAT CHANGED
+
+Clock on with no ride service connected and, ten REAL seconds later, Paolo
+speaks: which service to pick, what each takes, and that the riders score you
+afterwards even though the car did the driving.
+
+WHY IT NEEDED ITS OWN TRIGGER
+
+nextTask() has always returned the 'plat' task for an unconnected fleet, so the
+objective line said "Connect a platform" — but the only thing that said it OUT
+LOUD was rayAdvise(), and that fires after ADVISE_AFTER (75) *sim*-seconds of
+the world being quiet. For a player clocked on with no feed, quiet is not a
+signal, it is the permanent condition: nothing will ever happen, so the advisor
+is waiting for a change that cannot arrive. At 1x the advice was over a minute
+away, and a minute of a screen where nothing moves reads as a broken game.
+
+TIMED IN REAL SECONDS
+
+noFeedTick() takes wall-clock seconds and is called from the tick interval
+OUTSIDE the S.ffwd / S.running branches — deliberately, on both counts:
+
+  - Sim-seconds would arrive in half a second at 20x and never at 1x, which is
+    exactly backwards for a nudge about the player's own setup. Same reasoning
+    as the offer countdown and the blocked-car window (see stepOnce's realDt).
+  - step() is skipped entirely at speed 0, so a counter living inside it would
+    stall for a player who clocked on and then paused to look around.
+
+The clock only runs while the mistake is being made and resets the moment a
+feed comes on, so connecting at second nine means the card never appears.
+
+ONCE PER SHIFT
+
+S.ray.feedShift records the shift he last warned about it, not a boolean:
+clocking on to a dead board is worth catching every time it happens, and a
+player who does it on day 3 has forgotten day 1. Default is -1, never 0 — 0 is
+a real shift number and would silence the nudge for a fleet that has not worked
+yet. Silent during the guided tutorial (which teaches platforms in its own
+order) and for a player who skipped Paolo. S.noFeedSec is transient: never
+trusted from a save, or restoring mid-count would fire him on resume.
+
+The commission, the demand share and the service names are all read from
+PLATFORMS rather than written into the copy — a rebalance or a third feed must
+not turn the speech into a lie (the achievements funnel's hardcoded city list
+is the precedent).
+
+TESTS
+
+test/nofeed-nudge.test.js (new): the ten-second wait, the reset on connecting in
+time, silence off the clock, once-per-shift, silence during the tutorial and
+after a skip, and that the copy quotes the live PLATFORMS numbers and mentions
+ratings.

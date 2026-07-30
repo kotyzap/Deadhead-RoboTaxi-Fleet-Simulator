@@ -1,0 +1,46 @@
+0.48.1 — the charge ring's fill was never actually rendering
+
+WHAT WAS WRONG
+
+The Charge ring has looked like a near-empty circle with a small green dot
+at the top, at every SoC, for a long time — the bigger ring in 0.48.0 just
+made it obvious enough for Pavel to notice and describe precisely ("I
+thought 84% would be full green... now there's a green dot that rotates
+when charging").
+
+The root cause: render() set the arc's fill via
+arc.setAttribute('stroke-dasharray', ...). An SVG presentation attribute set
+this way has the LOWEST priority in the CSS cascade — any stylesheet rule
+targeting the same property beats it, regardless of specificity or source
+order. .chg-ring .arc{stroke-dasharray:0 97.4} in the stylesheet was
+therefore winning on every single render, and the ring was permanently
+stuck at its zero-length fallback no matter what sel.soc actually was. The
+only reason anything was visible at all is stroke-linecap:round, which
+draws a small circular cap even on a zero-length dash — that's the "green
+dot." The charging spin animation (chg-spin, which only touches
+stroke-dashoffset, a different property the stylesheet rule doesn't touch)
+worked fine throughout, which is why that part read as correct and the
+static fill didn't.
+
+WHAT CHANGED
+
+Both call sites now set arc.style.strokeDasharray instead of
+arc.setAttribute('stroke-dasharray', ...). An inline style DOES outrank a
+stylesheet rule, so this actually reaches the DOM now. The CSS's
+stroke-dasharray:0 97.4 stays as the pre-first-render fallback — harmless,
+since render() overwrites it via .style within the same frame — with a
+comment explaining why it no longer wins.
+
+NOT fixed, flagged instead: CFG.socAlertAmber (25) is LESS than
+CFG.chargeAt (28), and the ring's 'warn' class requires
+sel.soc>=chargeAt && sel.soc<socAlertAmber — a range that can never be true
+(28 <= x < 25 is empty). The ring has therefore only ever been able to show
+red or green, never amber, since CFG.socAlertAmber was introduced. Left the
+thresholds alone rather than guess new numbers — that's a design call, not
+a bug-fix call.
+
+TESTS
+
+No test exercises the ring's actual rendered fill (jsdom does not run
+layout/paint, so this class of bug — real geometry, wrong cascade winner —
+is invisible to the existing suite regardless). Full suite passes clean.

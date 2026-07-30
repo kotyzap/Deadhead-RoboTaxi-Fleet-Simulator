@@ -1,0 +1,63 @@
+0.67.0 — Austin loses Zilker, and Paolo's report cards finally point at the report
+
+Pavel: two asks in one message. Drop the Zilker zone from Austin's geofence
+entirely (following COMMIT_0.65.2's earlier removal of the two brewery
+entries that named it). And a sharper one: after clocking off and reading
+the Shift complete report, closing it pops up a Paolo card that reads as
+completely disconnected from anything — "should this not be tied to the
+opened Shift report?"
+
+
+WHAT CHANGED
+
+  1. ZONES_BY_CITY.austin (deadhead.html / deploy/public/index.html,
+     identical forks) drops the Zilker entry outright — the park itself,
+     p:'leisure', the one COMMIT_0.65.2 explicitly kept when it removed
+     Zilker Brewing and Hold Out Brewing. ROADS_BY_CITY.austin loses all 12
+     baked-geometry keys with 'Zilker' on either side of the `|`, rebuilt via
+     a small script (not by hand — 100+ single-line coordinate arrays invite
+     a dangling comma, same lesson as last time) so the block's trailing
+     comma lands correctly on the new last entry ('South Congress|UT campus').
+     No other zone or road key touched; no test referenced Zilker by name.
+
+  2. THE REPORT/PAOLO BUG. Beats 12 and 14 (RAY[]) both spotlight #rp-body —
+     a div that only exists inside the #report modal. But rayCheck() and
+     guideCheck() both refuse to run at all while #report is open (a
+     2026-07-30 fix for an unrelated bug: a DIFFERENT card racing onto the
+     screen the instant the report opens), and the report's own Close
+     button hides #report and only THEN calls rayCheck(). So beat 12/14
+     could only ever fire one click late, after their own target div was
+     already hidden inside a closed modal — raySpotEl() already had a
+     defensive comment for exactly this case ("spotlighting it just dims
+     the whole screen around nothing"), but the card still appeared, just
+     with no ring and no visible connection to the report it was actually
+     commentary on. That is what Pavel saw.
+
+     Fixed by having shiftReport() fire beat 12/14 itself, the instant the
+     report opens — the exact same pattern openGarage() already uses to
+     fire beat 1 at #gar-cards. A day1OK() guard keeps this from jumping the
+     guided Day-1 script: during day 1, beat 12 only fires here if
+     DAY1_ORDER[dayIdx] has actually reached it; otherwise it stays quiet
+     and the existing guideCheck() catches it on a later shift exactly as
+     before. Once day1Done (or outside guided mode entirely) both beats are
+     purely opportunistic, same as every other unscripted beat.
+
+  3. deploy/test/report-beat-timing.test.js (new): proves beat 12 fires
+     WHILE #report is visible (not after), that #rp-body actually receives
+     the 'spotlight' class (proof raySpotEl() took the "target is visible"
+     branch, not the "modal closed, ring nothing" one), that an
+     already-seen beat does not re-fire, and that the guided Day-1 ordering
+     guard holds — early-ready beat 12 stays quiet until the script's own
+     dayIdx reaches it. Needed a jsdom offsetParent stub (copied from
+     test/ray-arrows.test.js — jsdom does no real layout, so the raw
+     offsetParent getter is always null). DAY1_ORDER and guideCheck also
+     added to the DH_ACT1 export block for the test to reach them.
+
+  4. deploy/test/smart-dispatch.test.js from 0.66.0 is unaffected; both new
+     test files are wired into package.json's test script.
+
+
+TESTS
+
+  Full suite run from deploy/: all green, including both new files. Source/
+  deploy parity check passes.

@@ -1,0 +1,59 @@
+0.51.1 — Night, Sound and Coffee are icons, at every width
+
+WHAT WAS WRONG
+
+Three topbar buttons carried a word beside a glyph that already said the same
+thing. The moon/sun pair and the waves/slash pair each show which state they
+are in; "Night" and "Sound" next to them were saying it twice. And the labels
+only disappeared between 1200px and 1499px — the sub-1500px tier hid them and
+the sub-1200px tier turned them back on — so the same button was three
+different widths depending on the window.
+
+WHAT CHANGED
+
+#theme, #sound and #coffee carry NO <span> at all now, and a new .iconly class
+squares them to 30px with centred content, the same treatment .topbar
+.ghost.units already gets for the opposite reason (text-only, no icon).
+Garage and Saves are untouched: their icons do not encode a state, so the word
+is doing real work there and still drops out on its own at narrow widths.
+
+The .iconly>span rule is belt and braces — these three have no span in the
+markup — but it is scoped .topbar .ghost.iconly>span (0,3,1) so it outranks
+.topbar .ghost>span (0,2,1) whatever the tier does. That matters because the
+sub-1200px tier explicitly sets display:inline to bring the other labels back.
+
+The theme toggle now swaps the icon's href in place instead of rebuilding
+innerHTML. The old rebuild emitted a fresh <svg> plus a <span>, which would
+have reintroduced a label on the first click AND discarded the .iconly class
+and the title attribute — so this was a required change, not a tidy-up. Same
+technique syncSoundBtn() already used.
+
+Both buttons now maintain a title, because with the text gone the tooltip is
+the only thing that can name a lone glyph. The theme button's title and
+aria-label describe the ACTION ("Switch to night theme"), not the state, since
+that is the thing a single icon cannot convey on its own.
+
+--coffee-w collapses from three values to one. It was 116px base, 56px at
+<=1499, 112px at <=1199 — tracking whether Coffee had its label at that width.
+The button is a fixed 30px now, so one 48px reservation (button plus row gap)
+covers every tier; three numbers for a button that no longer changes size were
+three chances to reserve the wrong amount. The cap it feeds
+(.tb-info max-width) and the >=2250px one-line exemption are unchanged, since
+those are what actually stop Coffee landing on a line by itself.
+
+TESTS
+
+city.test.js's Coffee-reservation check rewritten for the single value, and it
+now asserts there is exactly ONE --coffee-w declaration so no tier can
+reintroduce a per-width override. Three new checks: all three buttons carry
+.iconly, no <span>, and still have an icon plus a non-empty aria-label and
+title; .iconly squares the button and its >span rule is present; and the theme
+toggle uses querySelector('use').setAttribute('href') with no tbtn.innerHTML=
+anywhere — that last one guards the exact regression that would put a label
+back on first click.
+
+Verified by hand that both toggles round-trip: moon->sun->moon, sound->mute->
+sound, with .iconly and the title intact after each click, and Garage/Saves
+still labelled.
+
+Full suite passes clean (405 checks).

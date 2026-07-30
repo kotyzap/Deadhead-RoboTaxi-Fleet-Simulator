@@ -1,0 +1,49 @@
+0.45.0 — the two-car opening
+
+WHAT CHANGED
+
+1. "Close" in the garage header is now "Leave Garage". Close reads as
+   dismissing a dialog; the player is walking out of a garage with a car.
+   It also becomes the primary-styled action (#gar-close.go) once something is
+   in service, and stays a quiet dismiss while the fleet is empty — the modal
+   is a forced decision until then.
+
+2. The opening fleet may be ONE OR TWO cars. Before this, it was exactly one,
+   and the rule was invisible: acquire() hid #garage the moment the first car
+   landed, so "one is the limit" was indistinguishable from "the modal closed".
+   Now:
+     - OPENING_CAP = 2, applied by effCap() while S.shiftNo === 0.
+     - effCap() only ever LOWERS the city's own fleetCap, never raises it, so
+       SF's soloSeat cap of 1 is untouched.
+     - acquire() closes the garage at the ceiling rather than at car #1, so the
+       second slot is discoverable instead of taken away.
+
+3. A slots strip (#gar-slots) makes the second slot visible: one chip per
+   starting slot, filled chips naming the car and how it is held, the empty one
+   dashed in accent and labelled "2nd vehicle — optional". Accent, not red —
+   nothing is wrong with stopping at one. It hides itself after the first shift,
+   where a row of 17 chips would say nothing.
+
+4. Refusing a third during the opening names the opening rule ("Two vehicles is
+   the most you can start with — clock on, then the garage opens up") instead of
+   Austin's cap of 17, which would have been a lie.
+
+5. The modal title tracks the same distinction the Fleet button already did:
+   "Choose a vehicle" with no car, "Add a vehicle" after.
+
+TRAP AVOIDED
+
+Ray's beat 3 (spotlight #panel-platforms) triggered on "a car exists". That was
+safe only because the first purchase closed the garage. With the garage staying
+open, the beat would have fired from behind the scrim — and raySpot() refuses to
+ring a target covered by an open modal, so it would have dimmed the screen
+around nothing while talking about a panel the player cannot see. rayReady(3)
+now also waits for the garage to be closed.
+
+TESTS
+
+- test/opening-fleet.test.js (new): the ceiling, the garage staying open, the
+  slots copy, the button label, the SF one-car case, and the beat-3 gate.
+- test/city.test.js: the cumulative-rent-burn check now sets S.shiftNo = 1. It
+  rents until the burn gate bites, which is well past two cars — the opening cap
+  would have stopped the loop early and tested the wrong rule.

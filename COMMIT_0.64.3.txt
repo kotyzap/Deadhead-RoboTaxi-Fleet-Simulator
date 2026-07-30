@@ -1,0 +1,119 @@
+0.64.3 — Account card fixes, a clickable intro video in Comet, Continue for resumed sessions, and the city strip retired for a dropdown everywhere
+
+WHAT WAS WRONG
+
+Five things, all reported by Pavel on 2026-07-30:
+
+  1. The intro's account card read as black text on a dark background —
+     twice. First pass: the dark-glass token override that makes cloud.js's
+     card readable over the intro's own dark backdrop was scoped to
+     `#intro.intro-onsplash .intro-acct`, on the assumption the dark
+     backdrop only existed during the splash-art phase. It doesn't —
+     #intro's own default background is the same near-opaque dark gradient
+     whether or not .intro-onsplash is on, so the card fell back to plain
+     Day-theme tokens (near-black text) the moment that phase ended. Second
+     pass, after widening that selector: "Choose a username" and the
+     signed-in username text were STILL dark. Root cause: those two
+     elements never had their own `color` in the first place — `color` is
+     inherited, but inheritance passes the PARENT's already-resolved value,
+     not the variable reference, so an element that never reads
+     var(--text) itself never picks up a scoped redefinition of it no
+     matter where in the tree that redefinition lives.
+  2. "In Chrome video can be clicked. In Comet browser I simply cannot
+     click anything." The intro video relied entirely on the browser's own
+     native <video controls> play button — the only way to get a real,
+     unmuted user gesture. Some Chromium-based browsers with heavier page
+     instrumentation don't reliably pass clicks through to that native UI.
+  3. "There should be 'continue' when I am logged in. Or ask for
+     password." A session resumed silently by probeSession() (a returning
+     device with a still-valid cookie) had NO forward path that actually
+     respected the cloud save — the only button that closed the intro was
+     "Play on this device only", which runs the local-only skip path and
+     would silently start a fresh run over the account's real save.
+  4. The topbar ran FIVE rows deep on an iPhone: brand, city strip, Day/
+     Clock/Cash/Shift, Clock-on+speeds+Garage+Saves, and the gear button
+     alone on a sixth line because nothing above it left it enough room.
+  5. Same ask, one message later: "compacting Cities on PC resolution
+     could also save a lot of space" — the strip already sits on one line
+     at most desktop widths, but still costs 250-560px of it depending on
+     tier and city count.
+
+WHAT CHANGED
+
+(1) cloud.js: added `color:var(--text)` to `.acct-head h5` and `#dh-who`,
+the two elements that were silently inheriting the page's outer text
+colour instead of resolving the scoped override. deadhead.html: widened
+the `.intro-acct` token-override selector from `#intro.intro-onsplash
+.intro-acct` to `#intro .intro-acct`.
+
+(2) A plain DOM `<button>` (`#intro-video-play`) now sits on top of the
+video, independent of any native controls surface. It shows whenever the
+video is not actively playing (poster, paused, or ended — synced via
+play/playing/pause/ended listeners) and calls video.play() directly; a
+button click is just as valid a user gesture for real audio as the native
+control was. Also incidentally fixes the older "no visible pause button"
+complaint, since this button is not native chrome and never auto-hides.
+Native `controls` stays on for scrub/mute/fullscreen once playback starts.
+
+(3) cloud.js: added a "Continue" button to the signed-in panel, styled as
+the primary (filled) action next to the now-secondary Sign out / Copy
+saves. It calls the exact same `window.DH_INTRO_ACCOUNT_DONE` hook a fresh
+Sign-in already uses, so a resumed session and a typed sign-in now behave
+identically — fetch the cloud save, resume it if one exists, otherwise
+proceed to a new fleet.
+
+(4) + (5) Built a compact city picker — `.citypick` (a "Austin ▾" trigger
+button reusing the `.ghost` style already shared by Garage/Saves/Gear) and
+`#city-pop` (its popover list), positioned exactly like the existing
+settings gear popover (`setPopPlace()`'s pattern, mirrored as
+`cityPopPlace()`). `cityTabsHtml()` was pulled out of `renderCityTabs()`
+so the SAME per-city button markup — tone colour, lock glyph, aria-pressed
+— now feeds both `#citytabs` and `#city-pop` from one place; the existing
+delegated `.citytab` document click listener (switchCity/cityLockMsg)
+needed no new branch, it already matches on class/data attributes
+regardless of which container the button is in. One sequencing fix was
+needed there: closing the popover has to happen AFTER that listener reads
+the clicked button's position for cityLockMsg(), not before, or the
+anchor rect collapses to (0,0) first.
+
+Shipped in two steps the same day: first phone-only (`.citypick` shown,
+`#citytabs` hidden, only below 760px), then widened to every width once
+Pavel asked about desktop too. The strip itself is NOT deleted — every
+existing rule (the THIS-STRIP-MAY-NEVER-CLIP history, the shrink/scroll
+tiers, the tone-line CSS) is left exactly as it was, with `.citytabs`'s
+own `display` flipped to `none` unconditionally. A revert to the old
+always-visible strip is one property away.
+
+Also, on the phone tier specifically: Garage/Saves were already icon-only
+below 1499px due to a pre-existing CSS specificity bug (documented in
+place rather than fixed — `.topbar .ghost:not(.units)>span{display:none}`
+outranks the later `.topbar .ghost>span{display:inline}` meant to restore
+labels at the 1199px tier, regardless of which query is narrower or comes
+later in the file). The actual new room for the gear button came from
+tightening `.tb-ctrls` gap, `.seg button` min-width, and `.ghost` padding
+at the phone tier, plus un-forcing `.brand` from a full line so it can
+share row 1 with `.citypick` instead of giving the picker a row of its
+own.
+
+TESTS
+
+Updated test/splash-screen.test.js's "dark tokens over the artwork" check
+to match the widened `#intro .intro-acct` selector instead of the old
+onsplash-scoped one.
+
+Updated test/city.test.js: two checks pinned the retired behaviour
+directly ("the city strip does not shrink at full width" expected
+display:flex; "the brand does not claim a line of its own above the
+phone tier" expected .brand{flex:1 0 100%} inside the 760px tier) and now
+assert the new invariants instead — the strip is display:none with its
+shrink rule intact for a revert, .citypick is the unconditional
+replacement, and .brand no longer forces a full line at any width. Added
+five new checks: #city-pop mirrors #citytabs' cities/order, #city-pick
+shows the live city's name and tone colour (converting CITIES' hex to the
+rgb() jsdom's CSSStyleDeclaration normalises everything to), the trigger
+opens the popover, clicking an unlocked row switches city and closes it,
+and clicking a locked row shows Paolo's reply and closes it too.
+
+Full suite passes clean (30 test files). check-parity is green —
+deploy/public/index.html is byte-identical to deadhead.html, and cloud.js
+is mirrored to the project root as well as deploy/public/.

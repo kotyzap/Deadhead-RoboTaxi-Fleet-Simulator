@@ -1,0 +1,71 @@
+0.38.1 — Trophies fills the console instead of floating in it
+
+Pavel: Trophies showed as a narrow card centred in a much wider console, and
+it scrolled.
+
+THE INLINE WIDTH WAS THE WHOLE PROBLEM
+
+#trophy-card carried style="width:620px" from when it was a centred modal
+sheet on a dimmed page. An inline width outranks any stylesheet rule, so
+0.36.0's `.cp-body>.rep{width:100%;max-width:820px}` never had a chance —
+the card stayed 620px wide no matter how much console it was given. Removed
+from the markup rather than fought with !important: width is the console's
+business now, and there is no longer any context where a fixed 620px is
+right.
+
+SHEET CHROME REMOVED
+
+Everything `.rep` provides to be a dialog — its own surface, border, radius,
+shadow, backdrop blur, 24px padding, 86vh cap — duplicates what
+#console-panel already draws. A card inside a card reads as a mistake, so in
+this context all of it is shed and the card becomes a flex column filling the
+panel.
+
+That padding removal had one non-obvious consequence worth recording:
+.gar-head is a STICKY header built around the 24px padding, pulling itself
+out with -24px margins and paying it back as its own padding so it can span
+the sheet's full width while staying stuck. With the padding gone those
+negative margins would hang the header off the left edge — and there is
+nothing to stick to any more, since the card no longer scrolls (.cp-body
+does). So it is static and flush here, keeping only its underline.
+
+WHY IT NOW FITS ON ONE SCREEN
+
+Not a height hack — a column count. In a 620px sheet, 21 achievement tiles at
+minmax(178px,1fr) are 3 across and 7 rows deep, with the five city boards
+stacked in a single column underneath: far taller than any console. Given the
+real width, the same tiles go 6-8 across (3 rows) and #tr-board becomes its
+own auto-fit grid so the boards sit side by side. Same content, a third of
+the height.
+
+On a genuinely narrow console both grids collapse back to fewer columns and
+the panel scrolls. That is deliberate: losing rows to a clip is worse than a
+scrollbar, so overflow stays the failure mode rather than being hidden.
+
+ALSO IN THIS BUILD
+
+Form controls do not inherit font-family — which is why every button rule in
+this file spells out `font:inherit`. A relocated panel now sits inside
+.console, the one part of the app carrying console-scoped overrides for those
+same classes (.t-ctl .ihelp / .t-cardbar .ihelp), so `.cp-body button,input,
+select,textarea{font-family:inherit}` is added as a floor. font-family ONLY,
+deliberately not the `font` shorthand: `.cp-body button` (0,1,1) outranks
+`.ihelp` (0,1,0) and a shorthand there would blow away every button's own
+font-size. It sets nothing the class rules set, so it cannot drift from them.
+
+Verified with jsdom (17 checks): the card carries no inline style at all;
+computed width 100% with max-width/max-height none, zero padding, no shadow,
+no radius, flex column at min-height 100%; .gar-head static and flush; the
+achievement grid on the 196px track and #tr-board a 215px auto-fit grid; all
+21 tiles still render; and closing still returns the card to the permanently
+hidden #trophy shell. CSS re-validated for balanced braces and stray `*/`
+(this project has shipped that bug before). Existing suite (8 files) and
+check-parity pass.
+
+STILL OPEN
+- Both D1 migrations unrun (carried from 0.33.2).
+- The Cloudflare rate limiting rule on /api/stat.
+- The DISPATCH OFFLINE banner.
+- The Camera nav icon's no-incident fallback still only flashes the wing.
+- Auto-follow's on/off state is not saved across reloads (0.38.0).
+- deploy/public/Inside_The_Brutal…mp4, 9.8 MB, referenced by nothing.

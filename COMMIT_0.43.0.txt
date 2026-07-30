@@ -1,0 +1,75 @@
+0.43.0 — Decline, on the in-car display
+
+WHAT LANDED
+
+The console's primary action is no longer Accept-only. A red square with a
+white X now sits beside the blue CTA and refuses the ride the CTA is naming.
+
+Until now the only way to say no was the small per-row Decline inside the
+Offers panel — which is not where a player watching the in-car display is
+looking. The two halves of one decision were in two different places, and the
+bigger, more obvious one only ever said yes.
+
+  · #cta-dec targets the SAME offer as #cta: the best-paying one net of
+    platform commission. Press it repeatedly to work down the queue. One
+    press, one ride — declining the whole queue at once was considered and
+    rejected: it puts an irreversible, acceptance-rate-docking action one
+    click away with no confirmation.
+  · It goes through declineOffer(), so all the existing consequences apply
+    unchanged — the feed logs it, the platform's acceptance rate takes the
+    hit, and Paolo's first-decline beat (rayFirstDecline) fires the first
+    time the player presses it themselves.
+  · Disabled whenever there is nothing named beside it: no offers, or
+    off-shift, where the blue button is "Clock on" rather than an Accept.
+    Disabled goes grey, not faded red — a dimmed red still reads as an armed
+    destructive control.
+  · Bare glyph, no word. It sits next to the longest string on the card
+    ("Accept University of Tampa"), and a second block of text there is what
+    pushed the fare off its line in the first place. The X is an inline SVG
+    stroke rather than a "×" character so it stays optically centred at the
+    same weight through all five responsive heights; the multiplication
+    sign's metrics drift with the font and read as wonky at 42px.
+
+STRUCTURE
+
+Accept and Decline are siblings inside a new .t-cta-row, not two halves of one
+button: .t-cta is itself a <button> and HTML forbids nesting an interactive
+control in one. The row also took over the margin .t-cta used to own — while
+both had their own, the pair each inset itself and sat unevenly inside the
+card, once per breakpoint, since all five responsive tiers re-set that margin.
+The tiers now set .t-cta-row's margin and only .t-cta's height.
+
+A new --cta-h custom property on .t-cta-row is the height authority for both
+controls: .t-cta reads it once, .t-dec reads it on both axes to be a square.
+The five responsive tiers now move --cta-h (58 / 52 / 46 / 44 / 42px) and never
+touch .t-cta's height, so one number per tier keeps the pair in step.
+
+The first attempt squared .t-dec with aspect-ratio:1 and let align-items:stretch
+supply the height. It rendered a ~310px button beside a 52px one, in every
+state. The dependency is circular — the ratio wants the item's cross size, the
+line's cross size wants the tallest item — so the browser resolved the width
+from the available space and squared THAT. Never infer this height; read it.
+
+TESTS
+
+New test/decline-cta.test.js, wired into `npm test`. Beyond "the button
+exists", it guards the three things that break invisibly:
+
+  1. Both controls sort by offerNet(), not raw fare. The fixture is two offers
+     whose ranking FLIPS between gross and net (Hitchr takes 25%, Zipp 15%),
+     so a comparator that forgets the cut makes the button name a ride it does
+     not decline.
+  2. The click really routes through declineOffer() rather than filtering
+     S.offers by hand — asserted by the platform's accepted count NOT moving
+     and the feed logging a decline. A hand-rolled filter would be a free
+     "make this offer go away" button with none of the accounting.
+  3. No .t-cta rule reintroduces a non-zero margin.
+
+FILES
+
+  deadhead.html                  VERSION 0.42.0 -> 0.43.0; .t-cta-row / .t-dec
+                                 CSS, the markup wrapper, render() disabled +
+                                 title state, the click handler
+  deploy/public/index.html       byte-identical copy
+  deploy/test/decline-cta.test.js  new
+  deploy/package.json            test script

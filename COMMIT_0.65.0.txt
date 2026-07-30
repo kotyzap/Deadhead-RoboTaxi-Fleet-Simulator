@@ -1,0 +1,209 @@
+0.65.0 — The last three cars get their photo: all six trims now show a real render
+
+WHAT WAS MISSING
+
+0.42.0's rebrand removed the old photo folder and left every catalogue card
+drawing an SVG silhouette. Earlier on 2026-07-30 the three base trims (Cab,
+Saloon, Crossover) got real Axiom-badged renders back on top of that drawing.
+That left the garage visibly two-tier: three photographed cards and three
+line drawings sitting side by side in the same strip, where the drawings read
+as placeholders rather than as a style.
+
+Pavel supplied the remaining three renders — a sedan, an SUV and a pickup —
+for Saloon Long, Crossover Six and Truck.
+
+WHAT CHANGED
+
+  1. `PHOTO_FOR` in deadhead.html gained saloonlong / crosssix / truck. Every
+     entry in CATALOG now has a photo; CARART is purely the fallback path.
+
+  2. The SVG silhouettes were NOT deleted, and the comment above PHOTO_FOR
+     now says why in as many words: artHtml() keeps them in the DOM as the
+     onerror path, and that is the only reason deadhead.html opened straight
+     off disk (with no /cars/ folder beside it) looks right instead of
+     showing six broken-image boxes. Six photos is six chances to 404, not
+     zero.
+
+  3. admin.html's own `CARS_INFO` copy: `photo:` added to the same three
+     rows. The three RETIRED rows (Crossover Long, Saloon Sport, Crossover
+     Sport) deliberately stay photo-less — no render was ever made for a trim
+     that can no longer be bought, and the `body` shape label is the right
+     thing for a historical row to show.
+
+  4. docs/index.html's marketing cards: the SLL / CR6 / TR cards gained the
+     same `.has-photo` + `<img onerror>` pattern the first three already had.
+
+  5. Three separate crops per car, because the three surfaces have three
+     different frames and always have: 900x360 (5:2) for the game at `cars/`
+     AND `deploy/public/cars/` (deadhead.html resolves its own relative path
+     independently of the deploy mirror), 700x438 (16:10) as
+     `cars/*-admin.webp`, 900x506 (16:9) at `docs/img/cars/`.
+
+ONE RETOUCH, WORTH RECORDING
+
+The SUV render carried "CR5" on the front door and "CR6" on the rear pillar.
+CR5 is not a badge this game sells — CR is the Crossover, CR6 the Crossover
+Six — so a card titled "Crossover Six / CR6" showing CR5 on the door is the
+same class of tell as the Cab's old `seats:2` contradicting its own photo,
+which Pavel caught within hours of that photo shipping. The CR5 lettering was
+painted out (the door panel is a smooth vertical gradient, so the patch is a
+per-row interpolation between the columns either side of the text, then a
+feathered blur over the seam). CR6 on the pillar was left exactly as rendered.
+
+TESTS
+
+deploy/test/rebrand.test.js:
+
+  - "PHOTO_FOR names exactly the three base trims" replaced with "PHOTO_FOR
+    covers every trim in CATALOG", asserted by iterating CATALOG rather than
+    against a hardcoded list of six ids. A hardcoded model list is precisely
+    what rotted in 0.33.0's achievement funnel; a seventh trim shipping
+    without art now fails this line and names the id.
+  - The reverse direction too: no PHOTO_FOR entry may point at an id that is
+    not in CATALOG, so a cut trim leaves no dangling image path behind.
+  - The per-model loop now runs over all six and additionally asserts the
+    onerror handler is present, not just the img and the .has-photo class.
+  - The no-photo branch is now unreachable from CATALOG but is still live
+    code, so it is tested with a synthetic id (`nosuchtrim`) instead of being
+    dropped. Deleting that assertion would have let the fallback rot silently.
+
+================================================================================
+PART TWO — docs/index.html: the GitHub Pages site
+================================================================================
+
+Same release, because the site's whole job is to show what the game looks
+like and the game had just changed underneath it. `const VERSION` is not
+bumped again: deadhead.html is untouched by everything below.
+
+THE KEY ART FINALLY APPEARS ON THE SITE
+
+The splash render existed only inside the game. The landing page opened on the
+same near-white canvas as every section below it, so the first screenful of a
+robotaxi game looked like a SaaS pricing page.
+
+  1. `.hero-band` — a self-contained dark island at the top of the page, with
+     img/hero-splash.jpg behind it. Self-contained on purpose: the light page
+     below is byte-for-byte the same design it was, and the theme toggle still
+     governs everything under the band.
+
+  2. Three cuts of the render, all from deadhead-splash-wide.jpg /
+     -portrait.jpg, all cropped to drop the bottom strip carrying a hard-coded
+     game URL, an ESRB badge for a rating nobody ever issued, and two studio
+     logos:
+       img/hero-splash.jpg         1920x737   hero + closing CTA band
+       img/hero-splash-mobile.jpg   900x1405  hero below 820px
+       img/og.jpg                  1200x630   link previews
+     og.jpg KEEPS the render's baked-in wordmark; the other two cut it off. A
+     link preview has no live typography to collide with and benefits from the
+     title; a hero has an <h1> two inches away and would read as a duplicate.
+
+  3. The scrim is left-weighted (94%→28% across the band), so the copy column
+     is effectively opaque and the right-hand side keeps the skyline visible
+     behind the console screenshot. A sunset runs from near-black to #F4E3BF
+     inside 200px; no single text colour passes against all of it, so the
+     scrim is what makes white-on-art one fixed problem instead of a
+     per-pixel one. Measured, not eyeballed — see TESTS below.
+
+  4. The sticky topbar goes dark glass while it is over the art, driven by ONE
+     IntersectionObserver on a 1px sentinel (#art-end) rather than a scroll
+     listener. The class flips twice per session; a scroll listener would
+     recompute it every frame to find that out.
+
+THE PALETTE NOW COMES OFF THE RENDER
+
+Sampled from deadhead-splash-wide.jpg rather than picked by eye: the wordmark
+green (#84C2A8), the sunset amber (#DE9A4E), the near-black indigo base
+(#0B0C11). Each accent ships twice — the raw value for the dark bands, and a
+darkened `-ink` variant that passes AA on the light canvas. Both are needed:
+the raw mint is 1.78:1 on #EDEFF2, which is a decoration, not a text colour.
+
+Blue deliberately stays the interactive colour. Every button in every
+screenshot on the page is blue because the game's own UI is blue; a green CTA
+beside those shots would read as a different product. So: blue means "do
+something", mint and amber are the editorial layer. The section kickers moved
+from blue to mint for exactly that reason — they had been the same colour as
+the buttons, so nothing distinguished a label from a control.
+
+NEW SECTION: #garage
+
+The six car cards further up the page are the marketing view — one photo, four
+specs, a sentence. This new section is the same six cars as the GAME presents
+them, from a fresh 0.65.0 capture: three prices each, and the Truck's "Buy
+outright" greyed out and labelled "Needs $80,000". That greyed-out control is
+the entire game in one widget, and no amount of body copy makes the point as
+well as a screenshot of it does.
+
+First attempt put the shot in a column beside three notes. It rendered ~330px
+wide from a 1200px source — a thumbnail of a spreadsheet, when the whole value
+is being able to READ "Needs $80,000". Rebuilt as a full-width figure with the
+notes in a row underneath.
+
+FIXED WHILE IN THERE
+
+  - "826 KB, no build step" was written once and never revisited; the file was
+    975 KB. Replaced with "Under 1 MB" — a bound instead of a figure, so it
+    cannot rot on the next release.
+  - The Paolo panel's portrait was a 🚕 emoji in a gradient box, which
+    rendered as an empty rectangle anywhere the emoji font was missing. Now a
+    still from his own intro, cropped above the frame's burned-in subtitle and
+    generator watermark.
+  - The closing CTA was a third white panel in a stack of white panels — the
+    weakest possible setting for the one ask on the page. Now the same art and
+    scrim as the hero, closing the loop it opened.
+  - The demo video's disclaimer was already honest and is now specific: it
+    names what has moved since (console reorganised twice, city strip became a
+    dropdown, three cities shipped, every car got a photo).
+  - Two <meta name="theme-color"> rules resolved to #EDEFF2 in light mode,
+    which painted a white seam across the top of the dark hero on mobile. One
+    rule now, #0B0C11, matching what is actually under the browser chrome.
+  - og:image:alt described the old card, not the new one.
+  - The brand's "robotaxi fleet ops" tagline wrapped to three lines beside the
+    wordmark below 560px and pushed the Play button onto its own row.
+  - Below 620px the twelve hero hotspots are hidden: .gtip is already
+    display:none on a touch device, so the dots were pointing at unreadable
+    panels with no way to be dismissed.
+
+WHAT WAS NOT DONE, AND WHY
+
+The console screenshot is still the previous one. A fresh capture works
+headlessly — real weather, real books, cars mid-fare, all six panels unlocked
+— but no tile server is reachable from the build sandbox (OSM, Carto and Esri
+all fail DNS), so the map pane renders as a blank grey rectangle with zone
+circles and car pins floating on it. The page argues twice that the geofences
+and the road geometry are real; a shot with no streets in it undercuts both.
+Pavel's call was to keep the existing image, which does have tiles, and accept
+that it still shows the six-tab city strip that 0.64.3 replaced with the
+dropdown. The twelve hotspot percentages are therefore unchanged.
+
+Worth recording for next time: the capture harness itself works and is not the
+hard part. window.DH_ACT1 exposes acquire/clockOn/step/render/STAGES/PLATFORMS,
+which is enough to compose an arbitrary shift; page.route() can serve a canned
+Open-Meteo response so the console shows a temperature instead of "wx offline";
+and the twelve marker positions can be MEASURED from the live DOM
+(getBoundingClientRect against innerWidth/innerHeight) instead of typed by
+hand, which is what let them drift in the first place. Only the raster
+basemap is missing.
+
+TESTS
+
+New: deploy/test/docs-assets.test.js, wired into `npm test`. It exists for the
+same reason car-photos.test.js does — this page fails politely. A missing hero
+background renders as a flat dark band that looks deliberate; a missing <img>
+sits inside a gradient frame or removes itself via onerror. Nothing errors,
+and docs/img/ is a separate copy of every asset (the page is served from
+docs/, so it cannot reach ../cars/), which makes "added to the repo root, not
+copied into docs/img/" a one-keystroke mistake. The test resolves every
+<img src="img/...">, every CSS url(img/...), and every in-page #anchor against
+the real filesystem; confirms og.jpg is really the 1200x630 the meta tags
+promise, because a scraper silently re-crops a mismatch straight through the
+wordmark; and asserts hero-splash.jpg is still the CROPPED cut by checking its
+aspect ratio (2.61:1 vs the full render's 1.79:1) — so a careless re-export
+cannot quietly put the ESRB badge and the hard-coded URL back on the hero.
+
+Contrast was verified by measurement rather than by assertion: for each piece
+of hero and CTA text, the rendered backdrop pixels were sampled out of a real
+screenshot at 1440/820/390px and the alpha-composited text colour measured
+against them. Everything passes WCAG AA — 7.5:1 at worst (the meta row and
+the guide hint), 19:1 at best. That is the only honest way to check text over
+a photograph; a token-vs-token calculation would have told us nothing about
+what the sunset is doing underneath.

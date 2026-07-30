@@ -1,0 +1,80 @@
+0.38.0 — a Recentre button, and the map follows the fleet on its own
+
+Pavel: panning the map off left no way back short of hunting for the fleet by
+hand, and a car that drove out of frame stayed out of frame. He asked for a
+recentre control plus a periodic one every 30 seconds.
+
+WHAT GOES IN THE BOX
+
+Cars, active zones and chargers — the whole operation, Pavel's call, rather
+than just the vehicles. Cars are road-snapped through roadFix() so the box
+matches what drawMap() actually paints, not the straight-line model position
+underneath it. Zone circles are 620 m radius, so both corners of each zone's
+bounding square go in rather than its centre — a box fitted to centres slices
+the edge zones in half. A geofenced-off zone drops out: it is not part of the
+operation. Practical effect is that the fitted view is close to city-sized
+most of the time and the periodic recentre is usually a no-op, which is the
+intent — it is a safety net for a fleet that wandered or a player who panned
+to Houston, not a camera that chases cars around.
+
+AUTO-FOLLOW IS A TOGGLE, ON BY DEFAULT, AND PANNING TURNS IT OFF
+
+This is the answer to the problem the city-switch code has flagged in a
+comment since Dallas shipped: "centring again here would fight a player who
+has already panned." The map may only take itself back while the player has
+not taken the wheel. Dragging or zooming by hand is taking the wheel; the
+button hands it back. So there is exactly one control for both jobs — press
+it to recentre AND to resume following.
+
+The button sits bottom-LEFT of the map (Leaflet's own zoom control is at
+bottomright, attribution owns the rest of that edge), z-index 700: above
+every marker and tooltip so it is always clickable, below #map-lock (1100) so
+the mobile gesture shield still covers it. Following is the quiet resting
+state; the accent fill appears only when the player has panned away and the
+button has become the way back, which is the one moment it deserves an eye.
+
+TWO THINGS THAT LOOK LIKE STYLE BUT ARE NOT
+
+`animate:false` on the fit is load-bearing. fitBounds fires zoomstart — the
+same event a player's own zoom fires — so recenterMap() has to hold a
+followSuppress flag across it, and only a synchronous fit guarantees the flag
+is still up when the event lands. An animated fit delivers zoomstart after
+the flag is cleared and the map switches its own following off. Verified both
+directions: a programmatic recentre leaves following ON, a real
+dragstart/zoomstart switches it OFF.
+
+The 30s timer is real seconds, matching the autosave interval, NOT sim
+seconds — at 20x a 30-sim-second recentre would fire every 1.5 real seconds
+and the map would twitch. Guards: only while following, only with a live map,
+never while the tab is hidden. recenterMap() swallows its own errors (a
+zero-size container makes Leaflet's zoom maths unhappy) so the interval can
+never be thrown away.
+
+initMap() now opens on the fitted view rather than a fixed z13, so
+auto-follow's first tick has nothing to change and the player never sees an
+unprompted jump 30 seconds in. loadCityTables() refits on a city switch for
+the same reason — but only while following, so someone who has taken the
+wheel keeps it across a switch too.
+
+Also added: an `i-recenter` symbol to the sprite (corner brackets + centre
+dot), since nothing in there read as "fit to view".
+
+Verified with jsdom under a Leaflet stub (16 checks): initMap wires the
+dragstart/zoomstart listener and fits once at boot with animate:false,
+padding and maxZoom 15; the bounds contain exactly one point per car, two per
+active zone and one per charger, with no NaN/Infinity and with an off zone
+dropping out; a programmatic recentre keeps following, a real pan event drops
+it, and the button restores it. Also verified the whole feature is inert and
+throw-free with map===null, which is the real state whenever Leaflet fails to
+load. Existing suite (8 files) and check-parity both pass.
+
+STILL OPEN
+- Both D1 migrations unrun (carried from 0.33.2).
+- The Cloudflare rate limiting rule on /api/stat.
+- The DISPATCH OFFLINE banner.
+- The Camera nav icon's no-incident fallback still only flashes the wing
+  panel rather than showing it in the console (carried from 0.36.0).
+- Auto-follow's on/off state is not saved — every reload starts following.
+  Deliberate for now (it is a view preference, not game state) but it is the
+  obvious next ask if it annoys.
+- deploy/public/Inside_The_Brutal…mp4, 9.8 MB, referenced by nothing.

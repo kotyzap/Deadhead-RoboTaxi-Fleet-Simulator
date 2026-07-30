@@ -11,7 +11,7 @@ who won't know the trade term. Short form in code, folders and conversation: **D
 - **Status:** design agreed, prototype not yet built
 - **Date:** 2026-07-25
 - **Audience:** working taxi / rideshare drivers, and car-simulator enthusiasts
-- **See also:** `UI-SPEC.md` (console interface), `TeslaDesignSystem.md` (brand reference)
+- **See also:** `UI-SPEC.md` (console interface), `InCarDesignLanguage.md` (visual reference)
 
 ---
 
@@ -46,14 +46,14 @@ can't live on that screen, it doesn't ship.
 
 ### 2.5 Real cars, invented commerce
 
-The vehicles are real hardware you could actually buy — Cybercab, Model 3, Model Y — and
+The vehicles are an invented marque, Axiom, with real-world physics — Cab, Saloon, Crossover — and
 every company around them is fictional: Hitchr and Zipp supply the demand, Meridian and
 Halo are the rivals. The line is deliberate. Real cars let the game make checkable claims
 about batteries and range; invented operators let it make uncheckable ones about
 commission and conduct without libelling anybody.
 
 **Every vehicle drives itself.** Autonomy is the setting, not a feature to shop for, and
-never a difference between two cards. The Cybercab simply has no steering wheel to remove.
+never a difference between two cards. The Cab simply has no steering wheel to remove.
 
 Technical figures on the cards are published ones. Prices are **not** MSRP — they are
 balanced against a fare model where a ride nets about $8, and real sticker prices would
@@ -183,9 +183,9 @@ scenarios form a chain rather than a menu.
 | **Miami, FL** | Constraint | Unsupervised. The real geofence is 10–14 sq mi of *western* Miami-Dade and excludes downtown, Brickell, Miami Beach and MIA — so it is the first city with **no airport run and no CBD**. Fares are smaller (`fareK` 0.94), insurance is the worst in the country (`insK` 1.35), FPL's on-peak window covers **nine hours** (noon–21:00 at 26¢/kWh), and the Supercharger belt is legacy 72 kW hardware mostly outside the box. Aggressive traffic plus daily storms raise incident risk (`incK` 1.30). | **Shipped** (v0.24) |
 | **Tampa, FL** | Night shift | The exact mirror of Miami: **all core, no suburbs.** Downtown, Ybor City, Tampa Heights, West Tampa, Hyde Park, part of East Tampa; no TPA, no South Tampa. Shortest trips in the game (`fareK` 0.92), and the money is after dark — 25.1 offers/h at 21:00 against 17.7 at the 06:00 open, rising to **46.0/h with the three Ybor taprooms live**, the highest hour any city reaches. Both in-geofence Superchargers are 150 kW; both 250 kW sites are out of town. TECO's off-peak is the cheapest power at night (7.5¢). | **Shipped** (v0.25) |
 | **Orlando, FL** | Thin corridor | A strip along Semoran Blvd / Lee Vista Blvd that **runs past MCO without including it**, with Disney and Universal 20+ km away. Second city with no airport zone and the first with **no brewery zone at all** — Orlando's beer scene is 8–14 km outside the box. Thinnest demand in the game (18.2/h at open, 31.5/h ceiling with every zone live), so a big fleet starves; cap 14. Compensations are real: OUC is municipal and has the **cheapest power** of any city, and Lee Vista Blvd is 8 stalls at **325 kW** — the fastest hardware, and the only site inside the geofence. | **Shipped** (v0.25) |
-| **SF Bay Area, CA** | Hard mode | Safety monitor mandatory — payroll from hour one. Highest fares, worst congestion, most expensive power, steep hills hurting range, Meridian entrenched, hostile regulator. **The monitor IS Act 2's payroll mechanic**, so this city cannot ship before Act 2. | Blocked on Act 2 |
+| **San Francisco, CA** | Hard mode | Modeled the same way Austin already is, not a new system: `permit:'Supervised'` is reportage (Tesla's Bay Area service runs FSD Supervised with a real safety driver) plus the usual multipliers, exactly like every other city's permit field. Real CPUC finding on record: Tesla holds a limo-class TCP permit, not an AV permit — the regulator has said so outright, which is the "hostile regulator" texture, honestly obtained. Highest insurance (`insK` 1.40) and incident risk (`incK` 1.35) in the game; PG&E's real EV2-A tariff makes its cheapest *off-peak* hour (31¢/kWh) still pricier than every other city's *peak* hour. Still invite-only in reality, hence the smallest fleet cap (12) rather than the largest. Models San Francisco proper out of Tesla's much broader published Bay Area area, the same "one real slice" move Dallas and Tampa already made. | **Shipped** (v0.39.3) |
 
-Earlier drafts of this table guessed at the cities from a distance and got **three** things
+Earlier drafts of this table guessed at the cities from a distance and got **four** things
 wrong, all corrected above:
 
 1. Dallas's launch geofence was *smaller* than Austin's, not "enormous geography".
@@ -193,6 +193,9 @@ wrong, all corrected above:
    Miami the service area leaves out.
 3. Orlando and Tampa were down as the "tourism" scenario, with airport and theme-park demand
    and strong seasonality. **Neither launch area contains an airport or a theme park.**
+4. SF was filed as "blocked on Act 2" on the theory that its safety monitor needs a payroll
+   system this game does not have. It doesn't — `permit` is reportage plus multipliers in
+   every city, including Austin's own `'Supervised'`, and SF ships the same way.
 
 Where reportage and a nice design idea disagreed, the code followed the reportage every time.
 That is also why three of the five shipped cities have no airport run: it turns out that is
@@ -438,7 +441,7 @@ Clearance still owed before any public release: USPTO TESS, EUIPO, Steam, itch.i
 
 | Real thing | Deadhead name |
 |---|---|
-| Vehicle marque | **Real Teslas** — Cybercab (2-seat, purpose-built), Model 3, Model Y. Superseded the fictional Nova marque; see §2.5 |
+| Vehicle marque | **Axiom** — Cab (4-seat, purpose-built), Saloon, Crossover, and the trims of each. Fictional again as of 0.42.0; see §9.4. Six trims since 0.42.0's catalogue trim, each with its own original render as of 0.65.0 — original art of a fictional marque, which is what keeps §9.1's trade-dress rule intact; the "no vehicle silhouettes" line above bars a *real* car's outline, not our own |
 | Charging network | **Rapid** |
 | Incumbent rival | **Meridian** |
 | Price-cutting rival | **Halo** |
@@ -448,12 +451,15 @@ Clearance still owed before any public release: USPTO TESS, EUIPO, Steam, itch.i
 
 Never appears in code, assets, copy, or store listing:
 
-> Tesla · Model 3 / S / X / Y · **Cybercab** · Supercharger · Autopilot ·
-> Full Self-Driving / FSD · Waymo · Uber · Lyft · Universal Sans · Gotham
+> Any manufacturer's name or badge · any real model name · any charging-network
+> brand · any driver-assistance product name · Waymo · Uber · Lyft ·
+> Universal Sans · Gotham · **any manufacturer's press photography**
 
-**Cybercab is specifically radioactive** — Tesla's own application is suspended over a
-likelihood-of-confusion refusal after a French beverage company, Unibev, filed for the
-name first. It is contested property; stay out of it.
+**Purpose-built-cab names are specifically radioactive.** The obvious one is contested
+property even for the company that coined it: its own application sits suspended over a
+likelihood-of-confusion refusal after a European beverage company filed for the name
+first. Two parties are already arguing about it. Stay out of it — "Cab" is a category
+noun and nobody can stop you using it.
 
 Real *city* names are fine and add authenticity. Real *company* names are not,
 particularly for rivals the player is designed to beat.
@@ -461,11 +467,43 @@ particularly for rivals the player is designed to beat.
 Layout conventions, a blue accent, flat surfaces and rounded rectangles are not
 protectable. Names, logos and typefaces are.
 
+### 9.4 The 0.42.0 rebrand — why the real marque went away
+
+From 0.11.0 to 0.41.0 the catalogue shipped nine real cars under their real product
+names, with nine manufacturer press photographs. That directly contradicted §9.3 on this
+same page, which had said "never appears in code, assets, copy, or store listing" since
+before the cars arrived. The rule was right and the shortcut was wrong; 0.42.0 puts the
+rule back.
+
+**What changed, and why each part mattered:**
+
+- **Names → Axiom.** Naming a real car to describe a real car is defensible nominative
+  use. Naming it on nine store-facing product cards, in a game whose whole argument is
+  that the business model does not close, is a different thing — and it invites a reading
+  of affiliation nobody wants to argue about in writing.
+- **Press photos → drawings.** This was the larger exposure and the easier one to fix.
+  A press kit licenses editorial use; a game is not editorial use. Trademark disputes
+  open with a letter; image licensing opens with an invoice. Five original SVG bodies now
+  cover nine cars.
+- **Specs stayed exactly as they were.** Facts about the world are not the manufacturer's
+  property, and they are the reason the simulation is worth arguing with. Every price,
+  pack size, range, tariff and cost-per-mile figure is unchanged, which is also why the
+  Act 1 trilemma needed no retuning.
+
+**What deliberately did NOT change:** real city names, real service-area geometry, real
+electricity tariffs, real permit regimes, and the sourcing comments in `deadhead.html`
+that say where each of those came from. Those are factual statements about the public
+world, they are what makes the economy checkable, and removing them would cost the
+project its one real defence — that the numbers are true.
+
+**"Robotaxi" also stays.** See §9.1: the bare word was refused registration as generic.
+It is a category, not a brand.
+
 ---
 
 ## 10. Open items
 
-- **Resolved in 0.11.0.** The 2-seat pod shipped as the Cybercab and is a distinct class: cheapest per mile, smallest pack so it charges most often, and two seats. Seats are recorded but inert until group and airport rides exist — that is the open part now.
+- **Resolved in 0.11.0, re-resolved in 0.42.0.** The 2-seat pod is a distinct class — cheapest per mile, smallest pack so it charges most often, two seats — and it now ships as the Axiom **Cab** rather than under a real product name. Seats are recorded but inert until group and airport rides exist; that is the open part now.
 - The Austin scenario capping near 17 cars is faithful to reality but may feel like an anticlimactic campaign ceiling. Decide during prototype tuning whether to hold the line or let the fiction diverge.
 - Icon set: needs a freely licensed outline family (Tabler or Lucide).
 

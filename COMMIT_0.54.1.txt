@@ -1,0 +1,48 @@
+0.54.1 — Day/Clock/Cash move to the control line, so the topbar stops being three lines deep
+
+WHAT WAS WRONG
+
+Pavel's screenshot at ~1024px: the topbar was rendering three lines —
+brand+tabs+Day+Clock on the first, Cash alone on a second, Shift+Clock on+
+speeds+icons on a third. Day/Clock/Cash lived inside .tb-info alongside the
+brand and city-tab strip, and .tb-info wraps internally — so when the block
+was JUST short of room, the wrap landed wherever the arithmetic put it: Cash,
+alone, while Day and Clock stayed wedged next to the tabs one line up. An
+earlier pass the same day (0.54.0's predecessor work) tightened .tb-info's
+column gaps to buy back width, which helped but did not fix the class of bug —
+gaps are a width budget, not a grouping rule, and nothing told the layout that
+Day/Clock/Cash belong together as one unit.
+
+WHAT CHANGED
+
+Day, Clock and Cash moved out of .tb-info and into .tb-ctrls, ahead of Shift.
+.tb-ctrls only ever moves as one atomic block — that has been true since
+0.53.1, when the row was cut down to exactly two children so the only seam a
+natural wrap can pick is the one between them. Putting the three readouts in
+that block means they now travel WITH Shift/Clock on/speeds/icons rather than
+wrapping loose inside .tb-info: at any width, the seam is either "brand+tabs
+alone" or "brand+tabs, PLUS every readout and every control together" — never
+a stray middle line.
+
+.tb-info is left holding just the brand, the city-tab strip, and the Trophies
+readout (already the first thing hidden at narrower widths via .tb-opt).
+Shift still sits immediately before the Clock button it describes — that
+adjacency didn't change, only the fact that it's no longer literally the
+first child of .tb-ctrls; Day is.
+
+TESTS
+
+One test hard-asserted the old rule ("Shift leads the control line") via
+`ctrls.firstElementChild === shift`, which is now false by design. Replaced
+with a check for the actual invariant that matters: Day, Clock, Cash and
+Shift are all inside .tb-ctrls (none leaked back into .tb-info), in that
+order, and Shift still sits immediately before the #clock button. Updated two
+stale comments (the gap-tightening rule, the T4b tier's "read line / press
+line" description) that referenced the old grouping.
+
+Verified headlessly at 1024px CSS width (Playwright + local Leaflet, same
+recipe as 0.54.0): two lines, brand+tabs on the first, Day/Clock/Cash/Shift/
+Clock on/speeds/icons together on the second, no orphaned Cash.
+
+Full suite passes clean (`npm test`, 405 checks), and `check-parity` is
+green — deploy/public/index.html is byte-identical to deadhead.html.

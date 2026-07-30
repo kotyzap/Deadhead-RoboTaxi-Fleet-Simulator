@@ -6,7 +6,8 @@ _Decisions made 2026-07-26, against `deadhead.html` v0.22.0. Line numbers refer 
 | Question | Decision | Why |
 |---|---|---|
 | City model | **Sequential scenarios.** One live simulation. Tab bar switches which *run* you're in, with an explicit confirm; the other city is parked, not ticking. | Matches `DESIGN.md` §5 ("scenario missions… own goal, constraints, required strategy"). Parallel live branches would turn `S` into `S.branches[city]` and force `tick()`/`render()`/`snapshot()` to answer "which one, or both?" — that's Act 2's complexity bill paid before Act 2 exists. |
-| Economy | **No carryover. Each city starts at `CFG.startCash` ($7,500).** Meta-progression carries unlocks and a per-city result, never the balance sheet. | Arriving in Dallas with a mature bankroll means the Act 1 lesson — you cannot afford a single car outright, so you rent or you put money down — never lands again. That lesson is the game (see `S.cars=[]` at boot and the comment at 2610). |
+| Economy | **SUPERSEDED 2026-07-27 — see `companyplan.md`.** Originally "no carryover, each city starts at `CFG.startCash` ($7,500)." Now: one shared `PROG.companyCash` across every city, real-world-midnight catch-up billing for a parked city's fleet, repossession after `CFG.parkGraceDays`. Austin alone keeps the tight tutorial start; every later city inherits whatever the company has banked. | The original reasoning (below, kept for the record) turned out to be solvable a better way: Pavel's framing — "this is not a funny game, this is a real biz simulator," one operator can't run two cities at once — makes money scarcity a permanent, earned consequence of expansion rather than a scripted reset. See `companyplan.md` for the full decision and its own open questions. |
+| ~~Economy (original, superseded)~~ | ~~No carryover. Each city starts at `CFG.startCash` ($7,500). Meta-progression carries unlocks and a per-city result, never the balance sheet.~~ | ~~Arriving in Dallas with a mature bankroll means the Act 1 lesson — you cannot afford a single car outright, so you rent or you put money down — never lands again. That lesson is the game (see `S.cars=[]` at boot and the comment at 2610).~~ |
 | City #2 | **Dallas / Houston.** | The only candidate that is real difficulty rather than a re-skin *and* needs zero new systems. Miami wants flooding/hurricane events (new content). SF wants a mandatory safety monitor, i.e. payroll from hour one — that **is** Act 2; don't ship it before Act 2. |
 | Gate | **First shift clocked off** (`needs:'shift1'`). Dallas tab visible from the first boot, padlocked until then. | Revised — see below. A visible padlock is a goal; a tab that materialises out of nowhere is a surprise. |
 | City identity | **Each city gets its own accent tone, tinting the chrome only.** See §"City identity" below. | With separate runs per city, "which run am I in" has to be answerable pre-attentively, from a screenshot, before any label is read. A city name in the topbar doesn't do that; ambient colour does. |
@@ -101,7 +102,7 @@ Working palette, all fills verified ≥4.5:1 against white:
 | Austin | `#3E6AE1` (4.82:1) | `#5A82EB` | `#5A9BF6` |
 | Dallas | `#A15C1E` (5.17:1) | `#C87A33` | `#E08A2E` |
 | Miami | `#B5257E` (5.95:1) | `#D9479A` | `#F2559F` |
-| SF Bay | `#6D3FD4` (6.34:1) | `#8B62E8` | `#9A6CF5` |
+| SF Bay | ~~`#6D3FD4`~~ superseded — see below | | |
 
 Austin keeps Tesla blue — it's the product's identity and the game's default look; changing
 the tutorial city changes what Deadhead looks like.
@@ -683,15 +684,55 @@ park at Lee Vista, retail at Goldenrod and a lot of apartment complexes.
 
 ### Tone: Orlando takes the purple that was reserved for SF Bay
 
-The palette table above assigned `#6D3FD4` to SF Bay. SF cannot ship before Act 2 (its
-mandatory safety monitor *is* the payroll mechanic), so Orlando takes the violet slot and SF
-picks a new hue when it becomes real. Both new tones clear the AA rules from v0.24.0 — fills
-≥4.5:1 against white in both themes, gradient top stops ≥4.0:1:
+The palette table above assigned `#6D3FD4` to SF Bay. At the time this section was written, SF
+was believed blocked on Act 2 (see the v0.39.3 correction below — it wasn't), so Orlando took
+the violet slot. Both tones below clear the AA rules from v0.24.0 — fills ≥4.5:1 against white
+in both themes, gradient top stops ≥4.0:1:
 
 | City | `--accent` day | night | `--city-tint` |
 |---|---|---|---|
 | Tampa | `#0D7687` (5.31:1) | `#0E8092` (4.64:1) | `#18D7F6` |
 | Orlando | `#7F4DD5` (5.35:1) | `#895BD9` (4.60:1) | `#A47CE9` |
+
+### San Francisco — city #6, v0.39.3, and the Act 2 caveat was wrong
+
+The reasoning above — "SF's mandatory safety monitor IS Act 2's payroll mechanic, so it can't
+ship first" — was a mistake, caught when Pavel pushed back on it: `permit` was never a payroll
+system. It's a label plus a couple of multipliers (`insK`, the goal text), which is exactly
+what `permit:'Supervised'` has done for Austin since v0.23.2, with no hired-operator system
+anywhere in the codebase. SF ships the same way, no Act 2 required.
+
+Confirmed by research at ship time: Tesla's Bay Area service runs FSD (Supervised) with a real
+safety driver in the seat — `'Supervised'` is reportage, not a difficulty knob, same as every
+other city's permit. The CPUC has said on the record that this is a Transportation Charter
+Party (limo-class) permit, not an autonomous-vehicle one — the "hostile regulator" texture,
+obtained honestly rather than invented. The service is also still invite-only in reality, which
+is why SF's fleet cap (12) is the smallest in the game rather than the largest for the biggest
+metro modeled so far.
+
+Tesla's own published area is the broadest yet — north of the Golden Gate down past San Jose —
+so this models San Francisco proper, the same "one real slice of a bigger real area" move
+Dallas and Tampa already made. SFO joined the real map on 21 July 2026, six days before this
+scenario shipped, making it the first city where the airport run is real and current rather
+than excluded (Miami, Orlando) or absent (everywhere else).
+
+The standout real number: PG&E's EV2-A time-of-use tariff puts SF's off-peak price (31¢/kWh)
+above every other city's PEAK price except Dallas's, which it ties. There is no cheap hour here
+the way there is everywhere else.
+
+SF's tone took a new hue rather than reclaiming Orlando's violet, to avoid a churn edit to a
+shipped city over a palette-planning mistake:
+
+| City | `--accent` day | night | `--city-tint` |
+|---|---|---|---|
+| SF | `#187A4A` (5.36:1) | `#1B8250` (4.82:1) | `#2ECC81` |
+
+**Left open at ship time:** `ROADS_BY_CITY.sf` is `{}` — the sandbox this was built in has no
+route to the public OSRM demo server, so SF draws straight-line fallbacks on the map until
+`node deploy/scripts/bake-roads.js sf --write` is run somewhere with network access. This is a
+fully supported state (see the comment above `roadsFor()`), the same one Orlando's zone-centroid
+nudge sat in for a while — it does not block economy, fares, or distances, which never read
+`ROADS`.
 
 ### The tab bar at five cities
 

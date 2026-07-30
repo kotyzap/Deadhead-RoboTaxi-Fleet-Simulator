@@ -1,0 +1,51 @@
+0.47.0 — "I clocked on, why is nothing happening?"
+
+THE REPORT
+
+Playtesters clocked on and waited. They did not know that a ride service still
+has to be connected — clocking on says only that YOU are available. 0.46.0's
+single card ten seconds in was not enough: a card can be dismissed unread, and
+once it is gone the screen goes back to looking like a working game that simply
+has no rides yet.
+
+WHAT CHANGED
+
+1. THE PANEL HOLDS THE STATE. While clocked on with no service connected, the
+   Platforms panel is in an alarm state — red border (--s-crit, the same colour
+   the game already uses for critical, themed), the tag reads "no service" in
+   red, and the note carries a live counter: "Sitting 0:14 · $93/day owed either
+   way." The counter is the part that answers "is this broken?", because
+   something on screen is visibly moving. Held, not blinked: this state can last
+   minutes and a minutes-long blink is punishment, not information.
+
+   Off the clock it is the ordinary grey note. Being unconnected while parked is
+   not a mistake; it becomes one the moment you clock on.
+
+2. PAOLO REPEATS. First telling at NOFEED_AFTER (10 real seconds), then every
+   NOFEED_REPEAT (45), capped at NOFEED_MAX_SAID (3) per shift. Capped rather
+   than endless — a player who has decided to sit out a shift with no feed has
+   heard him, and a modal that cannot be got rid of is worse than the mistake it
+   is about. The first telling explains (and now says outright that clocking on
+   only makes YOU available, which is the misconception); the repeats prod, and
+   quote the wasted time and the daily fixed cost, which is what makes the point
+   the second time.
+
+TWO DETAILS THAT MATTER
+
+- S.noFeedSec is MONOTONIC while the board is dead. It is on screen as elapsed
+  wasted time, so it cannot be reset each time Paolo speaks — the repeat gap is
+  measured against S.noFeedSaidAt instead.
+- S.ray.feedSaid resets whenever S.ray.feedShift stops matching S.shiftNo, i.e.
+  it is derived rather than cleared in clockOn(). One place for this state to go
+  stale instead of two.
+
+mmss() is new: real seconds as m:ss. Deliberately not hhmm(), which formats
+SIMULATED time of day — this is a wall-clock stopwatch.
+
+TESTS
+
+test/nofeed-nudge.test.js: the repeat gap (too early, then on time), the cap, the
+short-form repeat, the monotonic counter, and the panel alarm appearing, clearing
+on connect, and staying away while parked. The "shift is not stamped" check from
+0.46.0 is now "nothing was said" — feedShift changed meaning from "already told"
+to "which shift the counters belong to".

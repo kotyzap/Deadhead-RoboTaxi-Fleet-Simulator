@@ -1,0 +1,68 @@
+0.50.1 — the shift report fits the sheet again, and Margin stopped being "argin"
+
+WHAT WAS WRONG
+
+Three things, all visible in one screenshot of 0.50.0:
+
+1. The report scrolled. Adding the hexagraph to a report that was already
+   fifteen rows pushed it past .rep's max-height:86vh, so the title scrolled
+   off the top and the chart was cut by the sheet's edge.
+
+2. The left-hand axis labels were clipped. They are drawn with
+   text-anchor="end", so their text extends LEFTWARD from an anchor at about
+   x=0.14*size — which in a square viewBox starting at 0 runs off the edge.
+   Nothing inside an SVG can paint outside its viewBox, so "Margin" rendered
+   as "argin". Same class of bug as the charge ring in 0.48.1: correct
+   geometry, wrong container, and it fails silently rather than loudly.
+
+3. "Shift length" and "Hours worked" were the SAME NUMBER printed twice under
+   two names — both S.workedSec/3600, eleven rows apart. Pavel's screenshot
+   showed 1.3 h in both.
+
+WHAT CHANGED
+
+Layout: the chart and a new right-hand column are siblings in .rp-top.
+Distance driven, Operating cost per unit and Platform take rate move out of
+the ledger into that column as .rp-mini blocks (label above value — a narrow
+column has no room for .rp-row's space-between). Pavel's call, and it earns
+its keep twice: it reclaims three rows AND fills the ~140px of dead space
+that a centred 236px chart left on either side of a 520px sheet. The axis
+legend and the ghost key move into the same column. Below 470px the two
+columns stack and the readouts run as a row underneath.
+
+"Shift length" is deleted, not moved. "Hours worked" is the one that stays,
+because it is half of the worked-vs-billed pair the whole act is built to
+deliver, and that pair only reads as a pair when the two lines sit together.
+The hours-billed line also loses its trailing sentence ("the car owes X a day
+whether you work or not" -> "X/day regardless") — it wrapped onto a second
+line inside a 13px row and cost more height than it earned. The full claim
+survives in Paolo's beat 13, where there is room for it.
+
+The viewBox is now padded horizontally (PAD_X 26, PAD_Y 8) instead of square,
+and the hexagon is NOT shrunk to make room — the box carries the label gutter
+itself. PAD_Y is smaller because the top and bottom labels are centred rather
+than anchored outward, so they only need their own ascender/descender.
+
+Also fixed while in here: rpRadarBlock() returned '' with no history row,
+which after this change would have silently taken the three per-distance
+readouts down with the chart. They now render as their own .rp-nochart row.
+
+Measured after: ~497px of body against ~654px available at a 900px viewport
+(86vh less title and buttons). Eleven .rp-row plus three .rp-mini, down from
+fifteen rows.
+
+TESTS
+
+shift-radar.test.js grows to 43 checks. The label-gutter ones are the
+interesting addition: they parse the emitted viewBox and every
+text-anchor="end" element out of the real SVG string and assert each anchor
+has ~34px of room inside the left edge — so the gutter cannot be quietly
+removed by someone tidying the viewBox back to "0 0 n n", and the check
+re-derives itself if the label radius is ever retuned. Plus: the chart and
+side column are siblings, the three readouts are in the column and NOT also
+full-width rows, "Shift length" stays gone, "Hours worked" stays, the wrapped
+sentence stays gone, and the chartless path keeps its readouts.
+
+jsdom does no layout, so the height itself is not assertable here — what is
+asserted is the structure that bought the height back. Full suite passes
+clean (363 checks, up from 351).

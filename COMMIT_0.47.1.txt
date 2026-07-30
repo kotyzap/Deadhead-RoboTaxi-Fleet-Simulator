@@ -1,0 +1,40 @@
+0.47.1 — the Accept button gets a second line
+
+WHAT WAS WRONG
+
+The in-car CTA (.t-cta) split into a label (.main) beside a fixed-width stats
+column (.side, 158px down to 104px on a phone). At the widths this rail
+actually renders at, that fixed column left so little room for the label that
+it lost most of its tail to an ellipsis — "No offers" read as "No o…",
+"Accept University of Tampa" as "Accept Univ…" — on the one button whose text
+matters most to a player deciding whether to take a ride.
+
+WHAT CHANGED
+
+.t-cta now stacks two lines instead of splitting into two side-by-side halves:
+
+  - Line 1 (.main): label, then fare, space-between — unchanged in behaviour,
+    still an ellipsis on the label and a fare that never shrinks or wraps.
+  - Line 2 (.meta, was .side): surge on the left, offers/idle count on the
+    right — same left/right rhythm as the line above it.
+
+The label now gets the button's full width at every tier instead of sharing
+it with a column that never flexed. --cta-h moves up accordingly at all five
+tiers (52→60px base, 58→66px at 1500px+, 46→54px at Full HD, 42→48px under
+900px tall, 44→52px on phones) to fit two lines; .t-dec still reads --cta-h on
+both axes and stays square. The old chevron notch (clip-path on .main) is
+dropped — it only made sense as the seam between two side-by-side halves, and
+doesn't fit a stacked layout.
+
+Disabled and off-shift states move from targeting .main to targeting .t-cta
+directly, since the background now lives on the button itself rather than on
+one internal half.
+
+TESTS
+
+test/decline-cta.test.js's CSS invariants (.t-cta-row display:flex, no
+non-zero margin on .t-cta, --cta-h as the sole height authority read by both
+.t-cta and .t-dec, five --cta-h declarations) all still hold, and its
+behavioural checks (Accept/Decline naming the same offer, disabled states,
+off-shift) are unaffected — nothing about which offer is named or when the
+buttons are enabled changed, only the layout around that text.

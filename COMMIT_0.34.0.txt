@@ -1,0 +1,54 @@
+0.34.0 — the Fleet table gets a Queue column
+
+Pavel: the roster showed SoC and Today's earnings per car but nothing
+about how much work was already stacked up behind it. A car "ON TRIP"
+looked identical whether it was free the moment it dropped its rider or
+already owed three more fares — the exact number you need before deciding
+whether to accept the next offer or let it go to a platform that has an
+actually-idle car.
+
+WHAT CHANGED
+
+Cars can now carry a real backlog, not just a single active ride. assign()
+still hands an accepted ride straight to the nearest idle car when one
+exists — nothing changes for the common case. Only when every car is busy
+does it now reserve the ride on the best-placed BUSY car instead of
+leaving it adrift in the global pool until autoDispatch's next 5s sweep:
+fewest rides already queued behind it, ties broken by whoever's current
+leg is shortest (remainKm). CFG.queueCap (3) stops one well-placed car
+from hoarding every waiting rider.
+
+The moment a car goes idle — trip finished, incident cleared, rider
+cancelled — stepCar's idle branch now checks that car's queue before
+falling through to auto-charge or sitting parked: first ride waiting gets
+started immediately, no dispatch-tick delay. A ride that no longer fits
+(SoC has since dropped) is released back to the open pool rather than
+stranding the rider on a car that will never come. An explicit "Send to
+charge" order still outranks a queued fare, same priority assign() itself
+already gives chQueue cars.
+
+The Fleet table's new Queue column is this array's length — 0 in the
+common case, amber once a car has anything backed up behind it.
+
+Queued rides are saved and restored properly: c.queue holds live ride
+object references (same objects as S.rides, same reason c.ride does),
+which JSON would otherwise fork into disconnected copies on reload. The
+save format stores queueIds and restore() re-points them at the SAME
+S.rides objects, exactly the pattern rideId/c.ride already used. Ending a
+shift (clockOff) clears every car's queue along with S.rides — a
+backlog from tonight must not reappear and start dispatching itself
+tomorrow. Selling or handing back a car releases anything still in its
+queue to the open pool first, rather than quietly deleting a rider's
+request along with the vehicle.
+
+No SAVE_V bump: restore() defaults queueIds to [] when absent, so old
+saves keep loading exactly as before, just with an empty queue on every
+car until the mechanic starts filling it in.
+
+STILL OPEN
+- Both D1 migrations unrun (carried from 0.33.2).
+- The Cloudflare rate limiting rule on /api/stat.
+- The DISPATCH OFFLINE banner.
+- No test in the suite exercises assign()/stepCar's queue path by name —
+  covered by manual review and the existing boot-smoke/parity checks only.
+- deploy/public/Inside_The_Brutal…mp4, 9.8 MB, referenced by nothing.

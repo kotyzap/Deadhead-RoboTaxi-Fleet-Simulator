@@ -1,0 +1,34 @@
+0.45.1 — the affordable option is the loud one
+
+WHAT WAS WRONG
+
+On the opening's real cash ($800 in Austin) buying outright and financing are
+both out of reach and renting is the only door. But Rent was the one row in
+.card-acts with no treatment at all — a plain transparent outline — sitting
+underneath two .pri gradient buttons that were merely dimmed to opacity .38.
+Dimmed-but-coloured beats plain, so the card ranked the two things you cannot
+do above the one thing you can.
+
+WHAT CHANGED
+
+- `.avail` on any affordable button: accent border, accent text, and a light
+  accent wash (rgba(var(--accent-rgb),.09) — a per-theme token, not a literal).
+- A held-back pulse, not a blink: `avail-pulse` rings the button three times
+  when the garage renders, then stops. An indefinite animation across nine
+  cards is a fairground, and it keeps asking for attention it already has.
+  Under prefers-reduced-motion the global animation:none kills the pulse, so
+  `.avail` gets a static ring there instead of silently losing the emphasis.
+- Rent still never borrows `.pri`'s filled gradient. Buying outright is the
+  cheapest way to hold a car and should stay the loudest button whenever it is
+  reachable — `.avail` means available, not recommended.
+- A caption ("Available now — nothing down") under an affordable button, but
+  ONLY when it is the sole way into that car. With money, all three rows are
+  affordable and three captions per card across nine cards is noise. buyRow()
+  takes the list of rows the card actually renders, so an owned card — which
+  hides Buy — doesn't decide "not sole" because of a button nobody can see.
+
+TESTS
+
+test/opening-fleet.test.js gains the $800 case (rent .avail, buy not, the sole
+caption, the unaffordable row still explaining itself) and the rich case (every
+row .avail, no caption anywhere).

@@ -1,0 +1,79 @@
+0.39.3 — San Francisco, city #6, and the Act 2 caveat was wrong
+
+Pavel, on being told SF was "blocked on Act 2": "I was not originally thinking about some
+'hire other operator'... can we assume self-driving cars will be driving in SF, can we add it
+now as another city?"
+
+THE MISTAKE, CAUGHT
+
+DESIGN.md and citiesplan.md both filed SF as blocked on Act 2, reasoning that its mandatory
+safety monitor IS Act 2's payroll mechanic. That was wrong. `permit` has never been a payroll
+system anywhere in this codebase — it's a label (`S.permit`) plus a couple of economy
+multipliers (`insK`, the goal text). Austin has been `permit:'Supervised'` since v0.23.2 and
+has never needed a hired-operator system for it. SF ships the exact same way.
+
+WHAT'S REAL
+
+Researched at ship time, not assumed:
+- Tesla's Bay Area service runs FSD (Supervised) with an actual safety driver in the seat — the
+  app's own California terms say so. `'Supervised'` is reportage, same as every other city.
+- The CPUC has said on the record that this is a Transportation Charter Party (limo-class)
+  permit, not an autonomous-vehicle one — real "hostile regulator" texture, not invented.
+- The service is still invite-only (Tesla owners, employees, friends and family) — hence
+  fleetCap 12, the smallest in the game, for the largest metro modeled so far.
+- SFO joined the real service map on 21 July 2026 — six days before this shipped — making SF
+  the first city where the airport run is real and current, rather than excluded (Miami,
+  Orlando) or simply absent everywhere else.
+- PG&E's EV2-A time-of-use tariff: 62c/kWh peak (4-9pm), 31c/kWh off-peak. Its off-peak price
+  alone ties Dallas's peak and beats every other city's peak outright — there is no cheap hour
+  here the way there is everywhere else. This is the standout real number and the reason
+  `power` needed CITIES.sf's own comment rather than just new digits.
+- insK 1.40 and incK 1.35 are the highest in the game — CA autonomous-adjacent insurance and
+  SF's hills/traffic, respectively.
+
+SCOPE: models San Francisco proper, not Tesla's whole published Bay Area (Golden Gate to San
+Jose) — the same "one real slice of a bigger real area" move Dallas (downtown/Uptown out of
+the whole Metroplex) and Tampa (the core out of the whole Bay) already made.
+
+WHAT SHIPPED
+
+- CITIES.sf: permit Supervised, fleetCap 12, fareK 1.15, depK 1.20, insK 1.40, incK 1.35, order
+  5, needs shift1@orlando, PG&E power schedule, goal $38,000.
+- ZONES_BY_CITY.sf: 13 zones — Financial District/SoMa/Mission live by default (work/work/night,
+  same mix as Austin/Dallas/Tampa), Union Square/Marina/Castro/Haight/Richmond/Sunset opt-in,
+  SFO (real, current, opt-in like every other city's airport), and three real, currently-
+  operating taprooms (Cellarmaker, Fort Point Valencia, Woods Beer & Wine) — checked rather than
+  assumed, since SF's beer scene has had real closures lately (21st Amendment, Black Sands,
+  Fort Point's own Presidio taproom winding down).
+- CHARGERS_BY_CITY.sf: three real sites, transcribed from Tesla's pages — Geary Boulevard (34
+  stalls, 250 kW, the only fast site in the city and it's in the Richmond, not downtown), Van
+  Ness Avenue (12 stalls, 72 kW, close to downtown and the weakest hardware), South San
+  Francisco (20 stalls, 72 kW, near SFO). First city with no clean "fast and far or slow and
+  close" answer — the close option and the airport option are both the weak hardware.
+- New fog-green tone (day #187A4A 5.36:1, night #1B8250 4.82:1) rather than reclaiming the
+  violet citiesplan.md had reserved for SF — Orlando already shipped with it, and reopening a
+  live city's colour over a planning mistake was worse than picking a new hue.
+- DESIGN.md's city table and citiesplan.md updated: the "blocked on Act 2" reasoning is struck
+  through and corrected in place, same convention as the three earlier reportage corrections
+  (Dallas's geofence, Miami's premise, Tampa/Orlando's tourism guess) — now four.
+
+LEFT OPEN
+
+`ROADS_BY_CITY.sf` is `{}`. This build environment has no route to the public OSRM demo server
+bake-roads.js depends on (confirmed: 117/117 pairs failed to fetch), so SF draws straight-line
+map fallbacks until `node deploy/scripts/bake-roads.js sf --write` is run somewhere with network
+access. This is a fully supported state per the comment above roadsFor() — it affects map
+drawing only, never fares, energy, or distance, which read dist() on straight lines regardless.
+
+Also carried over, unrelated to this change:
+- Both D1 migrations unrun (carried from 0.33.2).
+- The Cloudflare rate limiting rule on /api/stat.
+- The DISPATCH OFFLINE banner.
+- The Camera nav icon's no-incident fallback still only flashes the wing.
+- Auto-follow's on/off state is not saved across reloads (0.38.0).
+- PROG (achievements, eggs, city unlocks) is still per-origin and is not synced to the account
+  even when signed in.
+- deploy/public/Inside_The_Brutal…mp4, 9.8 MB, referenced by nothing.
+
+Existing suite (8 files, city.test.js updated for the sixth city and the new power ordering)
+and check-parity pass.

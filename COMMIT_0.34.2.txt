@@ -1,0 +1,32 @@
+0.34.2 — Fleet roster's Buy button stays in view as the fleet grows
+
+Pavel: with four cars in the roster, "Add a vehicle" sat below whatever
+slice of the panel happened to be visible — reported as the button being
+"below the view of the box".
+
+WHAT CHANGED
+
+#pb-fleet's metrics (Earning/Idle/Down), the vehicle table, and the Buy
+button used to share one scrolling region — the whole panel body scrolled
+as a single block, so growing the roster by a row pushed the button
+further down that same scroll, with nothing marking it as reachable.
+
+#pb-fleet is now a column: the metrics and the Buy button are fixed at
+their natural size (flex:0 0 auto), and only the table sits inside its own
+`.fleet-scroll` wrapper, which is the one thing allowed to scroll. Add a
+5th car and the table gains a scrollbar; Buy stays exactly where it was.
+Same pattern the Rapid network panel already uses for its charger list —
+scoped to #pb-fleet specifically rather than changed on the shared
+.p-body rule, since Platforms/Rapid/Books intentionally scroll as one
+block and shouldn't inherit this.
+
+Verified structurally via jsdom: #buy and .metrics are direct children of
+#pb-fleet (outside the scroller), #fleet-rows lives inside .fleet-scroll,
+and #buy follows the scroller in DOM order. Existing suite (8 files) and
+check-parity still pass.
+
+STILL OPEN
+- Both D1 migrations unrun (carried from 0.33.2).
+- The Cloudflare rate limiting rule on /api/stat.
+- The DISPATCH OFFLINE banner.
+- deploy/public/Inside_The_Brutal…mp4, 9.8 MB, referenced by nothing.

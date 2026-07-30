@@ -150,12 +150,12 @@ async function run(file) {
     // v6 -> v8 in one pass: migrate() cascades, so this also runs the v7 and
     // v8 blocks. That is the point of the ascending order.
     const v6 = { v: 6, s: JSON.parse(JSON.stringify(SV.snapshot().s)) };
-    // index 7 in Austin's authored order is the airport, and only it is on
-    v6.s.zones = A.ZONES_BY_CITY.austin.map((z, i) => i === 7);
+    // index 6 in Austin's authored order is the airport, and only it is on
+    v6.s.zones = A.ZONES_BY_CITY.austin.map((z, i) => i === 6);
     delete v6.s.city;
     const m = SV.migrate(v6);
     return !Array.isArray(m.s.zones) &&
-           m.s.zones[A.ZONES_BY_CITY.austin[7].n] === true &&
+           m.s.zones[A.ZONES_BY_CITY.austin[6].n] === true &&
            m.s.zones['Downtown core'] === false &&
            m.s.city === 'austin';
   });
@@ -384,10 +384,14 @@ async function run(file) {
     const o = ceil('orlando');
     return A.cityList().filter((c) => c !== 'orlando').every((c) => ceil(c) > o * 1.4);
   });
-  check('Orlando has the cheapest power and Austin the dearest', () => {
+  check('Orlando has the cheapest power and SF the dearest', () => {
+    // Was 'Austin the dearest' through v0.39.2. SF's real PG&E EV2-A peak
+    // (62c/kWh) beats Austin's 34c outright — see CITIES.sf — so this is the
+    // reportage rule (DESIGN.md §5) overruling a previous city's numbers for
+    // the fourth time, not a fifth invented difficulty knob.
     const peak = (c) => A.CITIES[c].power.peak;
     return A.cityList().every((c) => c === 'orlando' || peak(c) > peak('orlando')) &&
-           A.cityList().every((c) => c === 'austin' || peak(c) < peak('austin'));
+           A.cityList().every((c) => c === 'sf' || peak(c) < peak('sf'));
   });
   // A city with no brewery zone must not break anything that assumes one, and
   // the Geofence panel has to render an empty category rather than throwing.
@@ -453,7 +457,7 @@ async function run(file) {
       return n.indexOf('shift1@') === 0 && !!A.CITIES[n.slice(7)];
     }));
   check('cityList() is ordered by CITIES[].order',
-    () => A.cityList().join(',') === 'austin,dallas,miami,tampa,orlando');
+    () => A.cityList().join(',') === 'austin,dallas,miami,tampa,orlando,sf');
   // The chain has to be a CHAIN: every scenario after the first gates on the
   // one immediately before it in tab order. A city gating on something earlier
   // would let a player skip a scenario; two gating on the same city would fork
@@ -472,14 +476,40 @@ async function run(file) {
   // stub, v0.25.1 scrolled it and still sliced Dallas in half), so the
   // invariant is now asserted rather than eyeballed: EVERY city renders a whole
   // card, locked or not, and no scroller is involved.
+  // [data-city], not just .citytab: the strip also renders permanently-locked
+  // "coming soon" cards for PLANNED_CITIES (Phoenix, Las Vegas), which are a
+  // graphic mockup with no CITIES entry, no tone, and no gate — every check
+  // below reads A.CITIES[id], so they must never appear in this list.
   const cards = () => [].slice.call(
-    w.document.getElementById('citytabs').querySelectorAll('.citytab'));
+    w.document.getElementById('citytabs').querySelectorAll('.citytab[data-city]'));
   check('every city gets a card, locked ones included', () => {
     A.PROG().unlocked.tampa = false; A.PROG().unlocked.orlando = false;
     A.PROG().results.miami = {}; A.PROG().results.tampa = {};
     S.city = 'austin'; S.shiftNo = 0; S.onClock = false;
     A.renderCityTabs();
     return cards().length === A.cityList().length;
+  });
+  // Phoenix and Las Vegas: a graphic mockup, not a scenario (Pavel: "just a
+  // graphic mockup button" — no CITIES entry, no zones, no economy). Two
+  // permanently-locked cards after the real ones, each opening a single
+  // Paolo line instead of the usual gate hint.
+  check('the two planned cities render as permanently-locked cards', () => {
+    const planned = [].slice.call(
+      w.document.getElementById('citytabs').querySelectorAll('.citytab[data-planned]'));
+    return planned.length === 2 &&
+           planned.every((b) => b.getAttribute('aria-disabled') === 'true' &&
+                                 !!b.querySelector('.lk') && !b.dataset.city);
+  });
+  check('a planned city never appears in cityList() or CITIES', () =>
+    ['phx', 'lv'].every((id) =>
+      A.cityList().indexOf(id) < 0 && !A.CITIES[id]));
+  check('clicking a planned card shows a Paolo line and no other card reacts', () => {
+    const planned = w.document.getElementById('citytabs')
+      .querySelector('.citytab[data-planned="phx"]');
+    planned.dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
+    const lm = w.document.getElementById('lockmsg');
+    return !!lm && lm.hidden === false && lm.textContent.indexOf('Phoenix') >= 0 &&
+           lm.querySelectorAll('.bubble').length === 1 && S.city !== 'phx';
   });
   // aria-disabled, never `disabled`: a locked card has to stay clickable and
   // focusable so it can explain itself when asked (see the Paolo checks below).
@@ -508,18 +538,66 @@ async function run(file) {
   });
   // jsdom applies no stylesheet, so the element and its inline --ct prove
   // nothing about whether the bar is drawn. The rule that draws it is asserted
-  // against the source — and so is the absence of the scroller, because
-  // reintroducing overflow-x on this strip is how it clipped twice.
-  check('the CSS draws the tone line and does not scroll the strip', () => {
+  // against the source.
+  check('the CSS draws the tone line', () => {
     const css = fs.readFileSync(file, 'utf8');
-    return /\.citytab \.tone\{position:absolute[^}]*background:var\(--ct/.test(css) &&
-           /\.citytabs\{display:flex[^}]*flex:0 0 auto\}/.test(css) &&
-           !/\.citytabs\{[^}]*overflow-x:auto/.test(css);
+    return /\.citytab \.tone\{position:absolute[^}]*background:var\(--ct/.test(css);
   });
-  // The strip cannot shrink, so the ROW has to be able to wrap — otherwise the
-  // right-hand end of the topbar goes off screen with no scrollbar and no way to
-  // reach Garage/Saves/Night/Sound/Coffee. That was the ~1700px report. Every
-  // .topbar rule must therefore avoid a fixed flex basis or a fixed height.
+  /* THE STRIP SCROLLS BELOW 1700px, AND DOES NOT ABOVE IT (0.53.2).
+     This replaces a check that asserted overflow-x was absent EVERYWHERE. That
+     rule was written for five cities; with eight the strip is ~560px inside a
+     block that also holds the brand, Day, Clock and Cash, so refusing to shrink
+     meant .tb-info wrapped internally and the topbar went three lines deep.
+     The strip is the one item in there that grows with every city shipped, so
+     it is the one that has to give.
+
+     Both halves matter. Wide: it must still be flex:0 0 auto, because a
+     scrollable strip at a width where everything fits would clip for no reason.
+     Narrow: it must be able to shrink AND scroll, or the wrap comes back. */
+  // RETIRED 2026-07-30: the strip is display:none at every width now — the
+  // dropdown (.citypick/#city-pop) replaced it everywhere, not just on
+  // phone, per Pavel's second ask the same day ("compacting Cities on PC
+  // resolution could also save a lot of space"). The shrink rule below is
+  // deliberately left in the CSS rather than deleted (see the RETIRED
+  // comment above .citytabs in the stylesheet) so a revert is one property
+  // away — this asserts that property is still display:none, not that the
+  // shrink behaviour is gone.
+  check('the city strip is retired (display:none) but its shrink rule survives for a revert', () => {
+    const css = fs.readFileSync(file, 'utf8');
+    return /\.citytabs\{display:none[^}]*flex:0 0 auto\}/.test(css);
+  });
+  check('the city picker is the unconditional replacement — no media query gates it', () => {
+    const css = fs.readFileSync(file, 'utf8');
+    return /\.citypick\{display:flex/.test(css) &&
+           !/@media[^{]*\{\s*\.citypick\{display:flex/.test(css);
+  });
+  check('the city strip shrinks and scrolls below 1700px', () => {
+    const css = fs.readFileSync(file, 'utf8');
+    const tier = css.match(/@media \(max-width:1699px\)\{[\s\S]*?\n\}/g) || [];
+    const strip = tier.find((t) => /\.citytabs\{/.test(t)) || '';
+    return /flex:1 1 auto/.test(strip) && /min-width:0/.test(strip) &&
+           /overflow-x:auto/.test(strip) &&
+           // the cards themselves must NOT shrink — the strip does
+           /\.citytab\{flex:0 0 auto\}/.test(strip);
+  });
+  /* A hidden scrollbar is the whole reason the ACTIVE tab has to be scrolled
+     into view: without it, switching to a city that sits off the visible end
+     leaves the strip showing everywhere except where you are. Uses scrollLeft
+     rather than scrollIntoView() on purpose — the latter scrolls ancestors too,
+     which on a narrow layout drags the whole page. */
+  check('renderCityTabs scrolls the active tab into view without moving the page', () => {
+    const src = fs.readFileSync(file, 'utf8');
+    const fn = src.match(/function renderCityTabs\(\)\{[\s\S]*?\n\}/);
+    if (!fn) return false;
+    return /aria-pressed="true"/.test(fn[0]) &&
+           /scrollLeft/.test(fn[0]) &&
+           // a CALL, not a mention — the comment above it names the method it
+           // deliberately avoids, so a bare substring test matches its own docs
+           !/\.scrollIntoView\(/.test(fn[0]);
+  });
+  // The topbar must still be able to wrap — the controls take their own line
+  // when the row is too narrow for one. Every .topbar rule must therefore avoid
+  // a fixed flex basis or a fixed height.
   check('the topbar wraps and is never a fixed-height row', () => {
     const css = fs.readFileSync(file, 'utf8');
     const base = /\.topbar\{\s*flex:0 0 auto;min-height:48px;[^}]*flex-wrap:wrap/.test(css);
@@ -528,57 +606,277 @@ async function run(file) {
       !/flex:0 0 \d/.test(r) && !/[^-]height:\d+px/.test(r));
     return base && rules.length >= 3 && noFixedBasis;
   });
-  // The row has exactly three children, so the wrap can only happen in one
-  // place. A flat list is what put the Coffee button alone on its own line at
-  // 2115px, and the fix is structural — hence a structural assertion.
-  check('the topbar breaks in exactly one place, with Coffee pinned', () => {
+  // The row has exactly two children, so the wrap can only happen in one place.
+  // A flat list is what put the Coffee button alone on its own line at 2115px;
+  // the fix was structural, hence a structural assertion. It was THREE children
+  // until 0.53.0 — the third being #coffee, pinned top-right — and Coffee is a
+  // settings-popover row now, so the count came down with it.
+  check('the topbar breaks in exactly one place', () => {
     const kids = [].slice.call(w.document.querySelector('.topbar').children);
-    return kids.length === 3 &&
+    return kids.length === 2 &&
            /tb-info/.test(kids[0].className) &&
-           /tb-ctrls/.test(kids[1].className) &&
-           kids[2].id === 'coffee';
+           /tb-ctrls/.test(kids[1].className);
   });
-  check('Coffee sits on the first line whether or not the row wraps', () => {
+  // The whole Coffee-pinning mechanism is GONE, not merely unused: an `order`
+  // swap between the narrow and wide arrangements, plus a --coffee-w custom
+  // property reserving horizontal room so the readouts could never bump the
+  // button onto a line of its own. Dead layout rules that still match a live
+  // selector are how the .topbar .ghost.units rule went stale, so assert the
+  // absence rather than trusting nobody reads them.
+  check('the Coffee-pinning layout mechanism is fully removed', () => {
     const css = fs.readFileSync(file, 'utf8');
-    // Narrow: info(1) Coffee(2) then the controls forced onto their own line.
-    // Wide (>=2250px): the same three items with the last two swapped.
-    return /#coffee\{order:2;margin-left:auto;align-self:flex-end\}/.test(css) &&
-           /\.tb-ctrls\{order:3;flex:1 0 100%/.test(css) &&
-           /@media \(min-width:2250px\)\{\s*\.tb-ctrls\{order:2;flex:0 0 auto\}\s*#coffee\{order:3;margin-left:0\}/.test(css);
+    return !/#coffee\{/.test(css) &&              // no rule targets it at all
+           !/--coffee-w:/.test(css) &&            // no reservation declared
+           !/var\(--coffee-w\)/.test(css);        // and nothing reads one
   });
-  // Coffee must never be the only thing on a line. The readout block is capped
-  // so it cannot claim the full width, which is what bumped Coffee to a line of
-  // its own at ~885px; the reservation has to shrink when the button is
-  // icon-only, or it leaves a hole instead.
-  // Two lines, and which half each thing belongs to: everything you READ on the
-  // first, everything you PRESS on the second, with the shift status opening the
-  // control line because it introduces the Clock button it belongs to.
-  check('Shift leads the control line, not the readouts', () => {
+  /* THE ROW WRAPS ON ITS OWN (0.53.1). .tb-ctrls used to carry flex:1 0 100%,
+     which did not wrap when it had to — it broke the row at EVERY width below
+     2250px, so a 2196px window with hundreds of spare pixels still rendered two
+     lines and the only way onto one was a hardcoded min-width query. Both are
+     gone: flex:0 1 auto lets the browser decide, which is only safe because the
+     topbar has exactly TWO children, so the sole seam a natural wrap can choose
+     is the one the forced break used to guarantee.
+
+     Asserted as absence-plus-shape: no flex-basis of 100% on the controls, and
+     no min-width query anywhere near them. A reintroduced 100% basis would look
+     harmless and silently pin every window back to two lines. */
+  check('the controls wrap naturally instead of forcing a break', () => {
+    const css = fs.readFileSync(file, 'utf8');
+    const rule = (css.match(/\.tb-ctrls\{[^}]*\}/) || [''])[0];
+    return /flex:0 1 auto/.test(rule) &&
+           !/flex:\d+ \d+ 100%/.test(rule) &&
+           !/@media \(min-width:2250px\)/.test(css);
+  });
+  /* .tb-info's column gap used to matter more than it does now: Day/Clock/Cash
+     lived in this block until 2026-07-30, and 22px at EVERY width is what
+     wrapped Cash onto a line of its own and made the topbar three lines deep.
+     They moved into .tb-ctrls (see below), so .tb-info is just brand/city
+     strip/Trophies now — but the tightened gap is still free width, so the
+     rule stayed. */
+  check('the readout gaps tighten as the window narrows', () => {
+    const css = fs.readFileSync(file, 'utf8');
+    const base = /\.tb-info\{order:1;[^}]*gap:8px 22px/.test(css);
+    const t1699 = /@media \(max-width:1699px\)\{[\s\S]*?\.tb-info\{gap:7px 14px\}/.test(css);
+    const t1499 = /@media \(max-width:1499px\)\{[\s\S]*?\.tb-info\{gap:6px 11px\}/.test(css);
+    return base && t1699 && t1499;
+  });
+  check('the readouts get the whole line now, with nothing reserved beside them', () => {
+    const css = fs.readFileSync(file, 'utf8');
+    const m = css.match(/\.tb-info\{order:1;([^}]*)\}/);
+    return !!m && !/max-width/.test(m[1]);
+  });
+  // Two lines, and which half each thing belongs to. This split moved once
+  // already (0.53.1: Shift leads .tb-ctrls, introducing the Clock button) and
+  // again on 2026-07-30: Day/Clock/Cash used to live in .tb-info alongside the
+  // city tabs, but .tb-info's own internal wrap does not know those three
+  // belong together as a group — at some widths Cash wrapped alone onto a
+  // stray third line while Day/Clock stayed put next to the tabs. Moving them
+  // into .tb-ctrls means the whole trio travels with Shift/Clock on/speeds as
+  // ONE block (that block only ever wraps as a whole — see "the topbar breaks
+  // in exactly one place" above), so the seam is either brand+tabs alone, or
+  // brand+tabs PLUS every readout and every control together on the next
+  // line. Shift still immediately precedes the Clock button it describes;
+  // it is no longer literally .tb-ctrls's first child, Day is.
+  check('Day/Clock/Cash lead the control line, with Shift immediately before Clock', () => {
     const info = w.document.querySelector('.tb-info');
     const ctrls = w.document.querySelector('.tb-ctrls');
+    const day = w.document.getElementById('tb-day').closest('.tb-item');
+    const clock = w.document.getElementById('tb-clock').closest('.tb-item');
+    const cash = w.document.getElementById('tb-cash-box');
     const shift = w.document.getElementById('tb-shift').closest('.tb-item');
-    return ctrls.contains(shift) && !info.contains(shift) &&
-           ctrls.firstElementChild === shift;
+    const clockBtn = w.document.getElementById('clock');
+    const kids = [].slice.call(ctrls.children);
+    return [day, clock, cash, shift].every((el) => ctrls.contains(el) && !info.contains(el)) &&
+           ctrls.firstElementChild === day &&
+           kids.indexOf(day) < kids.indexOf(clock) &&
+           kids.indexOf(clock) < kids.indexOf(cash) &&
+           kids.indexOf(cash) < kids.indexOf(shift) &&
+           kids.indexOf(shift) + 1 === kids.indexOf(clockBtn);
   });
-  check('the shift readout is pushed left, the controls stay right', () => {
+  // Shift used to carry margin-right:auto, pinning it to the far left edge
+  // while the buttons clustered on the right — which read as a wide dead gap
+  // between a label nobody acts on and the Clock button it's describing.
+  // Pavel asked for Shift to stay tied to Clock instead (2026-07-29), so it
+  // now sits in normal flow and .tb-ctrls's own justify-content:flex-end
+  // clusters the whole line — Shift immediately ahead of Clock — together.
+  check('the shift readout sits with the controls, not pinned to the edge', () => {
     const css = fs.readFileSync(file, 'utf8');
-    return /\.tb-shiftitem\{margin-right:auto\}/.test(css) &&
+    return !/\.tb-shiftitem\{margin-right:auto\}/.test(css) &&
            /\.tb-ctrls\{[^}]*justify-content:flex-end/.test(css);
   });
   // The brand taking a whole line is what made this tier four lines deep.
   check('the brand does not claim a line of its own above the phone tier', () => {
     const css = fs.readFileSync(file, 'utf8');
     const tier = css.match(/@media \(max-width:1199px\)\{[\s\S]*?\n\}/);
-    return !!tier && !/\.brand\{flex:1 0 100%/.test(tier[0]) &&
-           /@media \(max-width:760px\)\{[\s\S]*?\.brand\{flex:1 0 100%/.test(css);
+    return !!tier && !/\.brand\{flex:1 0 100%/.test(tier[0]);
   });
-  check('the readout block reserves room for Coffee at every tier', () => {
+  // UPDATED 2026-07-30: the phone tier used to force .brand{flex:1 0 100%}
+  // too — brand got a whole line to itself, with the city strip on the
+  // line below it. Now .citypick (the dropdown that replaced the strip at
+  // every width, not just here — see the RETIRED note on .citytabs) shares
+  // THAT SAME row with the brand instead, pushed to the far edge via
+  // margin-left:auto, which is only what makes the merge possible: .brand
+  // must NOT claim the full line anywhere any more, full stop.
+  check('the brand no longer claims a full line anywhere — it shares row 1 with the city picker', () => {
     const css = fs.readFileSync(file, 'utf8');
-    return /\.tb-info\{order:1;[^}]*max-width:calc\(100% - var\(--coffee-w\)\)/.test(css) &&
-           /\.topbar\{--coffee-w:116px\}/.test(css) &&
-           /@media \(max-width:1499px\)\{\s*\.topbar\{--coffee-w:56px\}/.test(css) &&
-           /@media \(max-width:1199px\)\{\s*\.topbar\{--coffee-w:112px\}/.test(css) &&
-           /@media \(min-width:2250px\)\{[^@]*\.tb-info\{max-width:none\}/.test(css);
+    return !/\.brand\{flex:1 0 100%/.test(css) &&
+           /@media \(max-width:760px\)\{[\s\S]*?\.citypick\{margin-left:auto\}/.test(css);
+  });
+  // (The --coffee-w reservation check that lived here through 0.51.1 and 0.52.x
+  // is gone: Coffee moved into the settings popover in 0.53.0 and the whole
+  // mechanism was deleted with it. What replaced it is
+  // "the Coffee-pinning layout mechanism is fully removed" above, which asserts
+  // the absence — a stale layout rule that still matches a live selector is
+  // exactly how .topbar .ghost.units went bad.)
+  // The gear is the ONLY icon-only button left in the topbar: 0.52.0 folded
+  // theme/sound/units behind it and 0.53.0 added Coffee. Asserted structurally —
+  // no <span> in the markup at all — plus the CSS belt-and-braces rule, because
+  // the 1500px+ tier turns .topbar .ghost>span back ON and .iconly has to
+  // outrank it at every width.
+  check('the gear carries no text label anywhere', () => {
+    const b = w.document.getElementById('settings-btn');
+    return b && b.classList.contains('iconly') &&
+           !b.querySelector('span') &&
+           // the icon and an accessible name both survive
+           !!b.querySelector('svg use') &&
+           (b.getAttribute('aria-label') || '').length > 0 &&
+           (b.getAttribute('title') || '').length > 0;
+  });
+  /* THE SETTINGS POPOVER (0.52.0). Two structural facts carry the whole
+     feature and both fail invisibly:
+
+       1. It must NOT be inside .topbar or .app. .topbar has backdrop-filter,
+          which makes it the containing block for position:fixed descendants —
+          nested there the popover would anchor to the topbar and be clipped by
+          its radius. And .app is position:relative z-index:2, a stacking
+          context nothing inside can escape. Same reasoning the
+          #dh-console-panel note records for why modals live outside .app.
+       2. The three controls must keep their ORIGINAL ids. Every handler and
+          sync function above (the theme toggle, syncSoundBtn, paintUnits)
+          binds by id; rebuilding them as new elements would leave three
+          controls that look right and do nothing. */
+  check('the settings popover lives outside .topbar and .app', () => {
+    const p = w.document.getElementById('settings-pop');
+    return !!p && !p.closest('.topbar') && !p.closest('.app');
+  });
+  check('theme, sound, units and coffee kept their ids, inside the popover', () => {
+    const p = w.document.getElementById('settings-pop');
+    return !!p && ['theme', 'sound', 'units', 'coffee'].every((id) => {
+      const el = w.document.getElementById(id);
+      return el && p.contains(el);
+    });
+  });
+  check('none of the four is left in the topbar', () => {
+    const tb = w.document.querySelector('.topbar');
+    return ['theme', 'sound', 'units', 'coffee'].every(
+      (id) => !tb.contains(w.document.getElementById(id)));
+  });
+  /* Paolo's coffee card is placed by rayAtCoffee(), which measures a button to
+     anchor itself under. It used to measure #coffee — but Coffee is inside the
+     popover now, and its own click handler CLOSES that popover before opening
+     the card, so measuring #coffee would read a display:none subtree and
+     getBoundingClientRect() would return all zeros, pinning the card to the
+     top-left corner. It must measure the gear instead. (jsdom has no layout, so
+     the placement itself is not assertable here — the source is.) */
+  check('the coffee card anchors to the gear, not to the hidden Coffee button', () => {
+    const src = fs.readFileSync(file, 'utf8');
+    const fn = src.match(/function rayAtCoffee\(\)\{[\s\S]*?\n\}/);
+    return !!fn && /\$\('settings-btn'\)/.test(fn[0]);
+  });
+  check('clicking Coffee closes the menu before opening the card', () => {
+    const p = w.document.getElementById('settings-pop');
+    const S = w.DH;
+    S.ray.skipped = false;
+    w.document.getElementById('settings-btn').click();
+    if (p.hidden) return false;
+    w.document.getElementById('coffee').click();
+    const ok = p.hidden === true && S.ray.cur === 'coffee' &&
+               w.document.getElementById('ray').hidden === false;
+    // Put Paolo away again so later checks aren't looking at his card.
+    w.DH_ACT1.rayDismiss();
+    return ok;
+  });
+  check('the popover starts closed, with the gear reporting it', () => {
+    const p = w.document.getElementById('settings-pop');
+    const g = w.document.getElementById('settings-btn');
+    return p.hidden === true && g.getAttribute('aria-expanded') === 'false' &&
+           g.getAttribute('aria-controls') === 'settings-pop';
+  });
+  check('the popover is fixed-position and above the modals', () => {
+    const css = fs.readFileSync(file, 'utf8');
+    const m = css.match(/#settings-pop\{([^}]*)\}/);
+    if (!m) return false;
+    const z = (m[1].match(/z-index:(\d+)/) || [])[1];
+    return /position:fixed/.test(m[1]) && Number(z) > 71 &&
+           /#settings-pop\[hidden\]\{display:none\}/.test(css);
+  });
+  // The units sizing rule moved with the button; a rule still scoped to
+  // .topbar would match nothing and the mi<->km swap would reflow its row.
+  check('the units button\'s tabular sizing followed it into the popover', () => {
+    const css = fs.readFileSync(file, 'utf8');
+    return /#settings-pop \.ghost\.units\{[^}]*font-variant-numeric:tabular-nums/.test(css) &&
+           !/\.topbar \.ghost\.units\{/.test(css);
+  });
+  /* Open/close behaviour. The trap worth a test: the gear's own click bubbles
+     to the document listener that closes the popover, so without
+     stopPropagation the menu opens and shuts in the same click and looks
+     completely dead. Likewise a click on any of the three controls would close
+     the menu out from under a player flipping two settings in a row. */
+  check('the gear opens the popover and the controls work without closing it', () => {
+    const p = w.document.getElementById('settings-pop');
+    const g = w.document.getElementById('settings-btn');
+    g.click();
+    if (p.hidden !== false || g.getAttribute('aria-expanded') !== 'true') return false;
+    // Each control still functions, and the menu survives using it.
+    const themeIcon = () =>
+      w.document.getElementById('theme').querySelector('use').getAttribute('href');
+    const before = themeIcon();
+    w.document.getElementById('theme').click();
+    if (p.hidden !== false || themeIcon() === before) return false;
+    const units = w.document.getElementById('units-tag').textContent;
+    w.document.getElementById('units').click();
+    if (p.hidden !== false || w.document.getElementById('units-tag').textContent === units) {
+      return false;
+    }
+    // Restore what those two clicks changed, so later checks see a clean slate.
+    w.document.getElementById('theme').click();
+    w.document.getElementById('units').click();
+    return true;
+  });
+  check('a click outside closes it, and the gear says so', () => {
+    const p = w.document.getElementById('settings-pop');
+    const g = w.document.getElementById('settings-btn');
+    if (p.hidden) g.click();
+    w.document.body.click();
+    return p.hidden === true && g.getAttribute('aria-expanded') === 'false';
+  });
+  check('Escape closes it', () => {
+    const p = w.document.getElementById('settings-pop');
+    w.document.getElementById('settings-btn').click();
+    if (p.hidden) return false;
+    w.document.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Escape' }));
+    return p.hidden === true;
+  });
+  check('a second click on the gear closes it again', () => {
+    const p = w.document.getElementById('settings-pop');
+    const g = w.document.getElementById('settings-btn');
+    g.click();
+    const opened = !p.hidden;
+    g.click();
+    return opened && p.hidden === true;
+  });
+  check('.iconly squares the button and outranks the label-restoring tier', () => {
+    const css = fs.readFileSync(file, 'utf8');
+    return /\.topbar \.ghost\.iconly>span\{display:none\}/.test(css) &&
+           /\.ghost\.iconly\{width:30px/.test(css);
+  });
+  // The theme toggle must swap the icon's href, NOT rebuild innerHTML — a
+  // rebuild would throw away the .iconly class and the title the markup sets,
+  // silently reintroducing a label on the first click.
+  check('the theme toggle swaps the icon href instead of rebuilding innerHTML', () => {
+    const src = fs.readFileSync(file, 'utf8');
+    return /tbtn\.querySelector\('use'\)\.setAttribute\('href'/.test(src) &&
+           !/tbtn\.innerHTML=/.test(src);
   });
   check('the empty spacer div is gone, not just hidden', () => {
     const css = fs.readFileSync(file, 'utf8');
@@ -598,12 +896,17 @@ async function run(file) {
     return ok;
   });
   // The city name used to be printed twice — on the pressed card and again in a
-  // topbar readout three items to the right. The readout is gone and its slot
-  // now carries the one thing the cards cannot say.
-  check('the topbar no longer duplicates the city name', () => {
+  // topbar readout three items to the right (#tb-city). That readout was later
+  // repurposed into #tb-city-time, the city's real-world clock — still gone,
+  // in other words, just carrying something else. #tb-city-time is gone too
+  // now (0.35.0): a real clock next to a sim clock that runs at up to 20x just
+  // read as broken rather than grounded, and it wasn't load-bearing for
+  // anything gameplay reads. Weather stays real (WX, forecastAt) without
+  // needing a paired clock to justify it. Neither slot should reappear.
+  check('the topbar neither duplicates the city name nor shows a real clock', () => {
     S.city = 'miami'; A.loadCityTables(); A.render();
     return w.document.getElementById('tb-city') === null &&
-           !!w.document.getElementById('tb-city-time');
+           w.document.getElementById('tb-city-time') === null;
   });
 
   // ---- 5s. autosave keeps its promise ---------------------------------
@@ -745,6 +1048,72 @@ async function run(file) {
   check('the reply is not left on screen after a switch',
     () => w.document.getElementById('lockmsg').hidden === true);
 
+  // ---- 5d-2. the phone/desktop city picker (#city-pick / #city-pop) ----
+  // Retired the always-visible strip in favour of this dropdown at every
+  // width (2026-07-30) — see the RETIRED note on .citytabs in the
+  // stylesheet. #city-pop is filled from the exact same cityTabsHtml()
+  // buttons as #citytabs, so everything already proven above about THOSE
+  // buttons (tone colour, lock glyph, aria-pressed) holds for these too
+  // without re-testing it — what's actually new here is that a second
+  // container exists and is kept in sync, and that clicking inside it
+  // both acts AND closes the popover.
+  // Both real cities AND the two permanently-locked PLANNED_CITIES rows —
+  // cards() (declared above, for the strip's own tests) filters those out
+  // on purpose, so this reads #citytabs directly with the same broad
+  // `.citytab` selector used on the #city-pop side, or the two counts can
+  // never actually match.
+  check('#city-pop mirrors #citytabs — same cities, same order, same city marked live', () => {
+    const stripIds = [].slice.call(
+      w.document.getElementById('citytabs').querySelectorAll('.citytab'))
+      .map((b) => b.dataset.city || 'planned:' + b.dataset.planned);
+    const popIds = [].slice.call(
+      w.document.getElementById('city-pop').querySelectorAll('.citytab'))
+      .map((b) => b.dataset.city || 'planned:' + b.dataset.planned);
+    return stripIds.length > 0 && stripIds.join(',') === popIds.join(',');
+  });
+  // jsdom's CSSStyleDeclaration normalises any colour it is given to
+  // rgb(...) — even read back via getAttribute('style') — so the literal
+  // hex CITIES carries has to be converted the same way before comparing,
+  // or this would be comparing "#5A9BF6" against "rgb(90, 155, 246)" and
+  // fail for a reason that has nothing to do with the app.
+  const hexToRgb = (hex) => {
+    const n = parseInt(hex.slice(1), 16);
+    return `rgb(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255})`;
+  };
+  check('#city-pick shows the current city\'s short name and tone colour', () => {
+    const label = w.document.getElementById('city-pick-label');
+    const tone = w.document.getElementById('city-pick-tone');
+    const c = A.CITIES[S.city];
+    return label.textContent === (c.short || c.name) &&
+           tone.style.background === hexToRgb(c.tone.day.tint);
+  });
+  // switchCity() is ASYNC (see the note on the strip's own version of this
+  // check, above) — check() itself is synchronous, so the click and the
+  // wait happen out here and only the settled result is handed to check(),
+  // same pattern the strip's click test already uses.
+  A.PROG().unlocked = { austin: true, dallas: true, miami: true,
+    tampa: true, orlando: true };
+  S.city = 'miami'; A.loadCityTables(); A.renderCityTabs();
+  w.document.getElementById('city-pick').click();
+  const popBeforeClick = w.document.getElementById('city-pop');
+  const openedOnClick = !popBeforeClick.hidden;
+  const austinRow = popBeforeClick.querySelector('.citytab[data-city="austin"]');
+  if (austinRow) austinRow.dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
+  await new Promise((r) => setTimeout(r, 120));
+  check('the trigger opens #city-pop', () => openedOnClick);
+  check('clicking an unlocked row inside #city-pop switches city and closes it',
+    () => S.city === 'austin' && w.document.getElementById('city-pop').hidden === true);
+  check('opening #city-pop and clicking a locked row shows Paolo\'s reply and closes it', () => {
+    A.PROG().unlocked.orlando = false;
+    S.city = 'austin'; A.renderCityTabs();
+    w.document.getElementById('city-pick').click();
+    const pop = w.document.getElementById('city-pop');
+    const row = pop.querySelector('.citytab[data-city="orlando"]');
+    row.dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
+    const lm = w.document.getElementById('lockmsg');
+    return !!lm && lm.hidden === false && pop.hidden === true;
+  });
+
   // ---- 5e. the auto-charge Easter egg ---------------------------------
   // Off by default, and the switch is not on the strip until it is found. The
   // first assertion is the one that matters: a fresh run must not be charging
@@ -764,10 +1133,17 @@ async function run(file) {
     return /autoCharge:false, soundOn:true,/.test(src) &&
            /if\(S\.autoCharge===true&&c\.soc<CFG\.chargeAt\)/.test(src);
   });
-  check('the switch is hidden until the egg is found', () => {
+  // 0.38.3 retired the gate: the switch is on the strip whether or not the egg
+  // has been found. PROG (where the find is recorded) is per-ORIGIN, so a find
+  // on a local file:// copy left the control missing on the deployed site —
+  // the same build showing a different set of controls depending on how it was
+  // opened. This asserts the control can no longer be gated away.
+  check('the switch is on the strip even with no egg found', () => {
     A.PROG().eggs = {};
     A.newFleet('austin'); A.render();
-    return w.document.getElementById('dp-charge').hidden === true;
+    const b = w.document.getElementById('dp-charge');
+    return A.eggFound('autocharge') === false && b.hidden === false
+        && !b.hasAttribute('hidden');
   });
   // [hidden] alone is not enough here: .t-ctl .icons button sets display:flex,
   // and an author display beats the attribute's UA style. That is the bug that
@@ -814,14 +1190,18 @@ async function run(file) {
     A.render();
     return S.autoCharge === true && A.eggFound('autocharge') === true;
   });
-  check('a save with auto-charging off does not reveal it', () => {
+  // The mirror of the case above. Restoring a save with the policy OFF must
+  // not fabricate a find — eggFound stays false, and the "Found the Switch"
+  // achievement stays unearned — but since 0.38.3 the control is visible
+  // regardless, so only the egg flag is asserted here, not the visibility.
+  check('a save with auto-charging off does not fake a find', () => {
     A.PROG().eggs = {};
     const snap = SV.snapshot();
     snap.s.autoCharge = false;
     SV.restore(snap);
     A.render();
     return S.autoCharge === false && A.eggFound('autocharge') === false &&
-           w.document.getElementById('dp-charge').hidden === true;
+           w.document.getElementById('dp-charge').hidden === false;
   });
   check('a save from before the field existed defaults to OFF', () => {
     A.PROG().eggs = {};
@@ -1079,7 +1459,11 @@ async function run(file) {
     rateAt('dallas', OPEN_HOUR, 1);
     A.zones().forEach((z) => { z.on = z.n === 'Uptown'; });     // one night zone at dawn
     S.ray.guided = false; S.ray.day1Done = true;
-    A.acquire('cybercab', 'finance');
+    // Financing needs down+reserve ($5,000 on a Cybercab); CFG.startCash is
+    // now $800 (the Austin tutorial's tight start), so fund this directly —
+    // financing itself isn't what this check is about.
+    S.cash = 50000; A.PROG().companyCash = 50000;
+    A.acquire('cab', 'finance');
     S.onClock = true;
     const t = A.nextTask();
     return t.key === 'zones' && /zones are live/.test(t.now);
@@ -1095,23 +1479,76 @@ async function run(file) {
   function financed() {
     A.newFleet('austin');
     S.ray.skipped = true;
-    A.acquire('cybercab', 'finance');
+    // Financing needs down+reserve ($5,000 on a Cybercab). CFG.startCash is
+    // now $800 — the deliberately tight Austin tutorial start (see the CFG
+    // comment) — so every test below that uses this helper funds itself
+    // explicitly rather than depending on the tutorial number, which is not
+    // what any of these are actually testing.
+    S.cash = 50000; A.PROG().companyCash = 50000;
+    A.acquire('cab', 'finance');
     return S.cars[0];
   }
   check('financing opens a balance of price minus deposit', () => {
     const c = financed();
-    const v = A.CATALOG.filter((x) => x.id === 'cybercab')[0];
+    const v = A.CATALOG.filter((x) => x.id === 'cab')[0];
     return A.owedOn(c) === v.price - v.down;
   });
   check('an owned car owes nothing', () => {
     A.newFleet('austin'); S.ray.skipped = true; S.cash = 1e6;
-    A.acquire('cybercab', 'buy');
+    A.acquire('cab', 'buy');
     return A.owedOn(S.cars[0]) === 0;
   });
   check('a rental owes nothing — it builds no equity', () => {
     A.newFleet('austin'); S.ray.skipped = true;
-    A.acquire('cybercab', 'rent');
+    A.acquire('cab', 'rent');
     return A.owedOn(S.cars[0]) === 0;
+  });
+  // Renting used to be free at the point of acquisition: acquire() never
+  // touched S.cash for 'rent', only 'buy'/'finance'. That made a rental a
+  // strictly-better Cybercab than financing one, with none of the downside.
+  check('renting charges the first day\'s rent at signing', () => {
+    A.newFleet('austin'); S.ray.skipped = true;
+    const before = S.cash;
+    A.acquire('cab', 'rent');
+    const v = A.CATALOG.filter((x) => x.id === 'cab')[0];
+    return S.cash === before - v.rent;
+  });
+  // The other half of the fix: canAfford('rent') used to re-check one car's
+  // own (fixed+rent)*2 against unchanged cash every time, so it passed
+  // identically no matter how many cars were already on the books — a
+  // fresh $7,500 start could rent its way to the whole fleetCap for free.
+  // It should now be gated by the WHOLE fleet's cumulative daily burn,
+  // and that gate should bite well before the city's fleetCap does.
+  check('renting is gated by cumulative fleet burn, not per car', () => {
+    A.newFleet('austin'); S.ray.skipped = true;
+    // Past the opening. effCap() narrows the ceiling to OPENING_CAP (2) until
+    // the first shift is clocked on, and that rule would stop this loop at two
+    // cars long before the burn gate — which is the thing actually under test
+    // here. shiftNo > 0 puts the city's own fleetCap back in charge.
+    S.shiftNo = 1;
+    // Funded explicitly — this checks the cumulative-burn gate itself, not
+    // the Austin tutorial's $800 start, and needs enough headroom that the
+    // burn gate bites before Austin's fleetCap does (the thing this check
+    // actually exists to prove). $7,500 was the OLD CFG.startCash; kept
+    // here as a fixed test fixture, independent of what CFG.startCash is
+    // today.
+    S.cash = 7500; A.PROG().companyCash = 7500;
+    const cap = A.currentCity ? A.currentCity().fleetCap : undefined;
+    const v = A.CATALOG.filter((x) => x.id === 'truck')[0];
+    const perCarBurn = v.fixed + v.rent;             // fixedPerCar() once rented
+    // From rentReq(): the (n+1)th rental needs cash >= (2*perCarBurn+rent)*(n+1)
+    // — derived, not hard-coded, so this doesn't silently depend on today's
+    // catalogue numbers matching some remembered constant.
+    const expected = Math.floor(S.cash / (2 * perCarBurn + v.rent));
+    let rented = 0;
+    for (let i = 0; i < 20; i++) {
+      const before = S.cars.length;
+      A.acquire('truck', 'rent');
+      if (S.cars.length === before) break;
+      rented++;
+    }
+    return rented === expected && rented > 0 &&
+      (cap === undefined || rented < cap) && S.cash >= 0;
   });
   check('selling a financed car nets equity, not the sticker', () => {
     const c = financed();
@@ -1120,10 +1557,21 @@ async function run(file) {
   });
   // The regression that matters: flipping must LOSE money.
   check('buy-and-flip is no longer free money', () => {
-    const c = financed();
+    // Inlined rather than using the financed() helper: this needs the cash
+    // baseline from BEFORE the down payment is spent, not after (financed()
+    // only ever returns the post-acquisition state). A brand-new financed
+    // car can show slightly positive equity on an immediate resale
+    // (sellValue can exceed what's still owed) — the actual regression was
+    // the WHOLE round trip (down payment sunk, then sold) coming out ahead,
+    // which the down payment alone should always prevent.
+    A.newFleet('austin'); S.ray.skipped = true;
+    S.cash = 50000; A.PROG().companyCash = 50000;
     const before = S.cash;
+    A.acquire('cab', 'finance');
+    const c = S.cars[0];
+    const afterFinance = S.cash;
     A.sellCar(c.id);
-    return S.cash < A.CFG.startCash && S.cash === before + A.sellNet(c);
+    return S.cash < before && S.cash === afterFinance + A.sellNet(c);
   });
   check('the payoff retires with each midnight', () => {
     const c = financed();
@@ -1155,7 +1603,7 @@ async function run(file) {
     c.odo = 200000; S.cash = 30000;
     return A.canSell(c).ok;
   });
-  check('SAVE_V is 8', () => SV.V === 8);
+  check('SAVE_V is 9', () => SV.V === 9);
   check('the balance survives a save round trip', () => {
     const c = financed();
     const owed = A.owedOn(c);
@@ -1170,7 +1618,7 @@ async function run(file) {
     snap.v = 7; snap.s.day = 200;
     snap.s.cars.forEach((x) => { delete x.owed; });
     const m = SV.migrate(snap);
-    const v = A.CATALOG.filter((x) => x.id === 'cybercab')[0];
+    const v = A.CATALOG.filter((x) => x.id === 'cab')[0];
     const principal = v.price - v.down;
     // Must not be 0 — that would preserve the exploit rather than close it.
     return m.s.cars[0].owed > 0 && m.s.cars[0].owed < principal;

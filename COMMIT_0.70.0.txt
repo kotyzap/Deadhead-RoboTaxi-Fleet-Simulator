@@ -1,0 +1,100 @@
+0.70.0 — the five P0s from Fable's 0.69.0 code review (improvements.md)
+
+Five separate bugs, all flagged worst-first in improvements.md after a full
+review of the 0.69.0 codebase. Fixed together since none of them touch the
+same code and all five are the kind of thing that's silent until a player
+or an attacker actually hits it.
+
+
+1. CLOUD SYNC SILENTLY BROKEN FOR profile AND history (deploy/src/index.js)
+
+  Store.put('profile', …) and Store.put('history', …) (deadhead.html) have
+  always 400'd against the server's slotAllowed() whitelist — profile and
+  history were never added to it, the same bug 'progress' had before it was
+  carved out. deadhead.html swallows the rejection silently, so a signed-in
+  player's display name and shift history have never actually synced to the
+  cloud. Same root cause hit the PUT body-shape guard too: it required a
+  `.s` gameplay-snapshot field on every slot except 'progress', which
+  profile/history payloads also don't have — fixed both in the same place.
+
+  New test: deploy/test/slot-allowed.test.js extracts the live SLOTS/
+  slotAllowed()/body-shape-guard from src/index.js and checks every literal
+  Store.put('...', …) call site in deadhead.html against it, so the next
+  new slot added to the client fails a test instead of 400ing quietly in
+  production.
+
+
+2. CLOUD RESUME FETCHES THE WRONG KEY -> FRESH FLEET (cloud.js)
+
+  window.DH_CLOUD.fetchAuto (used right after signing in from the intro
+  screen) called RemoteStore.get('auto') directly — outside Store's
+  physKey() rewrite, which turns the logical 'auto' into 'auto:<city>' so
+  each city keeps its own autosave. On a brand-new device the real save
+  lives at 'auto:austin' or similar; the literal 'auto' slot is empty, so
+  this always returned null and a real cloud save was silently buried under
+  a fresh fleet. Fixed by asking the account's 'progress' record for
+  PROG.last (which city it was last playing) before asking for the run
+  itself — the same order bootResume() already uses locally
+  (progLoad() before Store.get('auto')). Falls back to the bare 'auto' key
+  if the progress fetch fails.
+
+  Related, same root cause: /api/saves (deploy/src/index.js) enumerated
+  SLOTS verbatim, so out.auto stayed null forever for a signed-in player
+  even though real data existed under auto:<city> — the Saves modal always
+  showed an empty autosave row. Now folds the most recently written
+  auto:<city> row into out.auto, mirroring what LocalStore.list() already
+  does for the current city.
+
+
+3. ADMIN GATE HAD NO BRUTE-FORCE THROTTLE (deploy/src/index.js)
+
+  Every login path throttles at 8 fails / 15 min except isAdmin() — an
+  unlimited guessing oracle against a single hardcoded password. Now reuses
+  the exact same login_attempts throttle /api/login uses, keyed on a fixed
+  sentinel identity (there's only one admin account) rather than adding a
+  second mechanism. A throttled attempt still returns the same 404 a wrong
+  password gets, so a prober learns nothing new.
+
+  Also: the admin password itself (deploy/src/admin-config.js, gitignored,
+  not committed) was a 3-word passphrase — replaced with a random 20-char
+  alphanumeric string (~119 bits) at Pavel's request.
+
+
+4. DB BACKUP WITH REAL PASSWORD HASHES, UNTRACKED BUT NOT IGNORED
+
+  deploy/backup-deadhead-db-20260727-171937.sql contained real users,
+  sessions and password hashes, sitting in the repo directory unignored —
+  one `git add -A` would have published it. Moved out of the repo entirely;
+  deploy/backup-*.sql added to .gitignore so this can't recur with the next
+  local DB dump.
+
+
+5. LOADING A MANUAL SAVE KEPT YOUR CURRENT CASH, NOT THE SAVE'S OWN
+   (deadhead.html)
+
+  restore() always ended by overwriting S.cash with PROG.companyCash — correct
+  for city-switch and cross-device resume (one shared company ledger, see
+  companyplan.md), wrong for an explicit Slot 1/2/3 load or a file import:
+  those are the one case where the player is deliberately asking to bring
+  back an OLDER economy state, and it was being silently discarded in favour
+  of whatever was already on screen.
+
+  restore() now takes an opts.sharedCash flag (default true, so every
+  existing caller — switchCity(), the cloud sign-in resume, bootResume() —
+  is unaffected). The two manual-load call sites (savemgr's data-sv-load
+  button and the file-import handler) now pass {sharedCash:false}: S.cash
+  and PROG.companyCash both take the save's own value instead.
+
+
+TESTS
+
+  Full suite green (36 test files) from deploy/, including the new
+  slot-allowed.test.js. Parity holds (deadhead.html == deploy/public/
+  index.html, cloud.js == deploy/public/cloud.js). cloud-budget.test.js and
+  admin.test.js in particular already exercised the touched code paths and
+  still pass unchanged.
+
+  Not covered by an automated test in this pass: the cloud fetchAuto fix
+  (2) and the manual-load cash fix (5) both need a live-account or D1
+  round trip to verify end-to-end — worth a Worker HTTP test harness
+  (improvements.md P1 #26) as a follow-up rather than a mock bolted on here.

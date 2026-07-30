@@ -19,7 +19,15 @@ CREATE TABLE IF NOT EXISTS users (
   -- plan. See the long comment at the top of src/index.js.
   pw         TEXT NOT NULL,
   created    INTEGER NOT NULL,
-  last_seen  INTEGER
+  last_seen  INTEGER,
+  -- Two-letter Cloudflare country code, stamped at REGISTRATION only and
+  -- never updated on later logins: this is "where the account was opened",
+  -- not "where they are now", and a stable answer is the more useful one.
+  -- See the geo block above `stats.country` for why no city is stored, and
+  -- adminplan.md §3 for the whole design. Free: request.cf is already
+  -- attached to the register request, and this rides along in an INSERT
+  -- that happens anyway.
+  country    TEXT
 );
 -- ADDITIVE MIGRATION NOTE: on a database that already has `users.email` from
 -- before this rename, run once (SQLite/D1 support RENAME COLUMN):
@@ -27,6 +35,12 @@ CREATE TABLE IF NOT EXISTS users (
 --   ALTER TABLE login_attempts RENAME COLUMN email TO username;
 -- Existing rows need no other change — an email address is a perfectly
 -- valid (if unusually long) username.
+--
+-- ADDITIVE MIGRATION NOTE (2026-07-30, `country`): SQLite/D1 has no
+-- `ADD COLUMN IF NOT EXISTS`, so on a database that already has this table,
+-- run once — a "duplicate column name" error means it is already there and
+-- is safe to ignore:
+--   ALTER TABLE users ADD COLUMN country TEXT;
 
 -- Session tokens are stored as SHA-256 hashes, never in the clear, so a
 -- leaked database dump cannot be replayed as a login.
@@ -84,13 +98,48 @@ CREATE TABLE IF NOT EXISTS stats (
   name      TEXT,                   -- player-chosen, non-unique, untrusted
   created   INTEGER,                -- profile creation ts: the duplicate-name tiebreaker
   ts        INTEGER NOT NULL,       -- server time, NOT client time
+
+  -- ---- GEO (2026-07-30, adminplan.md §3) ----
+  -- The only three fields on this row that are NOT client-reported and NOT
+  -- claimed by the payload: they come from `request.cf`, which Cloudflare
+  -- attaches at the edge before the Worker is invoked. So unlike every
+  -- number above, these are as trustworthy as the connection itself.
+  --
+  -- WHAT IS DELIBERATELY ABSENT: request.cf also offers `city`,
+  -- `postalCode`, `latitude`/`longitude` and `asOrganization`. None of them
+  -- is stored. `player_id` is a persistent per-browser uuid, and a
+  -- persistent id plus a city (never mind a postcode or a lat/lon) narrows
+  -- to a household — that is a different kind of data than this table is
+  -- allowed to hold. country+region answers every question the admin
+  -- dashboard actually asks, and `region` is the interesting one: on a US
+  -- connection it is the STATE, which is worth knowing for a game set in
+  -- Austin, Dallas, Miami, Tampa, Orlando and San Francisco.
+  --
+  -- COST: nothing. D1 bills ROWS WRITTEN, not columns or bytes, so three
+  -- more columns on an INSERT that already happens is free — one finished
+  -- shift is still one row. And note there is NO INDEX on country, for
+  -- exactly the reason idx_stats_ts was dropped below: the admin's country
+  -- aggregate is a GROUP BY that full-scans anyway, so an index would buy
+  -- it nothing while doubling the write cost of every player's every shift.
+  --
+  -- NULL on every row written before this shipped. The admin counts those
+  -- as "Unknown" rather than dropping them — a pre-geo row is still a real
+  -- player, and silently excluding it would understate the totals.
+  country   TEXT,                   -- 'CZ', 'US' — request.cf.country
+  region    TEXT,                   -- 'Texas', 'Prague' — request.cf.region
+  tz        TEXT,                   -- 'Europe/Prague' — request.cf.timezone
+
+  -- NOTE THE NAME CLASH, it has bitten once already: `city` immediately
+  -- below is the IN-GAME city the shift was driven in ('austin', 'sf'), and
+  -- has nothing to do with the real-world location above. The real city is
+  -- the field this table intentionally does not have.
   city      TEXT, day INTEGER, shift_no INTEGER, permit TEXT,
   worked_h REAL, billed_h REAL,
   gross REAL, commission REAL, cost REAL, net REAL,
   energy REAL, dep REAL, maint REAL, ins REAL, soft REAL, fixed REAL,
   miles REAL, rides INTEGER, cancels INTEGER, safety REAL,
   cash REAL, cars INTEGER,
-  models   TEXT                     -- JSON OBJECT of per-model economics for
+  models   TEXT,                    -- JSON OBJECT of per-model economics for
                                      -- this shift, e.g. '{"model3":{"gross":
                                      -- 300,"cost":120,"miles":60,"rides":5},
                                      -- "cybercab":{...}}' — one key per model
@@ -105,6 +154,21 @@ CREATE TABLE IF NOT EXISTS stats (
                                      -- Cars query filters that legacy shape
                                      -- out with json_type(models)='object'
                                      -- rather than mixing the two.
+  --
+  -- THE COMMA ON THE LINE ABOVE IS LOAD-BEARING. It was missing until
+  -- 2026-07-30, and SQLite does not consider that an error: a column type
+  -- can legally be several words, so `models TEXT <comment> achv TEXT`
+  -- parsed as ONE column called `models` of type "TEXT achv TEXT", and the
+  -- `achv` column simply never existed. CREATE TABLE succeeded, silently.
+  --
+  -- What that cost: any database created FRESH from this file had no achv
+  -- column, so every INSERT in POST /api/stat — which names achv — failed,
+  -- and the deployment recorded no telemetry at all. The live database
+  -- escaped only because achv was added to it by the ALTER TABLE below
+  -- rather than by this CREATE TABLE. `npm run db:local` did not escape.
+  -- test/admin.test.js now executes this file and asserts every column the
+  -- Worker's INSERTs name actually exists, so a missing comma fails the
+  -- suite instead of quietly disabling telemetry.
   achv     TEXT                      -- JSON ARRAY of achievement ids the
                                      -- player holds AT THE TIME OF THIS
                                      -- SHIFT, e.g. '["first-shift","black",
@@ -146,6 +210,14 @@ CREATE INDEX IF NOT EXISTS idx_stats_player ON stats(player_id, ts);
 -- that already has this table WITHOUT the columns, run once:
 --   ALTER TABLE stats ADD COLUMN models TEXT;
 --   ALTER TABLE stats ADD COLUMN achv TEXT;
+-- ADDITIVE MIGRATION NOTE (2026-07-30, geo): same story for the three geo
+-- columns. On a database that already has `stats`, run once:
+--   ALTER TABLE stats ADD COLUMN country TEXT;
+--   ALTER TABLE stats ADD COLUMN region  TEXT;
+--   ALTER TABLE stats ADD COLUMN tz      TEXT;
+-- Do NOT add an index on any of them — see the COST paragraph in the geo
+-- block above, and the idx_stats_ts post-mortem below.
+--
 -- (harmless "duplicate column name" error if the column is already there —
 -- ignore it. A brand-new database gets the column from CREATE TABLE above
 -- and never needs this line.) No further migration is needed for the

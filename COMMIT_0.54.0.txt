@@ -1,0 +1,73 @@
+0.54.0 — satellite map, a cities overview, and night mode stops inverting the cars
+
+WHAT WAS WRONG
+
+A mobile/dark-mode pass found two real visibility bugs. Night mode applies one
+CSS filter — invert(1) hue-rotate(180deg) saturate(.7) brightness(.9) — to
+`#map`, and Leaflet's marker pane lives inside that same div. So the invert
+did not just darken the map, it inverted the markers too: the car pin's crisp
+white outline turned black, its light-windscreen/dark-rear-window front/back
+cue swapped meaning, and the charger pin's white bolt became near-black on a
+near-black square — the exact opposite of the contrast those glyphs exist for.
+Confirmed by screenshot, not just by reading the CSS.
+
+Separately, a player asked for a satellite map option, and another asked to
+see every unlocked city on one screen and switch by clicking it. Neither
+existed: the only tile provider was OpenStreetMap, and the only way to change
+city was the topbar tab strip.
+
+WHAT CHANGED
+
+Satellite tiles. Gear settings gets a new "Map style" row (Standard /
+Satellite), same button pattern as the Distance-units toggle. Satellite is
+Esri World Imagery — free, no API key, single-server URL scheme
+({z}/{y}/{x}, not OSM's {z}/{x}/{y}). `S.mapStyle` saves and restores like
+`S.units`; an older save with no mapStyle defaults to standard.
+
+Night-invert fix, forced by the above: inverting a satellite photo would be
+a colour negative, not a dark theme, so this had to be fixed to ship
+satellite mode at all. `#map.night{filter:...}` is now
+`#map.night .leaflet-tile-pane{filter:...}` — scoped to the tile pane only.
+Markers and circles keep their real colours in every theme now. Satellite
+tiles get a plain brightness(.55) saturate(.85) darken instead of the invert
+(`.map-sat` class), since colour inversion never made sense for a photo.
+
+Cities overview. A new "Cities" button (top-right of the map, mirrors
+Recentre's bottom-left pill) opens a modal with a small stylised map — NOT a
+zoomed-out Leaflet view. Austin to Miami is ~1900km; a real map wide enough
+to show all six cities at once would put every zone circle and charger at
+continental-US scale, i.e. invisible. So this is hand-drawn art (CITOV_
+OUTLINE, CITOV_POS) with each city's pixel position tuned by eye rather than
+projected from lat/lon, which would drift off a hand-drawn coastline a
+formula can't see.
+
+Clicking a pin reuses switchCity()/cityUnlocked()/cityLockLine() exactly —
+the same functions the topbar tabs call — so the two controls can never
+disagree. An unlocked pin switches city; a locked pin shows the identical
+Paolo line the tab strip already shows for that city, in the modal's
+caption. A green dot badges any OTHER unlocked city with a parked fleet,
+read from that city's own autosave (`auto:<city>`'s `meta.cars`) since only
+the current city's cars ever exist in memory — this is a read against
+storage, not a live flag. The topbar tab strip is untouched: this sits
+alongside it, not in place of it, because that strip already has its own
+hard-won "may never clip" rules from three earlier rounds.
+
+Reused rather than rebuilt: adding 'cities-overview' to the existing
+MODAL_IDS array gets it focus-trap, focus-on-open and return-focus-on-close
+for free, from the one MutationObserver #garage/#trophy/#report/#resume/
+#savemgr already share.
+
+TESTS
+
+Verified headlessly (Playwright + a libXdamage stub + a local-Leaflet test
+copy, since this sandbox can reach neither a real browser nor cdnjs.cloudflare.
+com): map style toggles with no console errors and the right attribution
+string; night mode no longer inverts the car outline or the charger bolt on
+either tile style; the cities-overview modal renders 6 pins with correct
+open/locked/current classes and ARIA labels (including the fleet count and,
+for locked cities, the exact Paolo line); clicking a locked pin updates the
+caption without navigating; clicking the current city or pressing Escape
+closes it.
+
+Full suite passes clean (`npm test`), and `check-parity` is green —
+deploy/public/index.html is byte-identical to deadhead.html.

@@ -1,0 +1,42 @@
+0.47.5 — the topbar's overflow line stays right-aligned too
+
+WHAT WAS WRONG
+
+The >=2250px "one line" tier (readouts, Clock, speeds, buttons and Coffee
+all on one row) was measured against five city tabs. Three more have shipped
+since (SF Bay, Phoenix, Las Vegas) without re-measuring, so past 2250px but
+short of actually fitting all eight tabs plus every control on one line, the
+row still wraps — .tb-ctrls and #coffee are both flex:0 0 auto in that tier
+(no forced full-width line, no auto-margin pushing them right, unlike the
+narrow tier's own mechanisms), so whatever's left of them spills onto a
+second line. .topbar itself never declared a justify-content, so that
+spillover line defaulted to flex-start and left-anchored Shift/Clock/the
+speed segment/the settings buttons — flush against the left edge instead of
+clustering right like every other arrangement of this row.
+
+WHAT CHANGED
+
+Added justify-content:flex-end to .topbar's base rule. Checked it against
+both working tiers before shipping: the narrow tier's line 1 (.tb-info+
+Coffee) has no slack to redistribute (.tb-info's flex-grow already fills its
+max-width, Coffee fills the reserved remainder), and its line 2 (.tb-ctrls)
+is always exactly 100% wide alone — neither line has anything left for
+justify-content to move. The successful >=2250px one-line case is likewise
+unaffected: .tb-info's flex-grow consumes all slack on that line before
+justify-content has anything to redistribute. Only the broken degenerate
+case — .tb-ctrls+Coffee sharing an overflow line with room to spare — was
+actually changed by this, and it now right-aligns like the rest of the row
+instead of hugging the left edge.
+
+TESTS
+
+Full suite run: one pre-existing failure in company-bank.test.js ("three
+real days parked bills exactly three days of fixed cost"), unrelated to this
+change — that test computes its fixture from the real Date.now() at run
+time rather than a fixed clock, and the run landed within about half an hour
+of local midnight, which is exactly the kind of boundary that test's
+"3 days + a 1-hour buffer" padding doesn't cover. Confirmed unrelated: this
+release touches only .topbar's CSS, nothing in the billing/date path.
+Re-running the same test in isolation reproduces the same failure, so it
+isn't something this change introduced or can fix — worth a fixed-clock
+rewrite of that fixture separately.

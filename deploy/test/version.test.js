@@ -77,6 +77,30 @@ const head = fs.readFileSync(path.join(ROOT, `COMMIT_${newest}.txt`), 'utf8')
 check(`COMMIT_${newest}.txt's first line names ${newest}`,
   head.indexOf(newest) >= 0, 'first line was: ' + head);
 
+/* ---- the version has to be READABLE, not merely correct ----
+ *
+ * 0.65.1: Pavel asked for "version next to the game title" — and there had
+ * been one since the topbar shipped, `.ver` in `.brand`, filled from VERSION
+ * at boot. It was just `display:none` below 1499px, while the tagline beside
+ * it has been hidden since the 2199px tier, so on any normal laptop the brand
+ * was the bare wordmark and the only place left to read the build number was
+ * the Saves modal. A version nobody can see is not much better than no
+ * version, and nothing failed when it was hidden.
+ *
+ * These four checks are what would have failed. The chip may be restyled
+ * freely — smaller, tighter, repositioned — but not hidden.
+ */
+check('the brand carries a #ver element', /id="ver"/.test(src));
+check('#ver is inside .brand', /<div class="brand">[\s\S]{0,200}id="ver"/.test(src));
+check('#ver is filled from const VERSION, not from a literal',
+  /\$\('ver'\)\.textContent\s*=\s*'v'\+VERSION/.test(src));
+/* The specific regression: any rule that takes the chip out of the layout.
+   Matches `.brand .ver{...display:none...}` and `.ver{...display:none...}`
+   wherever it sits, inside a media query or not. */
+const hidden = src.match(/\.ver\s*\{[^}]*display\s*:\s*none[^}]*\}/g) || [];
+check('no CSS rule hides the version chip', hidden.length === 0,
+  'found: ' + hidden.join(' | '));
+
 if (failures) {
   console.error(`\n${failures} version check(s) failed.`);
   process.exit(1);

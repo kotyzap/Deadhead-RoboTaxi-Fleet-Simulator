@@ -1,0 +1,82 @@
+0.51.0 — running a car flat now means something
+
+WHAT WAS WRONG
+
+Pavel asked what happens when a car hits 0% battery. The answer was nothing.
+
+drive() floors state of charge with clamp(c.soc - kwh/sp.kwh*100, 0, 100), and
+no code path anywhere tested for empty. So a car at 0% kept driving at full
+speed, indefinitely, completing fares normally — and because energy is only
+ever billed while plugged in (see the charging branch of stepCar), a
+permanently-flat car ran for FREE: depreciation and insurance per mile, zero
+energy, forever. The cheapest way to operate was to never charge.
+
+What disguised this was CFG.reserveSoc (12), checked in assign(), the
+queue-assign path and stepCar's queue drain: a car won't ACCEPT a ride it
+can't finish with 12% spare. So normal play soft-locked instead — the car sat
+idle refusing every offer while the fixed cost ran. But the reserve is only
+consulted at assignment, so an incident re-route, or CFG.heatPenalty raising
+consumption mid-trip past what was projected, still walked cars to zero.
+
+Separately, and finally fixed: CFG.socAlertAmber was 25 against a chargeAt of
+28. The Charge pill's amber band is `soc >= chargeAt && soc < socAlertAmber`,
+i.e. 28 <= x < 25 — the empty set. The pill could only ever be green or red,
+jumping between them with no warning state. Flagged twice during the 0.48.x
+pill work and deliberately left alone both times pending a real number.
+
+WHAT CHANGED
+
+Two new car states. 'stranded': the car stops where it is, cannot move by any
+route, and does NOT self-clear — that is the whole difference from 'blocked',
+which resolves itself after c.needs seconds. Any fare in progress is abandoned
+(counted as a cancellation, -2.5 safety, same as a rider walking), anything
+queued behind it goes back to the open pool rather than waiting on a car that
+will never come, and a pending charge order is voided. Both states are
+crit-red, not attn-amber, and reuse the existing .d-crit/.t-crit classes.
+
+'recovery': a flatbed, called from the console's charge button, which becomes
+"Call flatbed" and names the price. CFG.recoveryFee ($180 — roughly a good
+shift's net) is charged on the CALL, not on arrival, so the decision has an
+immediate cost; it lands in S.d.cost so the shift report explains the night.
+CFG.recoverySec (240) is real seconds, timed like the blocked window and the
+offer clock so a 20x player doesn't get a 20x faster tow. The car is dropped
+AT the nearest charger and plugged in to 100 (chManual), because nobody pays
+for a flatbed to be topped up to 85%.
+
+The strand check sits in stepCar's movement branch immediately after drive() —
+the only call that can lower soc through movement — and BEFORE the incident
+roll, since a car with nothing left doesn't also get to be blocked.
+
+sendToCharge() refuses a stranded or recovering car. That guard is in the
+function, not just the console handler, because the Rapid-charge panel's
+per-site buttons call sendToCharge directly and its fall-through would have
+set state='toCharge' and silently un-stranded the car for free.
+
+nextTask() puts a flat car above everything, including "choose a vehicle" and
+"clock on": it is the only state that cannot resolve itself and goes on owing
+its fixed cost the entire time it sits there.
+
+socAlertAmber is now 40, above chargeAt, so all three bands are reachable:
+green above 40, amber 40 down to 28, red below 28. The pill's class expression
+simplified accordingly (the redundant lower bound is gone).
+
+SAVE: c.recovTo holds a live CHARGERS object, so it is stripped from the
+snapshot and stored as recovToName, then re-pointed via chargerByName() on
+restore — exactly the chIdx/chName trap, which JSON would otherwise turn into
+a disjoint twin that no longer === anything in CHARGERS. A stranded car
+reloads AS stranded (it is waiting on a decision, not mid-animation), unlike
+the trip/charge states, which restore() already resets when their reference is
+gone. No SAVE_V bump: the new fields are additive and absent fields default.
+
+TESTS
+
+New test/stranded.test.js, wired into npm test — 41 checks. The ones that
+matter most: nothing makes a flat car move (stepCar, sendToCharge by nearest
+AND by name, assign), it survives 200 steps without self-clearing, the fee is
+charged exactly once on the call, the tow takes real seconds not sim seconds,
+the queue is released, and recovTo round-trips by NAME with object identity
+proved through chargerByName(). Plus a relationship assertion that
+socAlertAmber stays above chargeAt, so retuning either number cannot silently
+reintroduce the empty band.
+
+Full suite passes clean (405 checks, up from 363).

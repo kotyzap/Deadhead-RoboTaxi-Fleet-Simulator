@@ -1,0 +1,54 @@
+0.39.5 — San Francisco's one car (soloSeat)
+
+Pavel: "did we implement SF that there is only currently 1 car available as you need to be
+'supervisor'?" — it wasn't. Then, after ruling out any Act 2 payroll mechanic ("I want to keep
+it 1 person simulator"): "SF definitely only 1 car... but how about extra money from Tesla?
+...what about having SF simply as 1x speed as of a) level 6, b) supervised." And the framing
+that made the whole thing make sense: "Supervised means that Player is the one sitting in the
+car. Not watching anything. I am the car :)"
+
+WHAT SUPERVISED ACTUALLY MEANS HERE
+
+Every other city's permit field is reportage — Austin is ALSO permit:'Supervised' and has never
+needed a staffing mechanic for it. SF is the one scenario where "a safety driver rides along"
+is read literally: the driver is the player, not an employee. That reading drives a new,
+dedicated CITIES.sf.soloSeat flag (never inferred from permit, which stays reportage everywhere
+else) and three mechanics fall out of it together:
+
+  1. fleetCap: 12 -> 1. Not "SF's fleet is small" — SF has no fleet, it has one car, because it
+     has one of you. You cannot be in two seats at once.
+  2. Simulated time cannot outrun real time. setSpeed() clamps to 1x for any soloSeat city
+     REGARDLESS OF CALLER — the two speed-control input handlers, clockOn's CFG.defaultSpeed,
+     closeDodge restoring the pre-mini-game speed, the pause-resume button all inherit the cap
+     for free rather than each needing to know soloSeat exists. The controls themselves go
+     visibly disabled (paintSoloSeat(), same `.cell[title]+button[disabled]` convention as
+     #cpo-up/#cpo-down) so the lock is legible, not just silently enforced.
+  3. CFG.soloStipend ($250) is credited at billMidnight() on any CALENDAR day you actually
+     clocked on — a wage for the job, not a subsidy for owning the car, silent on a day you
+     never worked. S.workedToday is the new calendar-day-scoped flag that makes that distinction
+     (separate from S.workedSec, which is shift-scoped and reset by clockOn()).
+
+A NEW ONE-TIME PAOLO LINE, not per-run: PROG.soloSeatTold (alongside PROG.achvTold, same
+reasoning) fires once, ever, the first time a soloSeat city opens, and never repeats even
+across a bankruptcy/restart of that same city.
+
+A REAL BUG THIS SURFACED AND FIXED, unrelated to SF specifically: progTrack() — which already
+runs every render() frame while a city is active — never wrote PROG.companyCash. Every OTHER
+S.cash change (fares, energy, rent, and now the stipend) only ever touched S.cash, so
+switchCity()'s autosave could park a city's LATEST earnings nowhere, and the next
+newFleet({keepCompanyCash:true}) would open the next city on a stale balance. progTrack() now
+mirrors S.cash into PROG.companyCash every frame (cheap: one number, no I/O — progSave() still
+persists it on its own separate schedule). Without this fix the SF stipend itself would have
+been the first thing to visibly evaporate on a city switch.
+
+ALSO FIXED: affordWhy()'s fleet-cap message said "capped at 1 cars" for any city whose cap is 1
+— SF was about to be the only city that could ever say a sentence that ungrammatical out loud.
+
+test/soloseat.test.js (new, wired into npm test): fleetCap/soloSeat config, the grammar fix, the
+speed clamp from every angle (setSpeed() directly, the disabled controls after render(), the
+click handler honoring the disabled state, leaving SF lifting the lock), the stipend (paid only
+when worked, silent elsewhere, never paid outside SF), workedToday's save/restore round trip
+(including the "save from before this field existed" default), the one-time Paolo line, and the
+progTrack()/companyCash fix.
+
+Existing suite (10 files) and check-parity pass.

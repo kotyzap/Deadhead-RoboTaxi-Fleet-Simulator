@@ -1,0 +1,75 @@
+0.59.0 — Recenter frames the zones only, and the zone circles are visible
+
+WHAT WAS WRONG
+
+Three asks from Pavel (2026-07-30):
+
+  1. "RECENTRE rename to US RECENTER" — the button read "Recentre", and its
+     aria-label and both of setFollow()'s dynamic titles said "recentres".
+  2. "when clicked only area around zones (circles) is recentered. Not the
+     chargers." fleetBounds() fitted cars + active zones + chargers.
+  3. "Also make all circles more visible. some are really light, almost
+     invisible." Zone circles were created with `stroke:false` and a fill
+     floor of 0.02.
+
+WHAT CHANGED
+
+Spelling: the label, the aria-label, the static title and BOTH strings
+setFollow() writes are now US-spelled. Only player-facing text moved —
+`recenterMap`, `#dh-recenter` and `#i-recenter` were already US-spelled, and
+source comments were left alone (the file's prose is British throughout;
+changing it would be a diff with no reader).
+
+The box: fleetBounds() now fits active zones and nothing else. Chargers were
+the actual complaint and the obvious cut — every city deliberately places at
+least one well outside the demand area (Austin's Research Blvd is 27 minutes
+out, and that distance is the whole point of it), so a box containing them
+framed mostly empty ground with the operating area shrunk into a corner.
+Cars came out for the same reason rather than as a separate decision: a car
+dispatched to one of those far chargers, or on a flatbed after running flat,
+would drag the box straight back out a tick later — so the frame would
+wander for reasons that have nothing to do with where the work is. Zones are
+fixed per city, which makes the box stable, which is what makes a 30-second
+auto-recenter unobtrusive instead of a camera that lurches. Everything else
+is still on the map, just off-screen until panned to. The all-zones-off case
+still returns null, so the button still falls back to centerCity().
+
+`fleetBounds` keeps its name despite no longer reading S.cars: it is
+exported on window.DH_ACT1 and "the box the follow feature fits" is still
+what it means.
+
+Circle visibility, two changes that do different jobs:
+
+  - Zone circles are now STROKED (color #E0453C, weight 1.6, opacity .55 at
+    rest, previously `stroke:false`). The ring says "a zone is HERE" at a
+    constant, always-legible weight regardless of the hour.
+  - The fill range moved: divisor 18 -> 12, floor 0.02 -> 0.13, cap
+    0.30 -> 0.50. A typical zone (base 5) at a typical curve (~1.0) now
+    lands near 0.42 instead of near 0.28, and the quietest a live zone can
+    look is 0.13 rather than a genuinely invisible 0.02.
+
+The SHAPE of the shading is unchanged — base x hourly curve still orders the
+zones exactly as before, so the map does not read differently, only more of
+its range is actually perceptible. The stroke is faded in step with the fill
+so a quiet zone reads quiet rather than outlined-but-empty, and both go to 0
+when a zone is switched off, so the geofence still reads unambiguously.
+
+TESTS
+
+New test/recenter-zones.test.js: the label/aria-label/title and both
+setFollow() titles are US-spelled and no player-facing "Recentre" survives;
+fleetBounds() fits zones, skips geofenced-off ones, still pushes both
+corners so an edge zone is not sliced, and contains neither CHARGERS nor
+S.cars; it still returns null with nothing to frame (which is what the
+centerCity() fallback depends on); zone circles are no longer stroke:false
+and pass a colour and weight; the fill divisor dropped, the floor is >= 0.10,
+the cap rose above 0.30, and floor is still below cap; the stroke fades with
+the fill rather than staying at full weight.
+
+One trap worth recording: the first version of that zone-loop assertion
+regex matched buildCityLayers()'s one-line `zoneLayer.forEach(...removeLayer...)`
+instead of drawMap()'s shading loop, and silently checked the wrong body. It
+is now anchored on `const on=`.
+
+Full suite passes clean, and check-parity is green — deploy/public/index.html
+is byte-identical to deadhead.html.

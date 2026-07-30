@@ -1,0 +1,51 @@
+0.60.0 — Intro screen cleanup: drop the redundant title, lighten the scrim, fix the Skip button's contrast
+
+WHAT WAS WRONG
+
+Three asks from Pavel (2026-07-30), all about the sign-in/registration
+screen that now lands directly on the splash artwork (v0.58.0):
+
+  1. "From the registration form remove DEADHEAD. Use top of the picture."
+     The intro frame carried its own "DEADHEAD / Robotaxi fleet simulator"
+     title above the video, duplicating the wordmark that already sits near
+     the top of the splash photo behind it.
+  2. "Also remove the black background around the form so it is not that
+     dark." Two dark layers were stacking on top of each other: #intro's
+     own scrim over the photo (rgba(6,7,9,.5)) plus .intro-frame's own
+     plate behind the video/form (rgba(10,12,16,.62)) — between the two,
+     the photo barely showed through and the whole screen read as black.
+  3. "Color also the Play on this device only. It is hidden black on
+     black." #intro-skip used the same near-transparent white-on-dark
+     treatment as #intro-start, which works fine on #intro-start's
+     accent-lit .pri variant but left #intro-skip almost unreadable on its
+     own over a dark photo.
+
+WHAT CHANGED
+
+The title is gone. .intro-brand's markup and CSS are removed outright, not
+just hidden — nothing else referenced the class. The splash art is
+unaffected; it was already CONTAIN-fit specifically so its own DEADHEAD
+title is never cropped (see the .splash-bg comment from the splash
+rework), so the photo's own title is what carries the name now.
+
+The scrim: #intro.intro-onsplash's background dropped from rgba(6,7,9,.5)
+to rgba(6,7,9,.22), and .intro-frame's own plate dropped from
+rgba(10,12,16,.62) to rgba(10,12,16,.38). Both layers were darkening the
+same photo at once; lightening just one would have left the other
+carrying all the contrast. The blur+saturate on both stay as they were —
+this only touches how much black sits under them.
+
+#intro-skip: recoloured from rgba(255,255,255,.08) fill / white text to a
+solid white fill (#fff) with dark text (#0b0c0f), hover dims to
+rgba(255,255,255,.85). #intro-start is untouched — it sits on the accent
+colour via its .pri class and was never the button in question.
+
+TESTS
+
+Full suite re-run clean (test/intro-video.test.js in particular, since it
+asserts on #intro's markup/CSS, passed with no changes needed). version.test.js
+failed only on the expected "VERSION is ahead of the newest commit note"
+check until this file was written.
+
+Full suite passes clean, and check-parity is green — deploy/public/index.html
+is byte-identical to deadhead.html.

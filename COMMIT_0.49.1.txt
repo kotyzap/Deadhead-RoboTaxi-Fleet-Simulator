@@ -1,0 +1,33 @@
+0.49.1 — Trophies had two Close buttons doing the same thing
+
+WHAT WAS WRONG
+
+#dh-console-panel (the shared surface Fleet/Energy/Books/Ops/Comms/Trophies
+all reparent into) carries one corner X — #dh-cp-close — since none of the
+five wing panels have any other way out of it. Trophies is the one panel in
+that set that already has its OWN Close button in its card header
+(#tr-close, next to the "8/21" count), so opening Trophies put two identical
+"leave this screen" controls side by side, both wired to the exact same
+closeConsolePanel().
+
+WHAT CHANGED
+
+The corner X now hides itself specifically when Trophies opens
+(openTrophies() sets $('dh-cp-close').hidden=true) and comes back for
+everyone else (showInConsole() — the path every other panel opens through —
+sets it back to hidden=false). Added #dh-cp-close[hidden]{display:none}: the
+button's own display:grid is an author rule and would otherwise beat the
+user-agent's default [hidden]{display:none}, the identical trap
+#profile-btn hit in 0.47.7 — spelled out again in a comment so it isn't
+rediscovered a third time.
+
+Nothing else about #dh-cp-close changed: Fleet, Energy, Books, Ops, and
+Comms still show it exactly as before, since none of them has a Close
+button of their own to fall back on.
+
+TESTS
+
+No existing test referenced #dh-cp-close's hidden state — confirmed by grep
+before touching it. Verified by hand: openTrophies() → X hidden;
+closeConsolePanel() then showInConsole('panel-fleet') → X visible again.
+Full suite passes clean (317 checks), plus boot-smoke.test.js specifically.

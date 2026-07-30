@@ -1,0 +1,40 @@
+0.64.4 — City picker: the name never gets dropped or squeezed to nothing
+
+WHAT WAS WRONG
+
+Two follow-ups from 0.64.3's city dropdown, both reported by Pavel on
+2026-07-30 against real screenshots:
+
+  1. "Always display the city name, do not compress it to 'dot' only."
+     A pre-existing rule (`.topbar .ghost:not(.units)>span{display:none}`,
+     written for Garage/Saves at the 1499px tier) matched #city-pick-label's
+     span too, since .citypick shares the plain .ghost class. Below 1499px
+     — which the specificity note beside it explains is actually EVERY
+     width down to phone, not just the tablet tier the comment claims —
+     the picker collapsed to just the tone dot and a chevron with no city
+     name at all.
+  2. At a laptop-width screenshot (inside the same 1499px tier), the dot
+     was touching "Austin" with no space between them. `.topbar .ghost` at
+     that tier sets `gap:0` for every ghost button — right for Garage/
+     Saves/Gear, which are icon-only there and have nothing to space out,
+     but it also zeroed .citypick's own gap between its three children.
+
+WHAT CHANGED
+
+(1) `.topbar .ghost:not(.units)>span{display:none}` gained a
+`:not(.citypick)`, so the label survives regardless of width.
+
+(2) Added `.topbar .citypick{gap:6px}` right after the zeroing rule — one
+class more specific than `.topbar .ghost`, so it wins regardless of source
+order, restoring the dot/name/chevron spacing at the exact tier the
+screenshot was taken in.
+
+TESTS
+
+No test changes needed — city.test.js's existing
+"#city-pick shows the current city's short name and tone colour" check
+already asserts the label's textContent, which was passing because jsdom
+applies no stylesheet at all (a display:none span still has non-empty
+textContent) — this was a real-browser-only bug that a DOM-content
+assertion can't see. Full suite re-run clean (30 test files); check-parity
+green.

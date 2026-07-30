@@ -1,0 +1,54 @@
+0.46.1 — Paolo's numbers come from the game, not from memory
+
+THE REPORTED BUG
+
+Beat 2 read "Whatever you pick, 82 a day is the floor". A bare numeral, no
+currency mark. It was the Cab's fixed cost ($82/day), written into the prose as
+a literal — nothing tied it to CATALOG, so it read as a typo and would have
+become a lie the first time a trim was rebalanced. Beat 13 had the same figure,
+same way.
+
+THE WORSE ONE FOUND NEXT TO IT
+
+Beat 1 said "Seven and a half thousand dollars and no car" while the topbar said
+CASH $800. CFG.startCash was dropped to $500 and then raised to $800 on
+2026-07-28 and the dialogue was never revisited, so Paolo has been quoting a
+starting balance that has not existed for a year of build time. nextTask()'s
+'car' advice repeated it word for word, and two catalogue notes were built on it
+too ("you cannot put money down on this on day one — $7,350 with the lender's
+reserve, and you have $7,500"; "the last car you can finance on day one" — at
+$800, day one finances nothing at all).
+
+THE FIX
+
+Beat text is a `const` string, so live numbers are tokens filled at show time:
+
+  rayFill(t)  {NAME} -> playerName()   (as before)
+              {CASH} -> money(S.cash)
+              {FLOOR} -> money(floorCost())
+
+floorCost() is the daily fixed cost Paolo calls "the floor": the CHEAPEST fixed
+cost in the catalogue while the player has no car (beat 2 fires in the garage,
+where the honest claim is "the least this can possibly cost you"), and the sum of
+what the held cars owe once there are any — which is what beat 13's "it doesn't
+switch off with you" is about. It deliberately EXCLUDES rent and finance, because
+both beats say "before rent, before finance" and fixedPerCar() would contradict
+the sentence it appears in.
+
+nextTask()'s 'car' task now quotes money(S.cash) — right for the opening and
+still right when the task resurfaces later. The two catalogue notes drop their
+day-one affordability claims and state car facts only: what a balance reaches is
+the garage's job, and canAfford()/affordWhy() already say it per row in money
+that is current by construction.
+
+TESTS
+
+test/paolo-numbers.test.js (new) asserts RELATIONSHIPS, not strings — no token
+survives a fill, {FLOOR} agrees with CATALOG, {CASH} agrees with S.cash, the
+floor excludes rent, no beat contains a bare "82", no catalogue note tells the
+player what they have. A rebalance cannot fail these; a regression to a
+hardcoded figure cannot pass them.
+
+One test trap worth writing down: /\b82 a day\b/ does NOT prove the currency
+mark is missing — \b matches between "$" and "8", so it fails on the correct
+output too.

@@ -1,0 +1,64 @@
+0.53.1 — the topbar fits one line when one line fits
+
+WHAT WAS WRONG
+
+Pavel, with three screenshots: a 2196px window rendering two lines with obvious
+room to spare, and a narrower one rendering THREE ("we definitely do not need 3
+lines of the top menu").
+
+Two separate causes.
+
+1. .tb-ctrls carried flex:1 0 100%. That is not "wrap when you have to" — it is
+   "always break", at every width below 2250px. The row could physically fit on
+   one line from about 1650px upward and never did. The >=2250px media query
+   existed solely to undo it, and that threshold was measured against five city
+   tabs and a Permit readout: eight tabs have shipped since, Permit and Coffee
+   are gone, and theme/sound/units collapsed into one gear, so the number was
+   stale in several directions at once and the row stayed on two lines well past
+   the point it needed to.
+
+2. .tb-info's column gap was 22px at EVERY width, and the block holds six items
+   (brand, city strip, Day, Clock, Cash, Trophies) — five gaps, 110px of pure
+   spacing, more than a whole readout. Past a certain narrowness that pushed
+   Cash onto a second line INSIDE the block, and with the controls forced onto a
+   line of their own the row became three deep.
+
+WHAT CHANGED
+
+.tb-ctrls is flex:0 1 auto and the 2250px query is deleted. The browser decides:
+one line whenever both groups fit, two when they don't, at any width, with no
+magic number to go stale.
+
+This is only safe because of 0.53.0. The forced break existed to stop the wrap
+landing somewhere arbitrary back when the row was a flat list of seventeen
+items, and the comment defending it has been there since v0.26.3. But the row
+has exactly TWO children now — Coffee was the third and moved into the gear menu
+last release — so the only seam a natural wrap can pick is precisely the one the
+forced break was guaranteeing. The protection became free, so the mechanism
+could go.
+
+.tb-info's gaps now step down with the window: 22px base, 14px at <=1699,
+11px at <=1499. Gaps are the cheapest thing in that block to give up — nothing
+is hidden and nothing shrinks, the row just stops being generous.
+
+WHAT IS NOT CLAIMED
+
+Whether the narrow case lands on two lines rather than three depends on the
+exact window width and on real text metrics, and jsdom has no layout engine, so
+this could not be measured here — only reasoned about with a width budget
+(which puts the full row at ~1630px of a 2196px window, comfortably one line,
+and says the gap change buys 32-44px in the block). The narrow screenshot's
+actual CSS width is ambiguous from the image alone. If three lines survive at
+some width, the next lever is the version chip in .brand or an earlier step on
+the city-tab padding — both cheaper than hiding a number.
+
+TESTS
+
+city.test.js: the Coffee-mechanism check drops the two clauses that asserted the
+forced break and the 2250px query (both now deleted). Two new checks — the
+controls rule uses flex:0 1 auto with no 100% basis anywhere in it and no
+min-width:2250px query survives in the file (a reintroduced 100% basis looks
+harmless and would silently pin every window back to two lines), and the
+.tb-info gap steps down at both tiers.
+
+Full suite passes clean (405 checks).

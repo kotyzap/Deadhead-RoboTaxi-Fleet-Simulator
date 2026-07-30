@@ -1,0 +1,89 @@
+0.58.0 — the splash keeps its aspect ratio, and becomes the intro's backdrop
+
+WHAT WAS WRONG
+
+Three asks from Pavel (2026-07-30), all about the 0.56.0 splash screen:
+
+  1. "We need to ensure proper aspect ratio for ultra wide or wider display...
+     maybe blur the sides like in 'Resume operations' and display full height
+     and width accordingly not to hide the Title." The splash painted one
+     background layer at `center/cover`, which on a 21:9 display crops the
+     top and bottom — and the DEADHEAD wordmark lives at the top, so the
+     title was the first thing to go.
+  2. "Move 'loading ....' to the center and make it bigger." It was
+     bottom-anchored (`align-items:flex-end` + `margin-bottom:9vh`) at 13px,
+     which on the wide crop sat it over roadway detail and read as small.
+  3. "How about bring the video and account signing-in and or registration or
+     skip to the splash screen after 'loading'. That black screen is ugly.
+     Let's merge loading and video and account together. Loading first
+     followed by the video tutorial." The splash faded out to reveal #intro,
+     whose own near-opaque radial gradient meant the video and the account
+     card appeared on a black field.
+
+WHAT CHANGED
+
+Aspect ratio: two background layers instead of one. `.splash-fill` is the
+same image at `center/cover`, blurred (28px), dimmed and scaled 1.12 to hide
+blur()'s transparent edge; `.splash-bg` sits on top at `center/contain`, so
+the artwork is never cropped at any aspect ratio and the letterbox space
+reads as an out-of-focus continuation of it rather than as black bars. Same
+blurred-surround idea `.modal` already uses behind "Resume operations", just
+sourced from the image instead of a flat colour. The `orientation:portrait`
+swap now targets both layers, not just the sharp one.
+
+Loading pill: centred (`align-items:center`, the vh margin gone), 13px→17px,
+dots 5px→7px, more padding and letter-spacing, plus a drop shadow so it holds
+up over a bright sunset. A `max-width:760px` tier scales it back down so it
+doesn't dominate a phone.
+
+The merge — the splash now has two phases rather than one:
+
+  PHASE 1, LOADING: unchanged. A fixed 4s timer, not a promise tied to boot,
+  covering the sync render() and the async bootResume() chain both.
+
+  PHASE 2, BACKDROP: on a FRESH run the splash does not fade out at all. It
+  drops from z-index 200 to 80 — below #intro's 90, still above .app — and
+  hides only its loading pill. Same painted element throughout, so there is
+  no reload and no flash between phases. #intro gains `.intro-onsplash`,
+  which swaps its near-opaque gradient for a light scrim plus
+  backdrop-filter, gives .intro-frame a frosted plate to keep the video and
+  account card readable over a photograph, and blurs the wings harder. On a
+  RETURNING player (an autosave exists, so #resume shows and there is no
+  #intro) it fades out exactly as before.
+
+splashDone() decides which of those two by ASKING whether #intro is up
+rather than predicting it, and showIntro() calls splashBackdrop() itself for
+the case where the intro opens after the timer already ran — so both
+orderings converge on the same screen. closeIntro() calls splashHide() on
+every one of the intro's three exits (Skip, account created, signed-in
+resume), and newFleet()'s non-tutorial branch does too, so a second city can
+never inherit a stale backdrop over the live console.
+
+The account card is injected and styled by cloud.js against the theme
+tokens, so instead of duplicating a dozen of its rules at higher specificity
+— which would rot the moment cloud.js changed one — `#intro.intro-onsplash
+.intro-acct` REDEFINES those tokens (--c-card, --inset, --brd, --text, …)
+for that subtree only. Custom properties inherit, so every cloud.js rule
+underneath picks up dark-glass values on its own.
+
+backdrop-filter only, never filter:, on #intro itself — a filter on an
+ancestor creates a containing block and breaks descendant position:fixed
+(#ray, #intro, #dimscrim all depend on the viewport). The test asserts this.
+
+TESTS
+
+test/splash-screen.test.js extended: the fill layer exists and uses
+cover+blur while .splash-bg uses contain and never cover; the portrait swap
+covers both layers; the pill is centred and no longer vh-pinned; .splash-back
+drops below #intro and hides the pill; #intro's over-artwork variant exists
+and uses backdrop-filter but not filter; the account card gets dark tokens;
+and the live handover — splashBackdrop() un-hides + marks both elements and
+cancels an in-flight fade, splashHide() takes both back down, splashDone()
+backs the intro when it is open and hides fully when it is not.
+
+Verified visually at 2560x1080 (ultrawide), 1440x900 and 393x852: full title
+visible with blurred surround in every shape, and video + sign-in + skip all
+sitting on the artwork instead of a black screen.
+
+Full suite passes clean, and check-parity is green — deploy/public/index.html
+is byte-identical to deadhead.html.

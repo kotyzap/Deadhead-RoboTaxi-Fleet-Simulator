@@ -3,7 +3,7 @@
 **A robotaxi fleet simulator where you never touch a steering wheel.**
 
 You are not the driver. You are the person the driver got replaced by — and the job turns
-out to be harder. Nine real Teslas, five real Tesla Robotaxi geofences, and a spreadsheet
+out to be harder. Six cars, six real cities mapped to the metre, and a spreadsheet
 that bites. All of it happens on one screen: the car's own centre console.
 
 > *Deadhead* — the trade word for driving with no fare aboard. It is the thing that quietly
@@ -33,27 +33,25 @@ choose *how you hold the asset* — and each way of holding it is wrong in a dif
 Renting costs nothing today and the most every day after. Financing is cheaper for exactly
 as long as you keep working, and a mistake the moment you stop. **Neither is wrong.**
 
-Four of the nine are financeable on day one. The other five you can only look at.
+Four of the six are financeable on day one. The other two you can only look at.
 
 ---
 
-## Nine real cars, and the specs actually bite
+## Six cars, and the specs actually bite
 
-Every vehicle is real and every technical figure is the published one — the Cybercab's
-numbers come straight off its EPA filing. None of it is flavour text; each spec feeds a
-system that is already running.
+The marque is invented; the physics is not. Every figure below is what purpose-built and
+mass-market robotaxi hardware actually achieves in 2026, and the ladder between them —
+48 kWh four-seat cab at one end, 123 kWh light truck at the other — is the real one. None
+of it is flavour text; each spec feeds a system that is already running.
 
 | | pack | range | seats | what it means for you |
 |---|---|---|---|---|
-| **Cybercab** | 48 kWh | 300 mi | 2 | no wheel, no pedals, cheapest to own — and on a charger constantly |
-| **Model 3** | 62 kWh | 321 mi | 5 | the entry trim: cheap to hold, short on legs |
-| **Model Y** | 70 kWh | 321 mi | 5 | more pack, more frontal area — same distance for more money |
-| **Model 3 Premium** | 82 kWh | 363 mi | 5 | longest range here, and the last car you can finance on day one |
-| **Model Y Premium** | 82 kWh | 357 mi | 5 | nearly that range, in a crossover body |
-| **Model Y L** | 85 kWh | 330 mi | 6 | biggest pack short of the truck, spent carrying a third row |
-| **Model 3 Performance** | 82 kWh | 309 mi | 5 | 54 fewer miles from the same pack. Nothing here pays for acceleration |
-| **Model Y Performance** | 82 kWh | 306 mi | 5 | buy it because you want it. The arithmetic says no |
-| **Cybertruck** | 123 kWh | 320 mi | 5 | worst cost per mile by a mile, 38 minutes to fill, $152 every midnight |
+| **Cab** | 48 kWh | 300 mi | 4 | no wheel, no pedals, cheapest to own — and on a charger constantly |
+| **Saloon** | 62 kWh | 321 mi | 5 | the entry trim: cheap to hold, short on legs |
+| **Crossover** | 70 kWh | 321 mi | 5 | more pack, more frontal area — same distance for more money |
+| **Saloon Long** | 82 kWh | 363 mi | 5 | longest range here, and the last car you can finance on day one |
+| **Crossover Six** | 85 kWh | 330 mi | 6 | biggest pack short of the truck, spent carrying a third row |
+| **Truck** | 123 kWh | 320 mi | 5 | worst cost per mile by a mile, 38 minutes to fill, $152 every midnight |
 
 Pack size decides how often a car is *earning nothing*. Energy per km decides what every
 mile costs. Price decides whether you own a business or a debt. Choose badly and you won't
@@ -61,12 +59,12 @@ notice for two days.
 
 ---
 
-## Five cities, one chain
+## Six cities, one chain
 
 Austin is the tutorial. Clock off your first shift there and Dallas unlocks; clock off in
-Dallas and Miami unlocks; then Tampa, then Orlando. Every city is a real, currently-operating
-(or just-launched) Tesla Robotaxi service area built from its actual geofence, tariff and
-permit status — not a reskin with a new coat of paint.
+Dallas and Miami unlocks; then Tampa, then Orlando, then San Francisco. Every city is a real,
+city where driverless ride-hailing is actually operating, built from its published service
+area, real electricity tariff and real permit status — not a reskin with a new coat of paint.
 
 | city | permit | fleet cap | goal | what's actually true about it |
 |---|---|---|---|---|
@@ -74,10 +72,15 @@ permit status — not a reskin with a new coat of paint.
 | **Dallas** | Unsupervised | 24 | $60,000, safety ≥ 70 | launched with no safety monitor at all. Highway-speed trips wear the car harder, but S Riverfront is 34 stalls at 325 kW — the best charging site in the game |
 | **Miami** | Unsupervised | 16 | $50,000, safety ≥ 75 | a tiny geofence with no airport and no downtown. FPL's peak runs nine straight hours, and Florida carries the harshest insurance rates in the table |
 | **Tampa** | Unsupervised | 14 | $45,000 | the exact mirror of Miami: all core, no suburbs, and an evening rush instead of a morning one — plus the cheapest overnight power in the game, if the fleet can wait for it |
-| **Orlando** | Unsupervised | 14 | $42,000 | a corridor that runs past MCO without touching it. No airport zone, no brewery zones, the thinnest demand of the five — and the cheapest power of all of them |
+| **Orlando** | Unsupervised | 14 | $42,000 | a corridor that runs past MCO without touching it. No airport zone, no brewery zones, the thinnest demand of the six — and the cheapest power of all of them |
+| **San Francisco** | Supervised | 12 | $38,000, safety ≥ 75 | still invite-only in reality, hence the smallest fleet in the game. PG&E's off-peak price alone beats every other city's peak. Highest insurance, worst congestion — and the first city where the airport run is real |
 
 Nothing above is tuned for difficulty after the fact. Where the real service area excludes
 downtown, the airport, or every brewery in town, the game excludes it too.
+
+Phoenix and Las Vegas sit at the end of the tab strip, padlocked — a graphic mockup with no
+scenario behind either yet. Click one and Paolo says so, in his own words, rather than the
+tab simply doing nothing.
 
 ---
 
@@ -94,12 +97,14 @@ after commission, and how far you drive empty to reach the passenger. The third 
 whether you made money.
 
 **Play the tariff.** Every city runs its own real utility's time-of-use pricing — Austin
-Energy, Oncor, FPL, TECO, OUC — so "charge at 4am" means something different, and is worth a
-different amount, in each one. In Austin, power is $0.11/kWh before 07:00 and $0.34 through
-the evening peak. Real Superchargers back it: South Congress is 2.5 km away; Research
+Energy, Oncor, FPL, TECO, OUC, PG&E — so "charge at 4am" means something different, and is
+worth a different amount, in each one. In Austin, power is $0.11/kWh before 07:00 and $0.34
+through the evening peak. Real fast-charging sites back it: South Congress is 2.5 km away; Research
 Boulevard never queues because it has 18 stalls, but it's 27 minutes out and charges at only
 72 kW. Miami flips the clock entirely — FPL's peak runs noon to 9pm, nine hours instead of
-five — and Tampa's off-peak, at 7.5c/kWh, is the cheapest power in the whole game.
+five — Tampa's off-peak, at 7.5c/kWh, is the cheapest power in the whole game — and San
+Francisco breaks the pattern outright: PG&E's real off-peak price alone beats every other
+city's peak, so "charge overnight" stops being the free answer it is everywhere else.
 
 **Draw the map.** Every city has its own zones and its own demand curve by hour, and no two
 read the same way. Austin has seven zones plus Austin-Bergstrom — Rainey Street pays at 2am,
@@ -107,6 +112,8 @@ UT campus pays at 8am, the airport pays $30 a run and leaves your car 21 minutes
 everything else. Miami and Orlando have no airport zone at all, because the real geofences
 don't reach one. Tampa's evening is the busiest hour in the game once its three Ybor taproom
 zones are live; Orlando has no brewery zones, because the real ones sit outside its corridor.
+San Francisco's airport zone is the one exception — SFO only joined the real service map days
+before this scenario shipped, so it's the first city where the airport run is genuinely live.
 
 **Take control.** When a car gets wedged, the console switches to its camera feed and you
 drive it out yourself. Entirely optional — the incident clears on its own eventually.
@@ -116,17 +123,17 @@ Whether "eventually" is soon enough is your problem.
 
 ## Real data, not set dressing
 
-- **Five real geofences** — Austin, Dallas, Miami, Tampa, Orlando — each drawn from the
-  actual published or reported service area, not a symmetric shape dropped on the map
+- **Six real geofences** — Austin, Dallas, Miami, Tampa, Orlando, San Francisco — each drawn
+  from the actual published or reported service area, not a symmetric shape dropped on the map
 - **Live weather** for whichever city you're in, and its real local clock
-- **Real Superchargers** in every city, with actual coordinates, stall counts and peak kW —
+- **Real charging sites** in every city, with actual coordinates, stall counts and peak kW —
   a 72 kW site charges slower because it genuinely does
 - **Real fares** calibrated against observed prices in each market: about $18 for a downtown
   Austin hop, $29–32 from Austin's airport, and a different scale entirely in each other city
-- **Real MSRP** on all nine cars, with a cost side scaled to match
+- **Real MSRP** on all six cars, with a cost side scaled to match
 - **Real time-of-use electricity** from each city's actual utility — Austin Energy, Oncor,
-  FPL, TECO, OUC — which is why charging at 4am is a strategy in one city and a shrug in
-  another
+  FPL, TECO, OUC, PG&E — which is why charging at 4am is a strategy in most cities and barely
+  worth it in San Francisco, where even the cheap hour is dear
 
 Everything *around* the hardware — Hitchr, Zipp, Meridian, Halo — is invented. The cars and
 the numbers are not. That line is deliberate.
@@ -170,6 +177,10 @@ There's a **Coffee** button in the top right of the game, too. Paolo will ask yo
 **[▶ Play Deadhead](https://game.deadhead.workers.dev/)** · Building or deploying it? See
 **[DEVELOPING.md](DEVELOPING.md)**.
 
-<sub>Deadhead is an independent fan project, not affiliated with, endorsed by or connected to
-Tesla, Inc. Vehicle names and specifications are referenced for realism; every company,
-platform and commercial term in the game is fictional.</sub>
+<sub>Deadhead is an independent work of fiction. It is not affiliated with, endorsed by,
+sponsored by or connected to any vehicle manufacturer or ride-hailing operator, and it uses
+no manufacturer's name, badge, model names or photographs. Every company, vehicle, platform
+and commercial term in the game — Axiom, Hitchr, Zipp, Meridian, Halo — is invented. What is
+real is the arithmetic: the service areas, electricity tariffs, permit regimes and observed
+street fares are drawn from public information, because a simulation whose numbers you can
+check is the only kind worth arguing with.</sub>

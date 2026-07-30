@@ -1,0 +1,75 @@
+0.57.0 — city pins live on the real map, and the map header shows real weather
+
+WHAT WAS WRONG
+
+Two asks from Pavel (2026-07-30):
+
+  1. "Cities modal is ugly. Remove it. I thought the pins based on active
+     cities will be directly in the map view so if user unzooms
+     OpenStreetMaps, he might see other cities he already opened and switch
+     same way as on the top menu." The "Cities" overview was a separate,
+     hand-drawn (non-Leaflet) US-blob popup with per-city dots at hand-tuned
+     screen positions (CITOV_POS) — a second UI competing with the topbar
+     tab strip for the same job, and visually out of place next to the real
+     map underneath it.
+  2. "Can you add a weather info to MAIN FLEET VIEW strip... There are some
+     useless icons (fullscreen), arrow. Let's use it exclusively for
+     Weather." The dark-blue header bar above the map carried two decorative
+     icons — an arrow (#i-nav) and a fullscreen glyph (#i-expand) — neither
+     wired to any click handler anywhere in the file.
+
+WHAT CHANGED
+
+Removed entirely: #cities-overview (markup, CSS, and every JS function —
+CITOV_POS, CITOV_OUTLINE, citovFleetCache/citovFleetLabel,
+renderCitiesOverview, citovLoadFleet, openCitiesOverview,
+closeCitiesOverview, and their event listeners), the #citov-btn trigger next
+to #dh-recenter, its entry in MODAL_IDS, and its branch in the global
+Escape-key handler. No test depended on it.
+
+Replacement: buildCityPinLayer() puts one real L.marker per OTHER unlocked
+city directly on the live Leaflet map, at that city's actual
+CITIES[id].lat/lon — not a hand-tuned position. It excludes the current city
+(nothing to switch to) and any still-locked city (nothing to click). Real
+distance between cities is large (Austin-Miami is ~1900km), so a pin is only
+ever visible if the player genuinely zooms or pans the real map out that
+far — exactly the spatial discovery Pavel described, with no second control.
+Clicking a pin calls the exact same switchCity(id) the topbar tab strip
+calls. Rebuilt wholesale (not patched) on three events: initMap() (first
+load), the end of switchCity()'s success path (the current city changes, so
+the exclusion set changes), and progGates() the moment a new city unlocks
+(right after renderCityTabs()) — three call sites, cheap because there are
+at most five pins ever.
+
+Map header: #i-nav and #i-expand are gone from .t-cardbar, replaced by
+#mv-wx — a condition + temperature readout fed by the exact same WX state
+and uTemp() helper the top status bar's #wx-grp already uses (WX.cond
+directly, uTemp(WX.temp) for the already-unit-aware C/F conversion), with
+the same offline fallback convention (wx-off class, "—" when WX.temp is
+still null). Deliberately a second, separately-rendered readout rather than
+sharing DOM with #wx-grp: the status bar can scroll out of view on a narrow
+phone layout, but the map header cannot, so it's the more reliable place for
+"what's the weather right now" to actually be seen. On narrow layouts the
+condition word hides first (same trade .sub already makes), leaving just the
+temperature.
+
+TESTS
+
+New test/city-pins-and-weather.test.js: confirms every citov-* identifier
+is gone from source and DOM, MODAL_IDS and the Escape handler no longer
+reference the removed modal; buildCityPinLayer()'s filtering logic (skips
+current city, skips locked cities, reads real lat/lon, click calls
+switchCity(id), rebuilds wholesale) checked at the source level since
+Leaflet itself is never loaded in this jsdom harness (consistent with how
+every other test in the suite already treats the map — nothing here
+pretends to instantiate a real L.marker); confirms all three call sites
+(initMap/switchCity/progGates) wire the rebuild in; confirms #mv-wx exists
+with the two dead icons gone and the (i) help + menu icon untouched; confirms
+the weather wiring reads WX.cond/uTemp(WX.temp) the same way #wx-grp does.
+Live on-map rendering (pins appearing on zoom-out, header weather actually
+painting) was confirmed with a headless Playwright screenshot rather than
+this file, same division of labour the project already uses elsewhere for
+anything Leaflet/canvas-dependent.
+
+Full suite passes clean, and check-parity is green — deploy/public/index.html
+is byte-identical to deadhead.html.

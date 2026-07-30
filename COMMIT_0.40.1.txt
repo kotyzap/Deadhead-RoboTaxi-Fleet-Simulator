@@ -1,0 +1,22 @@
+0.40.1 — Full HD gets the side-by-side console
+
+Fix: on a 1920px-wide window the console fell back to the stacked
+"tablet" layout — apps row, then a shallow map strip, then the vehicle
+readouts underneath — and the map ended up ~170px tall.
+
+Cause: the map/detail split is a container query on .console at 980px.
+T3 (1500–2199px) gave each wing 472px, leaving the console 944px wide (930px of
+content box), just under the threshold. So the
+one layout the game is designed around never engaged at the single most
+common desktop resolution.
+
+Change:
+- T3 wings 472px -> 440px (the width T3b already uses), giving the
+  console ~994px of content box at 1920px.
+- Container threshold 980px -> 940px, so the switch is not knife-edge
+  for slightly narrower windows or non-integer device pixel ratios.
+
+Net effect at 1920x1080: MAIN FLEET VIEW shows the map at roughly
+640x400 with SELECTED VEHICLE / STATUS / charge readouts in a 340px
+column on the right — the same arrangement wider screens have always
+had. No behaviour, economy, or save-format change.

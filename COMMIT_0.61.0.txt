@@ -1,0 +1,83 @@
+0.61.0 — Fix the stranded city-unlock spotlight, and add red "click here" chevrons
+
+WHAT WAS WRONG
+
+Pavel's report (2026-07-30): a shift ended and a new city unlocked in the
+same tick as the shift report. The report opened, force-closing the Ray
+card that was about to explain the new city, but the red spotlight ring
+that card had already put on the city tabs strip was left behind with no
+message — a blinking box and no idea why.
+
+Root cause: rayForceClose() (called by shiftReport()) hid the Ray card and
+cleared S.ray.cur, but never called raySpotClear(). Every OTHER path that
+hides #ray already pairs the two; this was the one that didn't.
+
+Separately, three follow-on asks, all the same shape ("tell the player
+which control to press, not just that something changed"):
+
+  1. "visually lead user ... via e.g. red >>> Dallas <<< blinking" — even
+     with the bug fixed, rayCityUnlocked() rang the whole #citytabs strip,
+     which every tab shares. Nothing said WHICH tab had just opened.
+  2. "Leave the garage ... I need to know that I need to click" — the
+     existing first-visit `.call` pulse on #gar-close (accent-coloured) was
+     apparently not reading as an instruction.
+  3. "first connection to rider app, accepting the first ride" — beats 3-5
+     of the guided walkthrough ring the whole Platforms/Offers panel, not
+     the specific Connect or Accept button inside it.
+
+WHAT CHANGED
+
+rayForceClose() now calls raySpotClear() as its last step, so hiding the
+card always tears down the ring/dim/lift state with it.
+
+A new, reusable cue: .ray-arrow renders literal red blinking »»» / «««
+chevrons flanking a button's own label, in the same --s-crit red and the
+same steps(1,end)/.9s cadence as .spotlight's ring, so the two read as one
+signal rather than competing animations. raySpotEl() (the refactored core
+of raySpot(), which is now a thin id-based wrapper over it) adds ray-arrow
+automatically whenever the spotlighted element is an actual <button> — a
+panel-level beat still gets the ring alone, since a section has no label
+for chevrons to flank.
+
+rayCityUnlocked() now resolves the SPECIFIC newly-unlocked tab
+(`.citytab[data-city="id"]`) and spotlights that element directly, instead
+of the shared #citytabs container — falling back to the strip only if the
+button can't be found. It gets both the ring and, being a real <button>,
+the chevrons — "»»» Dallas «««".
+
+#gar-close's existing first-visit-only condition (S.shiftNo===0 — the one
+time the player cannot be assumed to know the way out is this button)
+now also adds ray-arrow alongside its `.call` pulse.
+
+The Platforms and Offers panels rebuild their row lists on every render()
+tick via innerHTML, so a class added to a specific Connect/Accept button
+from outside would be wiped on the very next tick. Both templates now bake
+the chevron in directly: the FIRST still-disconnected platform's Connect
+button gets ray-arrow while the day-1 guided walkthrough is running and
+nothing is connected yet; the TOPMOST (newest) offer's Accept button gets
+it while guided and until the player has ever accepted a ride. A new
+S.ray.firstAcceptDone flag (same shape as the existing declineSeen) latches
+permanently true the first time acceptOffer() runs, with the usual
+restore()-migration default for older saves.
+
+TESTS
+
+New test/ray-arrows.test.js: CSS assertions for .ray-arrow's colour, blink
+cadence and reduced-motion fallback; source checks that rayForceClose()
+calls raySpotClear(), that raySpot() delegates to the new raySpotEl(), and
+that the tagName==='BUTTON' gate exists; a functional check that
+rayCityUnlocked('dallas') spotlights the Dallas tab itself (not the strip)
+and that force-closing the card clears both the ring and body.dimmed;
+functional checks that Leave Garage, the first disconnected platform's
+Connect button, and the newest offer's Accept button each carry ray-arrow
+exactly once under the right conditions, and stop once satisfied.
+
+jsdom does no real layout, so its offsetParent is always null regardless
+of visibility — raySpotEl()'s own visibility guard would bail on every
+element, always, with no prior test in this suite having exercised past
+it. Stubbed offsetParent in this test's beforeParse to walk for
+display:none/[hidden] ancestors, which is the only thing that guard
+actually needs.
+
+Full suite passes clean, and check-parity is green — deploy/public/index.html
+is byte-identical to deadhead.html.

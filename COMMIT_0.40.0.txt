@@ -1,0 +1,57 @@
+0.40.0 — real-seconds fixes: cloud saves, incidents, offer pacing
+
+Three separate reports from Pavel this session, all variations on the same root cause: a
+client-side value evolved (a save-slot key, a countdown) without something downstream being
+taught the new shape.
+
+CLOUD SAVES: 'progress' and 'auto:<city>' were never valid server slots
+
+Pavel pasted a DevTools console screenshot showing PUT /api/save/auto%3Aaustin 404 and PUT
+/api/save/progress 400, while chasing an unrelated report ("the battery Easter-egg icon flicks
+then isn't visible"). The icon logic itself was fine — the dispatch-policy row correctly hides
+#dp-charge until the version-chip gesture finds it. The console errors were the real bug:
+
+  - deploy/src/index.js's SLOTS whitelist (['auto','slot1','slot2','slot3']) never included
+    'progress' — progSave()'s record (city unlocks, achievements, Easter-egg finds) has NEVER
+    synced to the cloud for a signed-in account. It always degraded silently to that browser's
+    IndexedDB, which is why a found egg or achievement can look "lost" on another device.
+  - The route regex (^/api/save/([A-Za-z0-9_-]{1,16})$) has no colon in its charset, so
+    physKey()'s per-city autosave key ('auto:'+S.city, added for multi-city) 404'd outright —
+    it never even reached the slot-whitelist check.
+  - cloud.js's RemoteStore only special-cased the literal string 'auto' for the 2-minute
+    cloud-coalescing path and for flushAuto()/flushOnExit(). Fixing the server alone would have
+    made every city's autosave PUT to the SAME 'auto' slot, clobbering each other.
+
+Fixed: server regex allows ':'; new slotAllowed() accepts SLOTS, 'progress', or /^auto:[\w-]+$/;
+PUT validation no longer requires save.s for slot==='progress' (that record was never shaped
+like a gameplay snapshot). cloud.js's pendingAuto now carries {key,save} instead of a bare
+payload, with isAutoKey() recognising both forms. No DB migration needed (saves.slot is free
+text). npm test + check-parity clean.
+
+INCIDENTS: the blocked-car reaction window collapsed to ~4.5s at 20x
+
+"When Incident occurs [at 20x] it is almost impossible to click 'play'." stepCar()'s 'blocked'
+branch accumulated c.blocked with the sim-scaled dt, so the ~90-150 sim-second window before a
+car auto-clears or a rider cancels shrank by the speed multiplier in real time — 90s at 1x, but
+~4.5s at 20x. step()/stepOnce() already compute realDt (wall-clock seconds per substep,
+independent of speed) specifically to stop this exact class of bug on the ride-offer countdown;
+stepCar() just never received it. Now does: stepCar(c,dt,realDt), c.blocked+=realDt. Verified
+against a standalone replay of the substep math: 90.0/22.5/4.5 real seconds to react at
+1x/4x/20x before, flat 90.0s at all three after.
+
+OFFER PACING: the decision countdown was real-time-locked on purpose, and that turned out wrong
+for THIS clock
+
+CFG.offerDecideSec (45s) already used realDt — deliberately, to protect the countdown from
+collapsing the way the incident timer just had. But an offer decision happens dozens of times a
+shift, not rarely like an incident, so a flat 45 real seconds became the one thing on screen
+that visibly refused to speed up at 20x while everything else raced along. Pavel's call after
+discussion: step the budget down with speed rather than dividing it (division reintroduces the
+unreadable-collapse problem) — CFG.offerDecideBySpeed:{1:45,4:10,20:4}, read through
+offerDecideSecFor(S.speed) at both places an offer is created (spawnRides, guideForceOffer). The
+countdown itself still ticks in real seconds exactly as before; only the starting budget varies
+by the speed in effect when the offer appears.
+
+Existing suite (10 files) and check-parity pass. No new test file this round — all three fixes
+were verified by direct source inspection plus standalone arithmetic replays rather than new
+jsdom coverage; worth a follow-up pass if these areas change again.

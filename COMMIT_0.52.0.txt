@@ -1,0 +1,68 @@
+0.52.0 — one gear instead of three buttons
+
+WHAT WAS WRONG
+
+Theme, sound and units were three separate topbar controls taking three
+button-widths of a row that has been fighting for space since v0.26.3 (see the
+wrap history in the .topbar comment). None of the three is something you touch
+during a shift — they are settings, and settings belong behind one affordance.
+
+WHAT CHANGED
+
+A gear button (#settings-btn, new #i-gear symbol) opens #settings-pop, a small
+popover with three labelled rows: Theme, Sound, Distance. Net saving in the
+topbar is two controls; the row now ends with Garage, Saves, gear, Coffee.
+
+THE THREE CONTROLS KEPT THEIR IDS. #theme, #sound and #units are the same
+elements they always were, moved into the popover — so the theme toggle,
+syncSoundBtn() and paintUnits() all still bind to exactly what they bound to
+before, and none of that code needed touching beyond two added lines that
+write the new row labels. Rebuilding them as fresh elements would have left
+three controls that look right and do nothing.
+
+WHERE IT LIVES, AND WHY IT MATTERS. #settings-pop is a sibling of .app, not a
+child of .topbar or .app, for two independent reasons — both of which fail
+silently:
+
+  - .topbar carries backdrop-filter, and a backdrop-filter ancestor becomes the
+    containing block for position:fixed descendants. Nested in the topbar, the
+    popover would be positioned against the TOPBAR rather than the viewport,
+    and clipped by its rounded corners.
+  - .app is position:relative z-index:2 — a stacking context nothing inside can
+    escape. This is the same reasoning already recorded in the
+    #dh-console-panel note for why the modals sit outside .app.
+
+Because it is not inside the button it belongs to, it is placed from the gear's
+own getBoundingClientRect() by setPopPlace(): right-aligned to the gear,
+clamped to the viewport so it never hangs off a narrow window, and flipped
+above the button when there is no room below (the gear can land on the lower of
+the topbar's two lines). offsetWidth is zero while hidden, so placement runs
+AFTER the unhide, not before. A resize re-anchors rather than closes, since the
+topbar rewraps at several widths and the gear moves with it.
+
+Closes on: outside click, Escape (returning focus to the gear), or a second
+click on the gear. The gear's own click calls stopPropagation — without it the
+click bubbles to the document close-listener and the menu opens and shuts in
+the same gesture, which looks completely dead. Clicks inside the popover stop
+propagating too, so flipping the theme and then the units does not require
+reopening the menu between them.
+
+Two rules relocated rather than left dangling: .topbar .ghost.units (tabular
+numerals, so mi<->km does not reflow its row) is now #settings-pop .ghost.units
+— scoped to .topbar it would have matched nothing. And the sub-1500px
+label-hiding rule gained a comment noting that #settings-pop is out of its
+reach by construction, so the popover rows keep their labels at every width.
+
+TESTS
+
+city.test.js: the 0.51.1 icon-only check now covers the gear and Coffee (the
+two icon-only topbar buttons left). Nine new checks — the popover is outside
+both .topbar and .app, the three controls kept their ids and are inside it,
+none is left in the topbar, it starts closed with correct aria-expanded/
+aria-controls, it is position:fixed above the modals with a working [hidden]
+rule, the units tabular sizing followed it, and four behavioural ones covering
+open, use-without-closing, outside-click, Escape and re-click. The
+"use without closing" check is the one that matters most: it is the
+stopPropagation regression, which is invisible in CSS and total in effect.
+
+Full suite passes clean (405 checks).

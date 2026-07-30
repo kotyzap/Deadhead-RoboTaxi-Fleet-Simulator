@@ -1,0 +1,60 @@
+0.66.0 — smarter busy-car queueing, and a free bail-out on a snap decline
+
+Pavel: opened a design discussion (2026-07-30) about letting the player
+assign cars to offers directly — "the target of the game" per his framing.
+Landed as two smaller, automatic changes instead of a manual picker, agreed
+in that discussion: assign()'s busy-car scoring now measures deadhead from
+where a car's queue actually ENDS rather than where the car IS right now,
+and declining an offer within a few seconds of it appearing no longer costs
+the platform relationship. A manual car-picker UI remains a possible next
+step, not built here.
+
+
+WHAT CHANGED
+
+  1. assign()'s busy-car branch (deadhead.html / deploy/public/index.html,
+     identical forks) used to break ties with remainKm(c) — distance from
+     the car's LIVE position to the end of its current leg. That rewards a
+     car for merely being nearby right now, even if it still has that whole
+     leg (and anything queued behind it) to drive first. New helper
+     queueEndPoint(c) returns the last queued ride's dropoff, or the current
+     route's end if the queue is empty, and the score is now
+     queue.length*1000 + distance(queueEndPoint(c), ride.pickup). Queue depth
+     still dominates the score by the same x1000 margin, so an empty car
+     never loses to a well-placed but already-backed-up one.
+
+  2. CFG.declineGraceSec (3) is a new config value, well under the 4s floor
+     of offerDecideBySpeed at 20x. Offers now carry leftInit alongside left
+     (spawnRides(), guideForceOffer()) — a copy of the starting countdown
+     that is never decremented, so leftInit-left is elapsed real seconds
+     since the offer appeared regardless of any speed change mid-countdown.
+     declineOffer() walks p.offered back down by one when a player decline
+     (not a silent timeout) lands inside that window, since p.offered was
+     already bumped at spawn time, before the player had a chance to look.
+     A slower decline, or any unattended timeout, costs exactly what it did
+     before.
+
+  3. deploy/test/smart-dispatch.test.js (new) covers both: queueEndPoint
+     tracking route-end over live position, queue depth still outweighing
+     proximity, a snap decline being walked back out of acceptRate's
+     denominator, a considered decline still costing it, and a silent
+     timeout being untouched by the grace logic. Wired into package.json's
+     test script. Both functions also gained entries in the DH_ACT1 export
+     block (queueEndPoint, spawnRides) so the test can exercise them
+     directly instead of re-deriving offer/queue shapes by hand.
+
+
+NOT BUILT HERE, ON PURPOSE
+
+  No player-facing car picker. Pavel's stated goal is eventually letting the
+  player choose which car takes an accepted offer, but this pass is scoped
+  to making the existing automatic assignment less naive first, per his own
+  call not to rebuild the mechanic. Idle-car selection (nearest-only) is
+  also untouched — only the busy-car queueing path changed.
+
+
+TESTS
+
+  Full suite run from deploy/: all green, including the new
+  smart-dispatch.test.js and the pre-existing version.test.js (which
+  requires a COMMIT_0.66.0.txt matching const VERSION — this file).

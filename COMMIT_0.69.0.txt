@@ -1,0 +1,62 @@
+0.69.0 — the real Tampa clock-on bug: a stuck overnight jump, found from Pavel's own diagnosis
+
+Pavel's follow-up nailed it: "I believe it might be connected to the fact
+that the game was paused when I clicked Clock On and was not able to click
+it since." That is the missing piece 0.68.0's investigation couldn't find —
+this is the actual root cause, not just hardening around an unknown one.
+
+
+ROOT CAUSE, CONFIRMED
+
+  clockOff() (not the "quiet"/bankruptcy path) calls startFastForward() to
+  run the overnight gap to the next shift. Until now that function was:
+
+    function startFastForward(){
+      S.ffwd=true; S.ffwdTarget=nextDayStart(S.t);
+      step(S.ffwdTarget-S.t);
+      stopFastForward();
+    }
+
+  step() here runs an entire overnight gap — up to ~18 sim-hours — in ONE
+  synchronous call, substep by substep: far more ticks, and far more
+  surface for a rare edge case to throw on, than a single normal-speed
+  frame ever runs. There was no error handling at all. If anything in that
+  chain threw, execution never reached stopFastForward() — the ONLY thing
+  that ever clears S.ffwd back to false. The topbar reads S.ffwd as
+  "Advancing to 06:00…", which looks exactly like the game froze mid-jump
+  (Pavel's "the game was paused"), and render()'s Clock button is
+  unconditionally `disabled=!!S.ffwd` — not merely unresponsive, a real
+  HTML disabled button. That is why dozens of clicks afterward did nothing:
+  the browser refuses to fire click on a disabled control at all.
+
+  "After playing all cities below" lines up too: more shifts and more
+  accumulated fleet/city state before the bug shows means more chances for
+  whatever rare condition triggers it to actually occur during one of these
+  large synchronous jumps.
+
+
+WHAT CHANGED (deadhead.html / deploy/public/index.html, identical forks)
+
+  startFastForward() now wraps the step() call in try/catch. On success,
+  nothing changes — stopFastForward() runs exactly as before. On failure:
+  S.ffwd is force-cleared, speed resets to 0, render() runs so the Clock
+  button is immediately clickable again, and a toast explains what
+  happened instead of leaving the player looking at a dead button with no
+  information. The error itself is logged via console.error for whenever
+  it can be caught live and diagnosed properly — the actual internal throw
+  site is still unknown, but the game can no longer be bricked by it.
+
+
+TESTS
+
+  deploy/test/ffwd-recovery.test.js (new): corrupts the real, shared
+  S.cars (a Proxy that throws on .forEach — not a function override, since
+  DH_ACT1's exported functions are copies that internal code doesn't call
+  through) so the internal step()->stepCar sweep throws for real inside a
+  live startFastForward() call. Confirms the error never escapes to the
+  caller, S.ffwd is not left stuck true, a toast appears, the Clock button
+  is enabled and reads "Clock on" again after recovery, and clocking on
+  for real afterward actually works — the game is not left bricked. Also
+  confirms the ordinary success path (no corruption) is untouched: a normal
+  overnight jump still completes, clears S.ffwd, and produces a shift
+  report exactly as before. Full suite green from deploy/, parity holds.

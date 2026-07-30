@@ -1,0 +1,54 @@
+0.48.0 — selected-vehicle panel facelift
+
+WHAT WAS WRONG
+
+The console rail's vehicle panel was four stacked blocks, and the same
+number showed up to three times in it. Status showed the pill plus current
+SoC. Arrival SoC, one row down, read the identical sel.soc whenever the car
+was idle (it only actually differs mid-ride). And the Charge ring, one row
+below that, showed sel.soc again. Fare and Drop-off sat in their own row
+under Status instead of beside it. And Sell/Return — an action about the
+CAR, not about charging — lived as a full-width button sharing the Charge
+block with Send-to-charge, so the block that should read as "charge status
+and the one thing to do about it" instead mixed in an unrelated destructive
+action. The Charge ring itself, at 34px with a 3.4px stroke, was too small
+and thin to read as "84%, basically full" at a glance.
+
+WHAT CHANGED
+
+Three rows instead of four, nothing repeated:
+
+  1. Identity + exit: vehicle name on the left, Sell/Return moved up here as
+     a compact header button (.t-exit) on the right — same visible label
+     text as before ("Sell for $27,000", "Return vehicle"), the odometer/
+     owed detail moved to the button's title since a header button has no
+     room for a second visible line. No dedicated "remove a car" glyph
+     exists in the icon set, so this reuses #i-car rather than inventing new
+     art; the pill border and the existing destructive-red hover are what
+     distinguish it from the plain identity icon beside it.
+  2. Status / Fare / Drop-off, one row, three columns (reusing .t-metrics
+     wholesale). Status is just the pill now — no more SoC beside it, since
+     the ring below already shows current charge.
+  3. Charge: the ring is 50px/4.5px stroke now (was 34px/3.4px) — same
+     underlying geometry (r=15.5, so render()'s circumference math didn't
+     need to change), just big enough that 84% actually reads as "almost
+     full" instead of a thin outline. Arrival SoC moved here too, as a small
+     "→ 61% at drop-off" caption beside the ring, shown ONLY while a ride
+     makes it a different number than the ring's own (:empty collapses the
+     line the rest of the time). Send-to-charge is the only button left in
+     this block.
+
+.t-split simplified to a single column (it only ever holds one child now)
+instead of a 2-column grid that would've left an empty second column.
+
+TESTS
+
+No test referenced any of the ids/classes touched (sel-soc, m-arr,
+sel-sell-note, t-split's old 2-column layout) — confirmed by grep before
+starting. Ran the full suite plus boot-smoke.test.js specifically (checks
+both files load without a JS error) since this touched render()'s DOM
+lookups directly; both pass clean. Full suite: same pre-existing, unrelated
+real-clock flake as the last several releases ("three real days parked
+bills exactly three days of fixed cost" — Date.now()-built fixture, run
+landed near local midnight again); this release touches only the vehicle
+panel, nothing in the billing/date path.

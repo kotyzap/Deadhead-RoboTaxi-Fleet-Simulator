@@ -1,0 +1,65 @@
+0.55.0 — Paolo pauses the sim while he's talking, and stays quiet in the garage
+
+WHAT WAS WRONG
+
+Two asks from Pavel (2026-07-30):
+
+  1. Every Paolo card already required a button click to go away — rayFoot()
+     always sets both #ray-go and #ray-skip, and #ray is deliberately "never
+     modal" (no Escape, no outside-click dismiss). But nothing stopped the
+     clock while a card sat on screen: offers, rides, incidents and charging
+     all kept moving underneath it, so reading a longer beat could cost real
+     game state.
+  2. Nothing suppressed Paolo while the garage was open. Beat 1 (his intro)
+     is meant to fire there — it's opened directly by openGarage() — but
+     every OTHER trigger (the other 13 scripted beats, the ambient advisor,
+     the no-feed nudge, first-decline, a new city unlocking, the dodge
+     brief) could also fire while the garage modal was covering the screen,
+     landing a card the player couldn't act on properly (raySpot() already
+     had to special-case "target is behind the garage" for exactly this).
+
+WHAT CHANGED
+
+Pause: two small helpers, rayPause()/rayResume(), following the exact
+prevSpeed/setSpeed(0) pattern openDodge()/closeDodge() already used for the
+mini-game. Every one of the 8 places a card can appear (rayShow, rayAdvise,
+the no-feed nudge, rayDodgeBrief, rayFirstDecline, rayCityUnlocked,
+rayCoffee, rayClockOffWarn) now ends with rayPause(); both universal
+dismissal paths (rayDismiss(), raySkip()) now start with rayResume(). Cards
+that chain synchronously (dismissing one can immediately trigger the next
+via rayCheck()) still end up paused at the correct ORIGINAL speed — resume
+runs before the next card's own pause re-captures it, all in one synchronous
+call stack, so nothing is ever painted in between and there's no flicker.
+
+openDodge() needed one adjustment: "Take control" opens directly out of the
+dodge-brief card, which has already zeroed S.speed via rayPause(). openDodge()
+now adopts that pause (reads RAY_PREV_SPEED instead of the already-zeroed
+S.speed, and clears the pause flag itself) rather than capturing 0 as
+DODGE.prevSpeed, which would have resumed the sim mid-mini-game the moment
+rayDismiss() ran right after.
+
+Garage suppression: a `$('garage').hidden` guard added to rayCheck() (covers
+all 13 non-beat-1 scripted beats plus guideCheck()'s forced day-1 ones),
+rayAdvise(), noFeedTick(), and the call sites for rayFirstDecline(),
+rayCityUnlocked(), rayClockOffWarn(), and both rayDodgeBrief() triggers (the
+Camera nav icon, and clicking a blocked-car alert directly). rayCoffee() is
+deliberately left unguarded — it only ever fires from a direct settings-menu
+click, which the garage's own modal already makes unreachable while open.
+Beat 1 stays reachable exactly as before, since openGarage() calls rayShow(1)
+directly rather than through rayCheck().
+
+TESTS
+
+New test/ray-pause-garage.test.js (26 checks): a card zeros S.speed/S.running
+and remembers the interrupted speed; both "Got it" and "Skip" restore it
+(Skip still sets S.ray.skipped, unchanged); a chained beat-1-into-beat-2
+sequence keeps the speed from BEFORE either card, not the 0 the first one
+left behind; the dodge mini-game's own DODGE.prevSpeed is the true original
+speed, not 0, and stays paused through rayDismiss() rather than being
+resumed out from under it; beat 1 still fires while the garage is open;
+rayCheck() and rayAdvise() fire nothing else while it's open; both work
+again the moment it closes.
+
+Full suite passes clean (`npm test`, 431 checks — 405 previous + 26 new),
+and `check-parity` is green — deploy/public/index.html is byte-identical to
+deadhead.html.

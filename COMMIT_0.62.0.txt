@@ -1,0 +1,79 @@
+0.62.0 — Intro screen polish round three: sharp title, form placement, copy, splash version, and autoplay
+
+WHAT WAS WRONG
+
+Six small asks from Pavel (2026-07-30), on the intro/account screen:
+
+  1. "Do not blur the center of the photo - Let's use the text title from
+     the image. It looks super." #intro.intro-onsplash carried
+     `backdrop-filter:blur(3px)` on the FULL #intro box (the whole
+     viewport), which softened the splash art's own baked-in DEADHEAD title
+     in the gap above the video card, along with everything else.
+  2. "Move the registration form 30px down."
+  3. "Blur sides beyond registration form sides." — already true on desktop
+     (.intro-wing has its own 16px blur), but drowned out by (1) blurring
+     the center too, so the distinction between "blurred sides, sharp
+     middle" wasn't visible.
+  4. "Align 'Optional - add' on mobile. Rename ... to 'Want to play across
+     devices?'" — cloud.js's .acct-head put the h5 and the note span side
+     by side; at narrow widths "Choose a username" wraps to two lines and
+     the note crowds in beside the wrapped line instead of reading as its
+     own line.
+  5. "add version to Loading ... so it will be 'Loading ...v0.6x'"
+  6. "cannot play video. use autoplay and audio on" — the native control's
+     own Play button was not starting playback for him.
+
+WHAT CHANGED
+
+(1) #intro.intro-onsplash's backdrop-filter is gone; it's now a plain tint
+with no blur of its own. The side blur asked for in (3) was never actually
+missing — it lives on `.intro-wing` and the card's own plate on
+`.intro-frame`, both untouched — so removing the center's own blur is what
+finally makes "sharp middle, blurred sides" visible as designed.
+
+(2) New `.intro-acct{margin-top:30px}` rule, additive to `.intro-frame`'s
+existing 18px flex gap — only the account card moved; the video above it
+and the Play-on-this-device button below it keep their existing spacing.
+
+(4) cloud.js: the note span's copy changed from "Optional — add a password
+to play across devices" to "Want to play across devices?" in both the
+initial HTML and paintAuthState()'s signed-out branch — "Optional" read as
+a field label, not an invitation. `.acct-head` now stacks vertically
+(flex-direction:column) below 420px so the note is never sharing a line
+with a wrapped heading.
+
+(5) The splash's `.splash-load` pill now has a third child, `#splash-ver`,
+left empty in markup (the splash renders long before VERSION exists) and
+set to `'v'+VERSION` in the same place `$('ver')` already gets its value —
+one source of truth, no hardcoded second copy of the version string to
+drift.
+
+(6) showIntro() now calls `v.play()` the moment the intro is actually
+shown, rather than waiting on a manual click on the native control.
+Nothing sets `muted`, so where the browser allows it this plays with real
+audio — file:// documents are broadly exempted from the autoplay-blocking
+heuristics that gate this on the open web, which is this game's primary
+standalone use case. Where a browser's policy blocks it anyway (most
+commonly https with no prior engagement), the attempt is swallowed and the
+video sits on its poster with native controls fully working, same as
+before. Guarded against `play()` not returning a real Promise — true of
+some older engines and, importantly, of jsdom's own test stub — so a bare
+`.catch()` couldn't throw and take the rest of boot down with it.
+
+TESTS
+
+test/splash-screen.test.js's assertion "the over-artwork variant uses
+backdrop-filter, never filter: on #intro itself" was written for the OLD
+design and needed rewriting rather than just re-passing: it now asserts
+#intro.intro-onsplash itself carries neither filter: nor backdrop-filter:
+(the center is sharp), that plain filter: never appears anywhere in the
+onsplash rule family (the THE TRAP invariant this test actually exists to
+protect — filter: on an ancestor breaks position:fixed descendants like
+#ray/#dimscrim), and that .intro-wing and .intro-frame each still carry
+their own backdrop-filter blur.
+
+Full suite passes clean, and check-parity is green — deploy/public/index.html
+is byte-identical to deadhead.html. cloud.js is also mirrored to the
+project root (deadhead.html's own folder) as well as deploy/public/, so the
+account form and its updated copy still work when the file is opened
+directly rather than served.

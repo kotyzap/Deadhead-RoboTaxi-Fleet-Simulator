@@ -4,9 +4,28 @@ node_modules/
 .dev.vars
 .dev.vars.*
 *.log
+__pycache__/
+*.pyc
 
 # Admin credentials for deploy/public/admin.html. This repo is public, so
 # these never get committed — see deploy/src/admin-config.example.js for
 # the template. wrangler deploy still bundles the real file straight into
 # the Worker; .gitignore only keeps it off GitHub.
 deploy/src/admin-config.js
+
+# D1 export/backup dumps — these contain real user rows (usernames, session
+# hashes, password hashes) whenever they're pulled down for local inspection.
+# They must never sit unignored in a public repo. See improvements.md P0-4.
+deploy/backup-*.sql
+
+# Video assets — large binaries that don't belong in a git history that
+# grows forever. wrangler deploys straight from disk (deploy/public/), not
+# from git, so ignoring these here does not affect what actually ships; it
+# only stops the repo from re-accumulating every re-render of the intro
+# video as a new multi-MB blob. See improvements.md #27. Existing tracked
+# copies were git rm --cached'd in the same pass — they stay on disk, they
+# just stop being tracked going forward.
+*.mp4
+*.mov
+*.webm
+*.vtt

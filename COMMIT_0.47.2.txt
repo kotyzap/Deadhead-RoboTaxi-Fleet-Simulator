@@ -1,0 +1,33 @@
+0.47.2 — the topbar Clock button matches the in-car one
+
+WHAT WAS WRONG
+
+The topbar's #clock button and the in-car CTA (#cta) both toggle the shift,
+but disagreed with each other about what colour that meant. Off-shift, #cta
+already goes red and clickable — "the fastest way to fix that" per its own
+CSS comment — while #clock sat there as a neutral grey ghost pill reading
+"Clock on" right next to it. On-shift, #clock turned a hardcoded green
+(#28A05B) that matched nothing else in the app; every other "active/pressed"
+control (the speed segment, a connected platform, an accepted-offer button)
+uses the current city's own accent colour, not a one-off green.
+
+WHAT CHANGED
+
+  - .clockbtn.on now uses linear-gradient(180deg,var(--accent-hi),var(--accent))
+    — the same city-accent token .plat button.on and the pressed speed
+    segment already use, set per city by paintTheme() from CITIES. Clocking
+    on in Dallas reads orange, Miami teal, whichever city is active, instead
+    of a green nothing else in the UI wears.
+  - .clockbtn.off is new: linear-gradient(180deg,var(--app-red),var(--s-crit)),
+    the same red .t-cta.off uses. Off-shift, the two "get back to work"
+    affordances — the topbar button and the in-car CTA — now agree.
+  - render() sets 'off' explicitly (cb.className toggles between ' on' and
+    ' off') rather than leaving the off state as "no modifier class", so the
+    red rule has something to hook and a future reader isn't left guessing
+    why on-shift has a class and off-shift doesn't.
+
+TESTS
+
+No behavioural change — clockOn()/clockOff() and their gating are untouched,
+only the two buttons' colours. Full suite (npm test) still passes; nothing
+asserts on .clockbtn's classes or colours today.

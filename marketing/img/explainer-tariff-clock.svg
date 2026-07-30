@@ -1,0 +1,231 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+<defs>
+<radialGradient id="bga" cx="15%" cy="-10%" r="80%">
+  <stop offset="0%" stop-color="#3E6AE1" stop-opacity="0.16"/>
+  <stop offset="60%" stop-color="#3E6AE1" stop-opacity="0"/>
+</radialGradient>
+<radialGradient id="bgb" cx="100%" cy="0%" r="75%">
+  <stop offset="0%" stop-color="#1F8A4C" stop-opacity="0.10"/>
+  <stop offset="55%" stop-color="#1F8A4C" stop-opacity="0"/>
+</radialGradient><filter id="sh2" x="-30%" y="-30%" width="170%" height="190%"><feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#171A20" flood-opacity="0.20"/></filter></defs>
+<rect width="1600" height="900" fill="#EDEFF2"/><rect width="1600" height="900" fill="url(#bga)"/><rect width="1600" height="900" fill="url(#bgb)"/>
+<text x="64" y="92" font-family="Inter ExtraBold" font-size="44" font-weight="normal" fill="#171A20" text-anchor="start" letter-spacing="-0.9">Six cities. Six real utilities.</text>
+<text x="64" y="138" font-family="Inter Medium" font-size="21" font-weight="normal" fill="#5C5E62" text-anchor="start">Charge at 4am is a strategy in four of them, barely worth it in a fifth, and not the cheap answer at all in the sixth.</text>
+<line x1="290.0" y1="192" x2="290.0" y2="662" stroke="rgba(255,255,255,0.07)"/>
+<text x="290.0" y="182" font-family="Inter SemiBold" font-size="13" font-weight="normal" fill="#8A8D93" text-anchor="middle">00</text>
+<line x1="431.25" y1="192" x2="431.25" y2="662" stroke="rgba(255,255,255,0.07)"/>
+<text x="431.25" y="182" font-family="Inter SemiBold" font-size="13" font-weight="normal" fill="#8A8D93" text-anchor="middle">03</text>
+<line x1="572.5" y1="192" x2="572.5" y2="662" stroke="rgba(255,255,255,0.07)"/>
+<text x="572.5" y="182" font-family="Inter SemiBold" font-size="13" font-weight="normal" fill="#8A8D93" text-anchor="middle">06</text>
+<line x1="713.75" y1="192" x2="713.75" y2="662" stroke="rgba(255,255,255,0.07)"/>
+<text x="713.75" y="182" font-family="Inter SemiBold" font-size="13" font-weight="normal" fill="#8A8D93" text-anchor="middle">09</text>
+<line x1="855.0" y1="192" x2="855.0" y2="662" stroke="rgba(255,255,255,0.07)"/>
+<text x="855.0" y="182" font-family="Inter SemiBold" font-size="13" font-weight="normal" fill="#8A8D93" text-anchor="middle">12</text>
+<line x1="996.25" y1="192" x2="996.25" y2="662" stroke="rgba(255,255,255,0.07)"/>
+<text x="996.25" y="182" font-family="Inter SemiBold" font-size="13" font-weight="normal" fill="#8A8D93" text-anchor="middle">15</text>
+<line x1="1137.5" y1="192" x2="1137.5" y2="662" stroke="rgba(255,255,255,0.07)"/>
+<text x="1137.5" y="182" font-family="Inter SemiBold" font-size="13" font-weight="normal" fill="#8A8D93" text-anchor="middle">18</text>
+<line x1="1278.75" y1="192" x2="1278.75" y2="662" stroke="rgba(255,255,255,0.07)"/>
+<text x="1278.75" y="182" font-family="Inter SemiBold" font-size="13" font-weight="normal" fill="#8A8D93" text-anchor="middle">21</text>
+<line x1="1420.0" y1="192" x2="1420.0" y2="662" stroke="rgba(255,255,255,0.07)"/>
+<text x="1420.0" y="182" font-family="Inter SemiBold" font-size="13" font-weight="normal" fill="#8A8D93" text-anchor="middle">24</text>
+<text x="64" y="236" font-family="Inter ExtraBold" font-size="21" font-weight="normal" fill="#171A20" text-anchor="start" letter-spacing="1.2">AUSTIN</text>
+<text x="64" y="256" font-family="Inter Medium" font-size="13" font-weight="normal" fill="#8A8D93" text-anchor="start">Austin Energy</text>
+<rect x="290.0" y="206" width="45.583333333333336" height="42" rx="2" fill="#1F8A4C" opacity="0.92"/>
+<rect x="337.0833333333333" y="206" width="45.583333333333336" height="42" rx="2" fill="#1F8A4C" opacity="0.92"/>
+<rect x="384.1666666666667" y="206" width="45.583333333333336" height="42" rx="2" fill="#1F8A4C" opacity="0.92"/>
+<rect x="431.25" y="206" width="45.583333333333336" height="42" rx="2" fill="#1F8A4C" opacity="0.92"/>
+<rect x="478.33333333333337" y="206" width="45.583333333333336" height="42" rx="2" fill="#1F8A4C" opacity="0.92"/>
+<rect x="525.4166666666667" y="206" width="45.583333333333336" height="42" rx="2" fill="#1F8A4C" opacity="0.92"/>
+<rect x="572.5" y="206" width="45.583333333333336" height="42" rx="2" fill="#1F8A4C" opacity="0.92"/>
+<rect x="619.5833333333334" y="206" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="666.6666666666667" y="206" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="713.75" y="206" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="760.8333333333334" y="206" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="807.9166666666667" y="206" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="855.0" y="206" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="902.0833333333334" y="206" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="949.1666666666667" y="206" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="996.25" y="206" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="1043.3333333333335" y="206" width="45.583333333333336" height="42" rx="2" fill="#C0392B" opacity="0.92"/>
+<rect x="1090.4166666666667" y="206" width="45.583333333333336" height="42" rx="2" fill="#C0392B" opacity="0.92"/>
+<rect x="1137.5" y="206" width="45.583333333333336" height="42" rx="2" fill="#C0392B" opacity="0.92"/>
+<rect x="1184.5833333333335" y="206" width="45.583333333333336" height="42" rx="2" fill="#C0392B" opacity="0.92"/>
+<rect x="1231.6666666666667" y="206" width="45.583333333333336" height="42" rx="2" fill="#C0392B" opacity="0.92"/>
+<rect x="1278.75" y="206" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="1325.8333333333335" y="206" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="1372.9166666666667" y="206" width="45.583333333333336" height="42" rx="2" fill="#1F8A4C" opacity="0.92"/>
+<text x="1442" y="225" font-family="Inter ExtraBold" font-size="17" font-weight="normal" fill="#1F8A4C" text-anchor="start">11c</text>
+<text x="1442" y="246" font-family="Inter ExtraBold" font-size="17" font-weight="normal" fill="#C0392B" text-anchor="start">34c</text>
+<text x="64" y="336" font-family="Inter ExtraBold" font-size="21" font-weight="normal" fill="#171A20" text-anchor="start" letter-spacing="1.2">DALLAS</text>
+<text x="64" y="356" font-family="Inter Medium" font-size="13" font-weight="normal" fill="#8A8D93" text-anchor="start">Oncor</text>
+<rect x="290.0" y="306" width="45.583333333333336" height="42" rx="2" fill="#1F8A4C" opacity="0.92"/>
+<rect x="337.0833333333333" y="306" width="45.583333333333336" height="42" rx="2" fill="#1F8A4C" opacity="0.92"/>
+<rect x="384.1666666666667" y="306" width="45.583333333333336" height="42" rx="2" fill="#1F8A4C" opacity="0.92"/>
+<rect x="431.25" y="306" width="45.583333333333336" height="42" rx="2" fill="#1F8A4C" opacity="0.92"/>
+<rect x="478.33333333333337" y="306" width="45.583333333333336" height="42" rx="2" fill="#1F8A4C" opacity="0.92"/>
+<rect x="525.4166666666667" y="306" width="45.583333333333336" height="42" rx="2" fill="#1F8A4C" opacity="0.92"/>
+<rect x="572.5" y="306" width="45.583333333333336" height="42" rx="2" fill="#1F8A4C" opacity="0.92"/>
+<rect x="619.5833333333334" y="306" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="666.6666666666667" y="306" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="713.75" y="306" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="760.8333333333334" y="306" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="807.9166666666667" y="306" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="855.0" y="306" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="902.0833333333334" y="306" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="949.1666666666667" y="306" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="996.25" y="306" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="1043.3333333333335" y="306" width="45.583333333333336" height="42" rx="2" fill="#C0392B" opacity="0.92"/>
+<rect x="1090.4166666666667" y="306" width="45.583333333333336" height="42" rx="2" fill="#C0392B" opacity="0.92"/>
+<rect x="1137.5" y="306" width="45.583333333333336" height="42" rx="2" fill="#C0392B" opacity="0.92"/>
+<rect x="1184.5833333333335" y="306" width="45.583333333333336" height="42" rx="2" fill="#C0392B" opacity="0.92"/>
+<rect x="1231.6666666666667" y="306" width="45.583333333333336" height="42" rx="2" fill="#C0392B" opacity="0.92"/>
+<rect x="1278.75" y="306" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="1325.8333333333335" y="306" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="1372.9166666666667" y="306" width="45.583333333333336" height="42" rx="2" fill="#1F8A4C" opacity="0.92"/>
+<text x="1442" y="325" font-family="Inter ExtraBold" font-size="17" font-weight="normal" fill="#1F8A4C" text-anchor="start">9c</text>
+<text x="1442" y="346" font-family="Inter ExtraBold" font-size="17" font-weight="normal" fill="#C0392B" text-anchor="start">31c</text>
+<text x="64" y="436" font-family="Inter ExtraBold" font-size="21" font-weight="normal" fill="#171A20" text-anchor="start" letter-spacing="1.2">MIAMI</text>
+<text x="64" y="456" font-family="Inter Medium" font-size="13" font-weight="normal" fill="#8A8D93" text-anchor="start">Florida Power &amp; Light</text>
+<rect x="290.0" y="406" width="45.583333333333336" height="42" rx="2" fill="#1F8A4C" opacity="0.92"/>
+<rect x="337.0833333333333" y="406" width="45.583333333333336" height="42" rx="2" fill="#1F8A4C" opacity="0.92"/>
+<rect x="384.1666666666667" y="406" width="45.583333333333336" height="42" rx="2" fill="#1F8A4C" opacity="0.92"/>
+<rect x="431.25" y="406" width="45.583333333333336" height="42" rx="2" fill="#1F8A4C" opacity="0.92"/>
+<rect x="478.33333333333337" y="406" width="45.583333333333336" height="42" rx="2" fill="#1F8A4C" opacity="0.92"/>
+<rect x="525.4166666666667" y="406" width="45.583333333333336" height="42" rx="2" fill="#1F8A4C" opacity="0.92"/>
+<rect x="572.5" y="406" width="45.583333333333336" height="42" rx="2" fill="#1F8A4C" opacity="0.92"/>
+<rect x="619.5833333333334" y="406" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="666.6666666666667" y="406" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="713.75" y="406" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="760.8333333333334" y="406" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="807.9166666666667" y="406" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="855.0" y="406" width="45.583333333333336" height="42" rx="2" fill="#C0392B" opacity="0.92"/>
+<rect x="902.0833333333334" y="406" width="45.583333333333336" height="42" rx="2" fill="#C0392B" opacity="0.92"/>
+<rect x="949.1666666666667" y="406" width="45.583333333333336" height="42" rx="2" fill="#C0392B" opacity="0.92"/>
+<rect x="996.25" y="406" width="45.583333333333336" height="42" rx="2" fill="#C0392B" opacity="0.92"/>
+<rect x="1043.3333333333335" y="406" width="45.583333333333336" height="42" rx="2" fill="#C0392B" opacity="0.92"/>
+<rect x="1090.4166666666667" y="406" width="45.583333333333336" height="42" rx="2" fill="#C0392B" opacity="0.92"/>
+<rect x="1137.5" y="406" width="45.583333333333336" height="42" rx="2" fill="#C0392B" opacity="0.92"/>
+<rect x="1184.5833333333335" y="406" width="45.583333333333336" height="42" rx="2" fill="#C0392B" opacity="0.92"/>
+<rect x="1231.6666666666667" y="406" width="45.583333333333336" height="42" rx="2" fill="#C0392B" opacity="0.92"/>
+<rect x="1278.75" y="406" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="1325.8333333333335" y="406" width="45.583333333333336" height="42" rx="2" fill="#1F8A4C" opacity="0.92"/>
+<rect x="1372.9166666666667" y="406" width="45.583333333333336" height="42" rx="2" fill="#1F8A4C" opacity="0.92"/>
+<text x="1442" y="425" font-family="Inter ExtraBold" font-size="17" font-weight="normal" fill="#1F8A4C" text-anchor="start">9c</text>
+<text x="1442" y="446" font-family="Inter ExtraBold" font-size="17" font-weight="normal" fill="#C0392B" text-anchor="start">26c</text>
+<text x="64" y="536" font-family="Inter ExtraBold" font-size="21" font-weight="normal" fill="#171A20" text-anchor="start" letter-spacing="1.2">TAMPA</text>
+<text x="64" y="556" font-family="Inter Medium" font-size="13" font-weight="normal" fill="#8A8D93" text-anchor="start">TECO</text>
+<rect x="290.0" y="506" width="45.583333333333336" height="42" rx="2" fill="#1F8A4C" opacity="0.92"/>
+<rect x="337.0833333333333" y="506" width="45.583333333333336" height="42" rx="2" fill="#1F8A4C" opacity="0.92"/>
+<rect x="384.1666666666667" y="506" width="45.583333333333336" height="42" rx="2" fill="#1F8A4C" opacity="0.92"/>
+<rect x="431.25" y="506" width="45.583333333333336" height="42" rx="2" fill="#1F8A4C" opacity="0.92"/>
+<rect x="478.33333333333337" y="506" width="45.583333333333336" height="42" rx="2" fill="#1F8A4C" opacity="0.92"/>
+<rect x="525.4166666666667" y="506" width="45.583333333333336" height="42" rx="2" fill="#1F8A4C" opacity="0.92"/>
+<rect x="572.5" y="506" width="45.583333333333336" height="42" rx="2" fill="#1F8A4C" opacity="0.92"/>
+<rect x="619.5833333333334" y="506" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="666.6666666666667" y="506" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="713.75" y="506" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="760.8333333333334" y="506" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="807.9166666666667" y="506" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="855.0" y="506" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="902.0833333333334" y="506" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="949.1666666666667" y="506" width="45.583333333333336" height="42" rx="2" fill="#C0392B" opacity="0.92"/>
+<rect x="996.25" y="506" width="45.583333333333336" height="42" rx="2" fill="#C0392B" opacity="0.92"/>
+<rect x="1043.3333333333335" y="506" width="45.583333333333336" height="42" rx="2" fill="#C0392B" opacity="0.92"/>
+<rect x="1090.4166666666667" y="506" width="45.583333333333336" height="42" rx="2" fill="#C0392B" opacity="0.92"/>
+<rect x="1137.5" y="506" width="45.583333333333336" height="42" rx="2" fill="#C0392B" opacity="0.92"/>
+<rect x="1184.5833333333335" y="506" width="45.583333333333336" height="42" rx="2" fill="#C0392B" opacity="0.92"/>
+<rect x="1231.6666666666667" y="506" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="1278.75" y="506" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="1325.8333333333335" y="506" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="1372.9166666666667" y="506" width="45.583333333333336" height="42" rx="2" fill="#1F8A4C" opacity="0.92"/>
+<text x="1442" y="525" font-family="Inter ExtraBold" font-size="17" font-weight="normal" fill="#1F8A4C" text-anchor="start">7.5c</text>
+<text x="1442" y="546" font-family="Inter ExtraBold" font-size="17" font-weight="normal" fill="#C0392B" text-anchor="start">22c</text>
+<text x="64" y="636" font-family="Inter ExtraBold" font-size="21" font-weight="normal" fill="#171A20" text-anchor="start" letter-spacing="1.2">ORLANDO</text>
+<text x="64" y="656" font-family="Inter Medium" font-size="13" font-weight="normal" fill="#8A8D93" text-anchor="start">Orlando Utilities Commission</text>
+<rect x="290.0" y="606" width="45.583333333333336" height="42" rx="2" fill="#1F8A4C" opacity="0.92"/>
+<rect x="337.0833333333333" y="606" width="45.583333333333336" height="42" rx="2" fill="#1F8A4C" opacity="0.92"/>
+<rect x="384.1666666666667" y="606" width="45.583333333333336" height="42" rx="2" fill="#1F8A4C" opacity="0.92"/>
+<rect x="431.25" y="606" width="45.583333333333336" height="42" rx="2" fill="#1F8A4C" opacity="0.92"/>
+<rect x="478.33333333333337" y="606" width="45.583333333333336" height="42" rx="2" fill="#1F8A4C" opacity="0.92"/>
+<rect x="525.4166666666667" y="606" width="45.583333333333336" height="42" rx="2" fill="#1F8A4C" opacity="0.92"/>
+<rect x="572.5" y="606" width="45.583333333333336" height="42" rx="2" fill="#1F8A4C" opacity="0.92"/>
+<rect x="619.5833333333334" y="606" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="666.6666666666667" y="606" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="713.75" y="606" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="760.8333333333334" y="606" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="807.9166666666667" y="606" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="855.0" y="606" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="902.0833333333334" y="606" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="949.1666666666667" y="606" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="996.25" y="606" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="1043.3333333333335" y="606" width="45.583333333333336" height="42" rx="2" fill="#C0392B" opacity="0.92"/>
+<rect x="1090.4166666666667" y="606" width="45.583333333333336" height="42" rx="2" fill="#C0392B" opacity="0.92"/>
+<rect x="1137.5" y="606" width="45.583333333333336" height="42" rx="2" fill="#C0392B" opacity="0.92"/>
+<rect x="1184.5833333333335" y="606" width="45.583333333333336" height="42" rx="2" fill="#C0392B" opacity="0.92"/>
+<rect x="1231.6666666666667" y="606" width="45.583333333333336" height="42" rx="2" fill="#C0392B" opacity="0.92"/>
+<rect x="1278.75" y="606" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="1325.8333333333335" y="606" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="1372.9166666666667" y="606" width="45.583333333333336" height="42" rx="2" fill="#1F8A4C" opacity="0.92"/>
+<text x="1442" y="625" font-family="Inter ExtraBold" font-size="17" font-weight="normal" fill="#1F8A4C" text-anchor="start">8.5c</text>
+<text x="1442" y="646" font-family="Inter ExtraBold" font-size="17" font-weight="normal" fill="#C0392B" text-anchor="start">15c</text>
+<text x="64" y="736" font-family="Inter ExtraBold" font-size="19" font-weight="normal" fill="#171A20" text-anchor="start" letter-spacing="1.2">SAN FRANCISCO</text>
+<text x="64" y="756" font-family="Inter Medium" font-size="13" font-weight="normal" fill="#8A8D93" text-anchor="start">PG&amp;E  ·  EV2-A</text>
+<rect x="290.0" y="706" width="45.583333333333336" height="42" rx="2" fill="#1F8A4C" opacity="0.92"/>
+<rect x="337.0833333333333" y="706" width="45.583333333333336" height="42" rx="2" fill="#1F8A4C" opacity="0.92"/>
+<rect x="384.1666666666667" y="706" width="45.583333333333336" height="42" rx="2" fill="#1F8A4C" opacity="0.92"/>
+<rect x="431.25" y="706" width="45.583333333333336" height="42" rx="2" fill="#1F8A4C" opacity="0.92"/>
+<rect x="478.33333333333337" y="706" width="45.583333333333336" height="42" rx="2" fill="#1F8A4C" opacity="0.92"/>
+<rect x="525.4166666666667" y="706" width="45.583333333333336" height="42" rx="2" fill="#1F8A4C" opacity="0.92"/>
+<rect x="572.5" y="706" width="45.583333333333336" height="42" rx="2" fill="#1F8A4C" opacity="0.92"/>
+<rect x="619.5833333333334" y="706" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="666.6666666666667" y="706" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="713.75" y="706" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="760.8333333333334" y="706" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="807.9166666666667" y="706" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="855.0" y="706" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="902.0833333333334" y="706" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="949.1666666666667" y="706" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="996.25" y="706" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="1043.3333333333335" y="706" width="45.583333333333336" height="42" rx="2" fill="#C0392B" opacity="0.92"/>
+<rect x="1090.4166666666667" y="706" width="45.583333333333336" height="42" rx="2" fill="#C0392B" opacity="0.92"/>
+<rect x="1137.5" y="706" width="45.583333333333336" height="42" rx="2" fill="#C0392B" opacity="0.92"/>
+<rect x="1184.5833333333335" y="706" width="45.583333333333336" height="42" rx="2" fill="#C0392B" opacity="0.92"/>
+<rect x="1231.6666666666667" y="706" width="45.583333333333336" height="42" rx="2" fill="#C0392B" opacity="0.92"/>
+<rect x="1278.75" y="706" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="1325.8333333333335" y="706" width="45.583333333333336" height="42" rx="2" fill="#B9BDC4" opacity="0.92"/>
+<rect x="1372.9166666666667" y="706" width="45.583333333333336" height="42" rx="2" fill="#1F8A4C" opacity="0.92"/>
+<text x="1442" y="725" font-family="Inter ExtraBold" font-size="17" font-weight="normal" fill="#1F8A4C" text-anchor="start">31c</text>
+<text x="1442" y="746" font-family="Inter ExtraBold" font-size="17" font-weight="normal" fill="#C0392B" text-anchor="start">62c</text>
+<text x="1442" y="182" font-family="Inter" font-size="12" font-weight="bold" fill="#8A8D93" text-anchor="start" letter-spacing="1">off / peak</text>
+<rect x="64" y="678" width="18" height="18" rx="4" fill="#1F8A4C" opacity="1"/>
+<text x="92" y="693" font-family="Inter" font-size="14" font-weight="bold" fill="#393C41" text-anchor="start" letter-spacing="1.2">OFF-PEAK</text>
+<rect x="254" y="678" width="18" height="18" rx="4" fill="#5A5E68" opacity="1"/>
+<text x="282" y="693" font-family="Inter" font-size="14" font-weight="bold" fill="#393C41" text-anchor="start" letter-spacing="1.2">SHOULDER</text>
+<rect x="444" y="678" width="18" height="18" rx="4" fill="#C0392B" opacity="1"/>
+<text x="472" y="693" font-family="Inter" font-size="14" font-weight="bold" fill="#393C41" text-anchor="start" letter-spacing="1.2">PEAK</text>
+<text x="1442" y="693" font-family="Inter Medium" font-size="12.5" font-weight="normal" fill="#8A8D93" text-anchor="end">colour shows each city's own bands, not absolute price</text>
+<rect x="64" y="730" width="1472" height="72" rx="14" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.10)" stroke-width="1" opacity="1"/>
+<text x="96" y="762" font-family="Inter" font-size="21" font-weight="bold" fill="#F2F2F4" text-anchor="start">Austin's evening peak is five hours. FPL's is nine, and it starts at noon.</text>
+<text x="96" y="788" font-family="Inter Medium" font-size="15.5" font-weight="normal" fill="#9A9DA4" text-anchor="start">Austin swings 3.1× between off-peak and peak. Orlando swings 1.8×, so overnight charging barely repays the wait. Published utility rates throughout.</text>
+<g transform="translate(64,816) scale(0.06640625)">
+<defs>
+<radialGradient id="bga" cx="15%" cy="-10%" r="80%">
+  <stop offset="0%" stop-color="#3E6AE1" stop-opacity="0.20"/>
+  <stop offset="60%" stop-color="#3E6AE1" stop-opacity="0"/>
+</radialGradient>
+<radialGradient id="bgb" cx="100%" cy="0%" r="75%">
+  <stop offset="0%" stop-color="#1F8A4C" stop-opacity="0.12"/>
+  <stop offset="55%" stop-color="#1F8A4C" stop-opacity="0"/>
+</radialGradient></defs>
+<rect width="512" height="512" rx="112" fill="#0C0D0F"/>
+<rect width="512" height="512" rx="112" fill="url(#bga)"/>
+<path d="M 96 372 C 150 372 168 300 214 288" fill="none" stroke="#6D7078" stroke-width="26" stroke-linecap="round" stroke-dasharray="4 46"/>
+<path d="M 214 288 C 268 274 286 168 400 152" fill="none" stroke="#3E6AE1" stroke-width="26" stroke-linecap="round"/>
+<circle cx="96" cy="372" r="30" fill="#0C0D0F" stroke="#6D7078" stroke-width="18"/>
+<circle cx="214" cy="288" r="26" fill="#3E6AE1"/>
+<circle cx="214" cy="288" r="10" fill="#0C0D0F"/>
+<circle cx="400" cy="152" r="34" fill="#3E6AE1"/>
+<path d="M 386 152 l 10 12 l 20 -24" fill="none" stroke="#fff" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+</g><text x="108" y="842" font-family="Inter Black" font-size="19" font-weight="normal" fill="#171A20" text-anchor="start" letter-spacing="2">DEADHEAD</text><text x="1536" y="842" font-family="Inter SemiBold" font-size="17" font-weight="normal" fill="#8A8D93" text-anchor="end">game.deadhead.workers.dev</text>
+</svg>

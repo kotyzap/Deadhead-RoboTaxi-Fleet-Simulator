@@ -1,0 +1,64 @@
+0.53.0 — Coffee joins the gear, and a whole layout mechanism retires with it
+
+WHAT WAS WRONG
+
+Nothing was broken — Pavel's call: "I should not be that greedy." The donation
+button had been pinned top-right in the topbar since v0.26.3, and keeping it
+there cost more layout machinery than any other single element in the file:
+
+  - #coffee{order:2;margin-left:auto;align-self:flex-end} for the narrow
+    arrangement, plus an `order` swap at >=2250px for the wide one.
+  - --coffee-w, a custom property whose only job was reserving horizontal room
+    so .tb-info could never claim the full width and bump the button onto a line
+    of its own. It did exactly that at 2115px, and again at ~885px after the
+    first fix. The value had been retuned three times (116/56/112px, then
+    collapsed to one 48px in 0.51.1 when the button went icon-only).
+  - .tb-info{max-width:calc(100% - var(--coffee-w))} and a >=2250px override
+    releasing that cap again.
+
+WHAT CHANGED
+
+Coffee is the fourth row of #settings-pop, under a real gap rather than another
+hairline (.set-give) — it is an ASK, not a setting, and shouldn't read as one
+more toggle. It keeps its id, so rayCoffee() still binds to it untouched.
+
+All of the machinery above is DELETED, not orphaned: no rule targets #coffee,
+--coffee-w is neither declared nor read anywhere, and .tb-info has no max-width.
+The topbar is down to two children (.tb-info, .tb-ctrls) and the >=2250px tier
+now does one thing — un-force the controls' full-width break. This is the
+simplest that row has been since it gained a wrap.
+
+TWO THINGS THAT WOULD HAVE BROKEN QUIETLY
+
+rayAtCoffee() places Paolo's coffee card by measuring a button to sit under, and
+it measured #coffee. Coffee is inside the popover now, and its click handler
+closes that popover before opening the card — so it would have measured an
+element inside a display:none subtree, where getBoundingClientRect() returns all
+zeros, and the card would have pinned itself to the top-left corner of the
+screen. It measures #settings-btn instead: the gear is visible, is where the
+player just came from, and is where the popover was hanging off anyway.
+
+The Coffee click handler also has to close the menu explicitly, because
+#settings-pop is z-index 1320 — above #ray — so the menu would otherwise cover
+the card it just opened.
+
+TESTS
+
+Four city.test.js checks encoded the old pinning and were rewritten:
+
+  - the topbar's child count is two, not three.
+  - a new "the Coffee-pinning layout mechanism is fully removed" asserts the
+    ABSENCE of #coffee{...}, of any --coffee-w declaration, and of any
+    var(--coffee-w) read — while confirming .tb-ctrls still takes its own line
+    and the wide tier still releases it. Asserting absence matters here: a dead
+    layout rule that still matches a live selector is exactly how
+    .topbar .ghost.units went stale in 0.52.0.
+  - .tb-info carries no max-width.
+  - the icon-only check covers the gear alone now, Coffee having gained a label.
+
+Two new behavioural checks: rayAtCoffee()'s source measures #settings-btn, and
+clicking Coffee closes the menu while opening Paolo's card. jsdom has no layout,
+so the resulting card POSITION is not assertable — which is precisely why the
+anchor target is asserted in the source instead.
+
+Full suite passes clean (405 checks).

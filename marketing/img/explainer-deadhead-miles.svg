@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+<defs>
+<radialGradient id="bga" cx="15%" cy="-10%" r="80%">
+  <stop offset="0%" stop-color="#3E6AE1" stop-opacity="0.16"/>
+  <stop offset="60%" stop-color="#3E6AE1" stop-opacity="0"/>
+</radialGradient>
+<radialGradient id="bgb" cx="100%" cy="0%" r="75%">
+  <stop offset="0%" stop-color="#1F8A4C" stop-opacity="0.10"/>
+  <stop offset="55%" stop-color="#1F8A4C" stop-opacity="0"/>
+</radialGradient><filter id="sh2" x="-30%" y="-30%" width="170%" height="190%"><feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#171A20" flood-opacity="0.20"/></filter></defs>
+<rect width="1600" height="900" fill="#EDEFF2"/><rect width="1600" height="900" fill="url(#bga)"/><rect width="1600" height="900" fill="url(#bgb)"/>
+<text x="64" y="96" font-family="Inter ExtraBold" font-size="44" font-weight="normal" fill="#171A20" text-anchor="start" letter-spacing="-0.9">Every offer gives you three numbers.</text>
+<text x="64" y="142" font-family="Inter Medium" font-size="27" font-weight="normal" fill="#5C5E62" text-anchor="start">Only the third one decides whether you made money.</text>
+<g filter="url(#sh2)"><rect x="64" y="190" width="1472" height="86" rx="14" fill="#FFFFFF" opacity="1"/></g>
+<rect x="64" y="190" width="1472" height="86" rx="14" fill="none" stroke="rgba(23,26,32,0.10)" stroke-width="1" opacity="1"/>
+<rect x="64" y="190" width="5" height="86" rx="2.5" fill="#3E6AE1" opacity="1"/>
+<text x="98" y="226" font-family="Inter" font-size="12" font-weight="bold" fill="#8A8D93" text-anchor="start" letter-spacing="1.6">HITCHR</text>
+<text x="168" y="228" font-family="Inter" font-size="22" font-weight="bold" fill="#171A20" text-anchor="start">Deep Ellum</text>
+<path d="M 296 221 h 22 m -7 -6 l 7 6 l -7 6" fill="none" stroke="#5C5E62" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="332" y="228" font-family="Inter Medium" font-size="22" font-weight="normal" fill="#393C41" text-anchor="start">Victory Park</text>
+<text x="98" y="256" font-family="Inter Medium" font-size="16" font-weight="normal" fill="#5C5E62" text-anchor="start">1.3 mi  ·  4 min  ·  0.7 mi deadhead  ·  $17.31 fare less 25%</text>
+<text x="1502" y="240" font-family="Inter ExtraBold" font-size="32" font-weight="normal" fill="#171A20" text-anchor="end">$12.98</text>
+<text x="64" y="350" font-family="Inter" font-size="13" font-weight="bold" fill="#8A8D93" text-anchor="start" letter-spacing="2">WHAT YOU ACTUALLY DRIVE</text>
+<line x1="190" y1="430" x2="640" y2="430" stroke="#8E8E8E" stroke-width="14" stroke-linecap="round" stroke-dasharray="3 26"/>
+<line x1="640" y1="430" x2="1420" y2="430" stroke="#3E6AE1" stroke-width="14" stroke-linecap="round"/>
+<circle cx="190" cy="430" r="19" fill="#EDEFF2" stroke="#8E8E8E" stroke-width="7"/>
+<text x="190" y="486" font-family="Inter" font-size="14" font-weight="bold" fill="#393C41" text-anchor="middle" letter-spacing="1.4">CAR IDLE</text>
+<text x="190" y="508" font-family="Inter Medium" font-size="14" font-weight="normal" fill="#8A8D93" text-anchor="middle">where it was parked</text>
+<circle cx="640" cy="430" r="19" fill="#3E6AE1" stroke="#3E6AE1" stroke-width="7"/>
+<text x="640" y="486" font-family="Inter" font-size="14" font-weight="bold" fill="#393C41" text-anchor="middle" letter-spacing="1.4">PICKUP</text>
+<text x="640" y="508" font-family="Inter Medium" font-size="14" font-weight="normal" fill="#8A8D93" text-anchor="middle">meter starts here</text>
+<circle cx="1420" cy="430" r="19" fill="#3E6AE1" stroke="#3E6AE1" stroke-width="7"/>
+<text x="1420" y="486" font-family="Inter" font-size="14" font-weight="bold" fill="#393C41" text-anchor="middle" letter-spacing="1.4">DROP-OFF</text>
+<text x="1420" y="508" font-family="Inter Medium" font-size="14" font-weight="normal" fill="#8A8D93" text-anchor="middle">meter stops</text>
+<text x="415.0" y="396" font-family="Inter ExtraBold" font-size="19" font-weight="normal" fill="#393C41" text-anchor="middle" letter-spacing="0.6">0.7 mi  ·  EMPTY</text>
+<text x="415.0" y="418" font-family="Inter Medium" font-size="15" font-weight="normal" fill="#C0392B" text-anchor="middle">nobody pays for this</text>
+<text x="1030.0" y="396" font-family="Inter ExtraBold" font-size="19" font-weight="normal" fill="#2F55C4" text-anchor="middle" letter-spacing="0.6">1.3 mi  ·  PAYING</text>
+<text x="1030.0" y="418" font-family="Inter Medium" font-size="15" font-weight="normal" fill="#5C5E62" text-anchor="middle">the only part on the meter</text>
+<text x="64" y="584" font-family="Inter" font-size="13" font-weight="bold" fill="#8A8D93" text-anchor="start" letter-spacing="2">WHAT YOU ACTUALLY KEEP</text>
+<rect x="64" y="600" width="1472" height="64" rx="10" fill="rgba(23,26,32,0.10)" opacity="1"/>
+<rect x="64" y="600" width="1103.787406123628" height="64" rx="10" fill="#3E6AE1" opacity="1"/>
+<text x="86" y="641" font-family="Inter" font-size="23" font-weight="bold" fill="#FFFFFF" text-anchor="start">$12.98  you keep</text>
+<text x="1514" y="640" font-family="Inter SemiBold" font-size="19" font-weight="normal" fill="#5C5E62" text-anchor="end">$4.33 commission</text>
+<text x="64" y="692" font-family="Inter Medium" font-size="17" font-weight="normal" fill="#5C5E62" text-anchor="start">$17.31 on the meter  ·  Hitchr takes 25%</text>
+<rect x="64" y="720" width="1472" height="84" rx="14" fill="rgba(62,106,225,0.08)" stroke="rgba(62,106,225,0.22)" stroke-width="1" opacity="1"/>
+<text x="96" y="754" font-family="Inter" font-size="23" font-weight="bold" fill="#171A20" text-anchor="start">2.0 miles driven. 0.7 of them for free — 35% of the trip.</text>
+<text x="96" y="782" font-family="Inter Medium" font-size="17" font-weight="normal" fill="#393C41" text-anchor="start">Those empty miles come out of the $12.98, not the $17.31. That is a deadhead, and it is what the game is named after.</text>
+<g transform="translate(64,816) scale(0.06640625)">
+<defs>
+<radialGradient id="bga" cx="15%" cy="-10%" r="80%">
+  <stop offset="0%" stop-color="#3E6AE1" stop-opacity="0.20"/>
+  <stop offset="60%" stop-color="#3E6AE1" stop-opacity="0"/>
+</radialGradient>
+<radialGradient id="bgb" cx="100%" cy="0%" r="75%">
+  <stop offset="0%" stop-color="#1F8A4C" stop-opacity="0.12"/>
+  <stop offset="55%" stop-color="#1F8A4C" stop-opacity="0"/>
+</radialGradient></defs>
+<rect width="512" height="512" rx="112" fill="#0C0D0F"/>
+<rect width="512" height="512" rx="112" fill="url(#bga)"/>
+<path d="M 96 372 C 150 372 168 300 214 288" fill="none" stroke="#6D7078" stroke-width="26" stroke-linecap="round" stroke-dasharray="4 46"/>
+<path d="M 214 288 C 268 274 286 168 400 152" fill="none" stroke="#3E6AE1" stroke-width="26" stroke-linecap="round"/>
+<circle cx="96" cy="372" r="30" fill="#0C0D0F" stroke="#6D7078" stroke-width="18"/>
+<circle cx="214" cy="288" r="26" fill="#3E6AE1"/>
+<circle cx="214" cy="288" r="10" fill="#0C0D0F"/>
+<circle cx="400" cy="152" r="34" fill="#3E6AE1"/>
+<path d="M 386 152 l 10 12 l 20 -24" fill="none" stroke="#fff" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+</g><text x="108" y="842" font-family="Inter Black" font-size="19" font-weight="normal" fill="#171A20" text-anchor="start" letter-spacing="2">DEADHEAD</text><text x="1536" y="842" font-family="Inter SemiBold" font-size="17" font-weight="normal" fill="#8A8D93" text-anchor="end">game.deadhead.workers.dev</text>
+</svg>

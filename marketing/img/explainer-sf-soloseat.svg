@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+<defs>
+<radialGradient id="ga" cx="12%" cy="-10%" r="80%">
+  <stop offset="0%" stop-color="#2ECC81" stop-opacity="0.24"/><stop offset="60%" stop-color="#2ECC81" stop-opacity="0"/>
+</radialGradient>
+<radialGradient id="gb" cx="100%" cy="8%" r="80%">
+  <stop offset="0%" stop-color="#3E6AE1" stop-opacity="0.13"/><stop offset="55%" stop-color="#3E6AE1" stop-opacity="0"/>
+</radialGradient><filter id="sh2" x="-30%" y="-30%" width="170%" height="190%"><feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#171A20" flood-opacity="0.20"/></filter></defs>
+<rect width="1600" height="900" fill="#EDEFF2"/><rect width="1600" height="900" fill="url(#ga)"/><rect width="1600" height="900" fill="url(#gb)"/>
+<rect x="64" y="52" width="232" height="28" rx="14" fill="rgba(24,122,74,0.10)" stroke="rgba(24,122,74,0.28)" stroke-width="1" opacity="1"/>
+<text x="84" y="71" font-family="Inter" font-size="12" font-weight="bold" fill="#187A4A" text-anchor="start" letter-spacing="1.6">CITY SIX  ·  SAN FRANCISCO</text>
+<text x="64" y="148" font-family="Inter ExtraBold" font-size="44" font-weight="normal" fill="#171A20" text-anchor="start" letter-spacing="-0.9">The sixth city takes the fleet away.</text>
+<text x="64" y="190" font-family="Inter Medium" font-size="19" font-weight="normal" fill="#5C5E62" text-anchor="start">The real Bay Area service runs with a safety driver in the seat. The driver is you — not an employee, not a line on a payroll.</text>
+<g filter="url(#sh2)"><rect x="64" y="246" width="940" height="118" rx="14" fill="rgba(255,255,255,0.82)" opacity="1"/></g>
+<rect x="64" y="246" width="940" height="118" rx="14" fill="none" stroke="rgba(23,26,32,0.10)" stroke-width="1" opacity="1"/>
+<rect x="64" y="246" width="5" height="118" rx="2.5" fill="#187A4A" opacity="1"/>
+<text x="100" y="280" font-family="Inter" font-size="12" font-weight="bold" fill="#187A4A" text-anchor="start" letter-spacing="1.6">FLEET CAP</text>
+<text x="100" y="326" font-family="Inter Black" font-size="36" font-weight="normal" fill="#171A20" text-anchor="start" letter-spacing="-1">1</text>
+<text x="370" y="302" font-family="Inter Medium" font-size="16" font-weight="normal" fill="#393C41" text-anchor="start">You cannot be in two seats at once. SF has no</text>
+<text x="370" y="326" font-family="Inter Medium" font-size="16" font-weight="normal" fill="#393C41" text-anchor="start">fleet. It has one car, because it has one of you.</text>
+<g filter="url(#sh2)"><rect x="64" y="380" width="940" height="118" rx="14" fill="rgba(255,255,255,0.82)" opacity="1"/></g>
+<rect x="64" y="380" width="940" height="118" rx="14" fill="none" stroke="rgba(23,26,32,0.10)" stroke-width="1" opacity="1"/>
+<rect x="64" y="380" width="5" height="118" rx="2.5" fill="#187A4A" opacity="1"/>
+<text x="100" y="414" font-family="Inter" font-size="12" font-weight="bold" fill="#187A4A" text-anchor="start" letter-spacing="1.6">SIM SPEED</text>
+<text x="100" y="460" font-family="Inter Black" font-size="36" font-weight="normal" fill="#171A20" text-anchor="start" letter-spacing="-1">1×  LOCKED</text>
+<text x="370" y="436" font-family="Inter Medium" font-size="16" font-weight="normal" fill="#393C41" text-anchor="start">Every other city runs at 4× or 20×. You cannot</text>
+<text x="370" y="460" font-family="Inter Medium" font-size="16" font-weight="normal" fill="#393C41" text-anchor="start">fast-forward through a job you are sitting in.</text>
+<g filter="url(#sh2)"><rect x="64" y="514" width="940" height="118" rx="14" fill="rgba(255,255,255,0.82)" opacity="1"/></g>
+<rect x="64" y="514" width="940" height="118" rx="14" fill="none" stroke="rgba(23,26,32,0.10)" stroke-width="1" opacity="1"/>
+<rect x="64" y="514" width="5" height="118" rx="2.5" fill="#187A4A" opacity="1"/>
+<text x="100" y="548" font-family="Inter" font-size="12" font-weight="bold" fill="#187A4A" text-anchor="start" letter-spacing="1.6">THE STIPEND</text>
+<text x="100" y="594" font-family="Inter Black" font-size="36" font-weight="normal" fill="#171A20" text-anchor="start" letter-spacing="-1">$250 / day</text>
+<text x="370" y="570" font-family="Inter Medium" font-size="16" font-weight="normal" fill="#393C41" text-anchor="start">Axiom pays for the seat — but only on a day you</text>
+<text x="370" y="594" font-family="Inter Medium" font-size="16" font-weight="normal" fill="#393C41" text-anchor="start">actually clocked on. Against $38,000, an offset.</text>
+<g filter="url(#sh2)"><rect x="1036" y="246" width="500" height="384" rx="14" fill="rgba(255,255,255,0.82)" opacity="1"/></g>
+<rect x="1036" y="246" width="500" height="384" rx="14" fill="none" stroke="rgba(23,26,32,0.10)" stroke-width="1" opacity="1"/>
+<text x="1066" y="284" font-family="Inter" font-size="12" font-weight="bold" fill="#187A4A" text-anchor="start" letter-spacing="1.4">PG&amp;E EV2-A  ·  AND NO CHEAP HOUR</text>
+<text x="1066" y="330" font-family="Inter" font-size="13.5" font-weight="bold" fill="#171A20" text-anchor="start">SF off-peak</text>
+<rect x="1194" y="318" width="226" height="16" rx="8" fill="rgba(23,26,32,0.07)" opacity="1"/>
+<rect x="1194" y="318" width="113.0" height="16" rx="8" fill="#187A4A" opacity="1"/>
+<text x="1506" y="331" font-family="Inter ExtraBold" font-size="14" font-weight="normal" fill="#171A20" text-anchor="end">31c</text>
+<text x="1066" y="372" font-family="Inter" font-size="13.5" font-weight="bold" fill="#171A20" text-anchor="start">SF peak</text>
+<rect x="1194" y="360" width="226" height="16" rx="8" fill="rgba(23,26,32,0.07)" opacity="1"/>
+<rect x="1194" y="360" width="226.0" height="16" rx="8" fill="#C0392B" opacity="1"/>
+<text x="1506" y="373" font-family="Inter ExtraBold" font-size="14" font-weight="normal" fill="#171A20" text-anchor="end">62c</text>
+<text x="1066" y="414" font-family="Inter Medium" font-size="13.5" font-weight="normal" fill="#5C5E62" text-anchor="start">Austin peak</text>
+<rect x="1194" y="402" width="226" height="16" rx="8" fill="rgba(23,26,32,0.07)" opacity="1"/>
+<rect x="1194" y="402" width="123.93548387096776" height="16" rx="8" fill="#B9BDC4" opacity="1"/>
+<text x="1506" y="415" font-family="Inter ExtraBold" font-size="14" font-weight="normal" fill="#8A8D93" text-anchor="end">34c</text>
+<text x="1066" y="456" font-family="Inter Medium" font-size="13.5" font-weight="normal" fill="#5C5E62" text-anchor="start">Dallas peak</text>
+<rect x="1194" y="444" width="226" height="16" rx="8" fill="rgba(23,26,32,0.07)" opacity="1"/>
+<rect x="1194" y="444" width="113.0" height="16" rx="8" fill="#B9BDC4" opacity="1"/>
+<text x="1506" y="457" font-family="Inter ExtraBold" font-size="14" font-weight="normal" fill="#8A8D93" text-anchor="end">31c</text>
+<text x="1066" y="498" font-family="Inter Medium" font-size="13.5" font-weight="normal" fill="#5C5E62" text-anchor="start">Miami peak</text>
+<rect x="1194" y="486" width="226" height="16" rx="8" fill="rgba(23,26,32,0.07)" opacity="1"/>
+<rect x="1194" y="486" width="94.7741935483871" height="16" rx="8" fill="#B9BDC4" opacity="1"/>
+<text x="1506" y="499" font-family="Inter ExtraBold" font-size="14" font-weight="normal" fill="#8A8D93" text-anchor="end">26c</text>
+<text x="1066" y="540" font-family="Inter Medium" font-size="13.5" font-weight="normal" fill="#5C5E62" text-anchor="start">Tampa peak</text>
+<rect x="1194" y="528" width="226" height="16" rx="8" fill="rgba(23,26,32,0.07)" opacity="1"/>
+<rect x="1194" y="528" width="80.19354838709678" height="16" rx="8" fill="#B9BDC4" opacity="1"/>
+<text x="1506" y="541" font-family="Inter ExtraBold" font-size="14" font-weight="normal" fill="#8A8D93" text-anchor="end">22c</text>
+<text x="1066" y="582" font-family="Inter Medium" font-size="13.5" font-weight="normal" fill="#5C5E62" text-anchor="start">Orlando peak</text>
+<rect x="1194" y="570" width="226" height="16" rx="8" fill="rgba(23,26,32,0.07)" opacity="1"/>
+<rect x="1194" y="570" width="54.677419354838705" height="16" rx="8" fill="#B9BDC4" opacity="1"/>
+<text x="1506" y="583" font-family="Inter ExtraBold" font-size="14" font-weight="normal" fill="#8A8D93" text-anchor="end">15c</text>
+<line x1="1307.0" y1="312" x2="1307.0" y2="612" stroke="#187A4A" stroke-width="1.5" stroke-dasharray="4 5" opacity="0.75"/>
+<rect x="64" y="700" width="1472" height="76" rx="14" fill="rgba(24,122,74,0.07)" stroke="rgba(24,122,74,0.22)" stroke-width="1" opacity="1"/>
+<text x="96" y="730" font-family="Inter" font-size="21" font-weight="bold" fill="#171A20" text-anchor="start">Five cities teach you to run a fleet. The sixth gives you one car and puts you in it.</text>
+<text x="96" y="756" font-family="Inter Medium" font-size="14.5" font-weight="normal" fill="#393C41" text-anchor="start">The CPUC has said on the record that this is not an autonomous vehicle service — the operator holds the same class of permit a limousine company does. The hostile regulator is real, not invented.</text>
+<g transform="translate(64,816) scale(0.06640625)">
+<defs>
+<radialGradient id="bga" cx="15%" cy="-10%" r="80%">
+  <stop offset="0%" stop-color="#3E6AE1" stop-opacity="0.20"/>
+  <stop offset="60%" stop-color="#3E6AE1" stop-opacity="0"/>
+</radialGradient>
+<radialGradient id="bgb" cx="100%" cy="0%" r="75%">
+  <stop offset="0%" stop-color="#1F8A4C" stop-opacity="0.12"/>
+  <stop offset="55%" stop-color="#1F8A4C" stop-opacity="0"/>
+</radialGradient></defs>
+<rect width="512" height="512" rx="112" fill="#0C0D0F"/>
+<rect width="512" height="512" rx="112" fill="url(#bga)"/>
+<path d="M 96 372 C 150 372 168 300 214 288" fill="none" stroke="#6D7078" stroke-width="26" stroke-linecap="round" stroke-dasharray="4 46"/>
+<path d="M 214 288 C 268 274 286 168 400 152" fill="none" stroke="#3E6AE1" stroke-width="26" stroke-linecap="round"/>
+<circle cx="96" cy="372" r="30" fill="#0C0D0F" stroke="#6D7078" stroke-width="18"/>
+<circle cx="214" cy="288" r="26" fill="#3E6AE1"/>
+<circle cx="214" cy="288" r="10" fill="#0C0D0F"/>
+<circle cx="400" cy="152" r="34" fill="#3E6AE1"/>
+<path d="M 386 152 l 10 12 l 20 -24" fill="none" stroke="#fff" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+</g><text x="108" y="842" font-family="Inter Black" font-size="19" font-weight="normal" fill="#171A20" text-anchor="start" letter-spacing="2">DEADHEAD</text><text x="1536" y="842" font-family="Inter SemiBold" font-size="17" font-weight="normal" fill="#8A8D93" text-anchor="end">game.deadhead.workers.dev</text>
+</svg>

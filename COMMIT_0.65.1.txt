@@ -1,0 +1,126 @@
+0.65.1 — The version is visible next to the wordmark again, and the admin gets a dashboard
+
+Two unrelated asks from Pavel on 2026-07-30, both small on the surface and
+both of which turned up something underneath.
+
+
+WHAT CHANGED IN THE GAME
+
+  1. THE VERSION CHIP IS BACK AT EVERY WIDTH. Pavel: "add version to
+     index.html page next to game title." There already was one — `.ver` in
+     `.brand`, filled from `const VERSION` at boot — but it was
+     `display:none` below 1499px, and the tagline has been hidden since the
+     2199px tier. So on any normal laptop the brand was the bare wordmark,
+     and the only place left to read the build number was the Saves modal.
+
+     The rule that hid it was written to give the city strip ~55px before it
+     started scrolling. That trade stopped holding when the strip was made to
+     shrink AND scroll below 1700px regardless (0.53.2): the chip now costs a
+     few pixels of scroll, not a wrapped row. It is also not decoration in the
+     way the tagline is — it is the first thing anybody needs when reporting
+     a bug. Kept tight rather than full size below 1499px (9px, no
+     letter-spacing, ~40px total).
+
+     Verified by screenshot at 2560 / 1440 / 1280 / 900 / 393px: the topbar
+     row count is unchanged at every width.
+
+  2. The pre-boot `<title>` lost the stale "— prototype" suffix. It still
+     carries NO version number, and now says why in a comment: the script
+     rewrites document.title to include VERSION as soon as VERSION exists, and
+     a number typed into the markup would be a second copy free to drift, in
+     the one place nobody checks. `const VERSION` stays the only authority.
+
+
+WHAT CHANGED IN THE ADMIN (deploy/public/admin.html + src/index.js)
+
+Full review and rationale in adminplan.md. Headlines:
+
+  3. A DASHBOARD, as the landing view: eleven TOP 5 cards (countries, cities,
+     cars, rarest trophies, most active players, best cash, longest runs,
+     busiest days, newest players, last shift reached, accounts by country)
+     over four subsections — Right now, Geography, Progression, Data health.
+     One `env.DB.batch()`, so one round trip rather than fourteen.
+
+  4. SORTABLE, FILTERABLE TABLES everywhere, from one shared renderer that
+     replaced five hand-rolled string builders. Type-aware comparators (so
+     $1,200 beats $900), sticky headers, real <button> headers with aria-sort,
+     honest "newest 200 of 5,412" row counts.
+
+  5. PLAYER GEOGRAPHY — country / region / timezone, from `request.cf` at the
+     edge, so they are the only fields on a telemetry row a client does not
+     get to claim. They ride along in INSERTs that already happen: D1 bills
+     rows written, not columns, so this costs nothing. No city, postcode,
+     lat/lon or ASN, deliberately — player_id is persistent, and a persistent
+     id plus a city narrows to a household. No index on country either, for
+     the same reason idx_stats_ts was dropped; a test asserts its absence.
+
+     Visitors who never finish a shift are not in the database and never will
+     be (the client makes no network call at boot, on purpose). The page says
+     so and points at Cloudflare Analytics rather than adding a beacon.
+
+  6. THE THREE RETIRED CAR CARDS ARE GONE (Pavel: "remove three unused cars
+     from admin"). Crossover Long / Saloon Sport / Crossover Sport kept a
+     dimmed card each so their historical data stayed visible; in practice
+     they were three permanently empty "No shifts reported yet" tiles taking a
+     row of the grid. `CARS_INFO` is now exactly the game's six-trim CATALOG.
+     Nothing was lost: a new RETIRED_MODELS name table means a retired — or
+     pre-0.42.0 Tesla-badged — id that really does have shifts now appears in
+     the Ranked table, dimmed and labelled "· retired". Cards are what you can
+     buy; the table is what people drove.
+
+     THE CARDS AND RADARS THEMSELVES ARE UNTOUCHED ("keep those cars stats, it
+     is fantastic"). The only additions to that view are the Avg rides line —
+     the query always returned it and the cards never printed it — and the
+     ranked table underneath.
+
+  7. Corrections found while reviewing: the funnel presented independent
+     milestones as sequential stages and its 100%-by-construction first step
+     as a finding; the achievements unlock rate divided by players who had
+     never reported a list; `MAX(name)` showed each player's alphabetically
+     last name; `cityLabel('sf')` rendered "Sf"; economics had no spread and
+     an unbounded shift-number axis; and the page had no viewport meta tag, no
+     refresh, no as-of stamp and no way to drop the credentials.
+
+
+THE BUG WORTH READING ABOUT
+
+  8. `schema.sql` NEVER CREATED THE `achv` COLUMN. `models TEXT` was missing
+     its trailing comma, and SQLite allows a column type to be several words —
+     so it parsed as ONE column named `models` of type "TEXT <comment> achv
+     TEXT", and CREATE TABLE succeeded silently. Any database created fresh
+     from that file therefore rejected every POST /api/stat, because the
+     INSERT names achv: a brand-new deployment would have recorded no
+     telemetry at all. The live database escaped only because achv had been
+     added to it by ALTER TABLE; `npm run db:local` did not escape.
+
+     Found by EXECUTING schema.sql in a test rather than reading it.
+     test/admin.test.js now runs the file and asserts that every column named
+     in every INSERT the Worker performs actually exists, plus that column,
+     placeholder and bound-argument counts all agree.
+
+
+TESTS
+
+  test/admin.test.js is new — 165 checks: schema-vs-INSERT agreement, the
+  no-index-on-geo budget invariant, city labels walked out of the game's own
+  CITIES, sort correctness in both directions (including that NULLs stay last
+  descending, which the first draft of the page got wrong), money formatting,
+  view/renderer/payload agreement, CARS_INFO == the game's CATALOG, every
+  MODEL_IDS entry being nameable, and every renderer surviving an empty
+  database.
+
+  Suite: 745 checks across 25 files, green. Parity check clean.
+
+
+MIGRATION — RUN BEFORE DEPLOYING
+
+  The geo columns do not exist in the live D1 yet, and /api/stat will reject
+  every shift until they do. Once, from deploy/:
+
+    npx wrangler d1 execute deadhead-db --remote --command "ALTER TABLE stats ADD COLUMN country TEXT;"
+    npx wrangler d1 execute deadhead-db --remote --command "ALTER TABLE stats ADD COLUMN region  TEXT;"
+    npx wrangler d1 execute deadhead-db --remote --command "ALTER TABLE stats ADD COLUMN tz      TEXT;"
+    npx wrangler d1 execute deadhead-db --remote --command "ALTER TABLE users ADD COLUMN country TEXT;"
+
+  A "duplicate column name" error means it is already applied — ignore it.
+  The admin's Data health subsection is where you check it worked.

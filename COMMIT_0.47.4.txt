@@ -1,0 +1,35 @@
+0.47.4 — Clock button's hover colour
+
+WHAT WAS WRONG
+
+Hovering the topbar's Clock button (on-shift accent, off-shift red, both new
+in 0.47.2) turned it into a near-invisible pale pill: white text on an
+almost-white background. .ghost:hover resets background to var(--inset) and
+border-color to var(--text-4) for the plain ghost pills (Garage, Saves,
+Night...), and that rule has the same specificity as .clockbtn.on/.off
+(two classes each) but sits later in the file, so it won on hover and wiped
+the gradient. color:#fff came from .clockbtn.on/.off, which DID win on
+specificity alone (more classes than .ghost by itself), so the text stayed
+white while the background it needed contrast against disappeared under it.
+
+WHAT CHANGED
+
+.clockbtn.on:hover and .clockbtn.off:hover re-declare their own gradient
+background and border-color:transparent, then add filter:brightness(1.08) —
+the same hover language .t-cta, .t-dec and #ray-go already use for "this is
+a coloured, clickable control", rather than inventing a fourth way to say
+the same thing. #sound[aria-pressed="false"] hit an identical clash with its
+red variant and already fixes it the same way (re-declare on :hover), so
+this follows an established pattern rather than a new one.
+
+Audited every other .ghost element in the topbar (Garage, Saves, Night,
+Sound, profile, units, Coffee) for the same trap: .clockbtn is the only one
+with a colour-carrying modifier class, so nothing else in that row needed
+the same fix.
+
+TESTS
+
+No test suite covers hover states (jsdom doesn't run :hover), so this was
+verified by reading cascade order and specificity directly rather than a
+new assertion. Full suite still passes; nothing about markup, classes, or
+behaviour changed, only which rule wins on :hover.

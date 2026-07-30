@@ -1,0 +1,49 @@
+0.35.0 — drop the real-world clock; weather stays real, time doesn't pretend to
+
+Pavel: the topbar's "Local" readout showed the city's actual real-world
+wall-clock time, next to "Clock" (the sim clock) and the 20x speed
+control. He liked that weather stayed grounded in reality but found the
+real clock silly at speed — a real minute crawling by while the sim
+clock races is a mismatch, not a feature, and it was never carrying any
+gameplay weight to begin with.
+
+WHAT CHANGED
+
+cityLocalTime() — and every place it was called — is gone. That was two
+places: the topbar's "Local" tb-item (deleted outright, tb-clock already
+covers the sim clock right next to it) and the console's phone-status-bar
+mock ("Nova · c-clock", styled after a phone's carrier-name-plus-clock
+corner). c-clock now echoes tb-clock/S.t instead — which is what it
+showed before Pavel originally asked for it to read real time, so this is
+a revert for that one spot rather than new behavior.
+
+Weather is untouched: the current reading (temperature/condition, fetched
+from Open-Meteo every 15 real minutes) and the forecast-by-hour lookup
+that actually touches gameplay (weatherSpeedMult/weatherSurgeBump/
+weatherIncidentMult, all keyed by the SIM clock's hour into a real 24h
+forecast) still work exactly as before. That's the part that was already
+doing the "grounded in reality regardless of game speed" job correctly —
+a storm forecast for 3pm still slows and endangers the fleet the moment
+sim-time reaches 3pm, whether that's 3 real hours away at 1x or 9 real
+minutes away at 20x. It just didn't need a paired real clock to justify
+it, and the clock was the one piece actually clashing with the ability to
+play at speed.
+
+Verified with jsdom: #tb-city-time no longer exists in the DOM, cityLocalTime
+is gone from the exported test surface, and c-clock now reads exactly what
+tb-clock reads after render() at an arbitrary sim time — while #c-temp/
+#wx-grp (the weather readouts) are confirmed untouched.
+
+city.test.js's "the topbar no longer duplicates the city name" check
+asserted #tb-city-time EXISTS — it was written when that readout replaced
+an earlier duplicate-city-name slot (#tb-city) and encoded "don't bring
+the duplicate back." Updated to assert neither #tb-city nor #tb-city-time
+exists, since #tb-city-time is the thing being intentionally removed this
+pass, not a regression to guard against. Existing suite (8 files, with
+that one update) and check-parity both pass.
+
+STILL OPEN
+- Both D1 migrations unrun (carried from 0.33.2).
+- The Cloudflare rate limiting rule on /api/stat.
+- The DISPATCH OFFLINE banner.
+- deploy/public/Inside_The_Brutal…mp4, 9.8 MB, referenced by nothing.

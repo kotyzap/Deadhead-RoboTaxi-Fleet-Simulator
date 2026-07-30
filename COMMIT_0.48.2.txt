@@ -1,0 +1,39 @@
+0.48.2 — Charge is a pill now, matching Status
+
+WHAT WAS WRONG
+
+The Status/Fare/Drop-off row and the Charge/Range/Power row didn't line up.
+Status was a plain label+pill cell; Charge was a label+ring+caption cell,
+taller than its siblings and taller than the row above it, so the card read
+as two differently-sized bands rather than one aligned table.
+
+WHAT CHANGED
+
+Charge is a .pill now — literally the same markup Status uses, just a
+different id. The ring (and its spin-while-charging animation) is gone
+entirely: chg-ring/chg-arc/chg-v1/chg-spin all removed from HTML, CSS and
+render(). Nothing it told you is lost:
+
+  - The three colour bands move to the pill: .pill.p-charge (green, already
+    existed — the Fleet table's "charging"/"to charger" pill reuses it) and
+    .pill.p-attn (amber, ditto) carry over as-is; .pill.p-crit is new (same
+    rgba-tint-plus-solid-text shape as p-attn, keyed off --s-crit-rgb so it
+    stays correct under night mode's re-themed critical red).
+  - "Charging in progress" doesn't need its own tell on this pill any more,
+    because the Status pill immediately above it already says "Charging" —
+    this one can stick to purely the percentage instead of also carrying an
+    animation for the same fact.
+  - Arrival SoC's "→ 61% at drop-off" caption stays exactly where it was
+    (mid-ride only, :empty collapses it otherwise), just under a pill now
+    instead of a ring.
+
+Left alone, flagged again: CFG.socAlertAmber (25) is still less than
+CFG.chargeAt (28), so p-attn is still mathematically unreachable — same gap
+as the ring had. Moving the bug to a pill didn't fix it; still waiting on
+real threshold numbers before touching it.
+
+TESTS
+
+Full suite passes, plus boot-smoke.test.js specifically (this touched
+render()'s DOM lookups directly again). No test referenced chg-ring/
+chg-arc/chg-v1 — confirmed by grep before removing them.

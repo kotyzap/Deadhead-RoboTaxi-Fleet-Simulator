@@ -1,0 +1,90 @@
+0.68.0 — the phantom-click bug, and clockOn() can no longer wedge silently
+
+Pavel reported three symptoms in one message: Clock On does nothing in
+Tampa after playing several other cities first; connecting a platform
+("Zapp"/Zipp) sometimes takes ~30 clicks; Accept works about 90% of the
+time and occasionally needs a second click.
+
+
+ROOT CAUSE — THE CLICK BUGS (#2 and #3)
+
+  #plat-rows and #offer-list were reassigned wholesale via innerHTML on
+  EVERY render() call — every ~100ms while paused (render() runs on every
+  tick when !S.running) and every ~200ms while running (see the tick loop,
+  ~line 13930). innerHTML replaces every child node in the container,
+  including whichever button is mid-press; several browsers do not fire a
+  `click` event when the pressed element is removed from the DOM between
+  mousedown and mouseup. Connect is normally clicked while paused (100ms
+  cadence — worse odds, matches "~30 clicks"). Accept is normally clicked
+  while running (200ms cadence — better odds, matches "~90%, sometimes
+  needs a second click"). Delegation itself was already correct (both
+  panels use one listener on the stable parent, not per-button handlers) —
+  the bug was purely rebuild frequency racing a real mouse.
+
+
+ROOT CAUSE — CLOCK ON WEDGING (#1)
+
+  clockOn() (line ~7622) set S.onClock=true as its very first statement,
+  then called newDay()/render() with no error handling. If either threw —
+  we could not pin the exact Tampa-specific throw site despite a thorough
+  pass (CITIES.tampa, ZONES/CHARGERS/ROADS_BY_CITY.tampa, gateMet/progGates,
+  the chIdx/chName migration all check out fine on inspection) — S.onClock
+  was already true, so clockOn()'s own guard
+  (`if(S.onClock||S.over||S.ffwd) return`) swallowed every further click
+  forever. Worse, render() never reached the line that flips the button's
+  own label, so "Clock on" stayed on screen looking perfectly clickable
+  while doing nothing. Whatever the specific trigger, that failure SHAPE
+  had to be closed regardless of root cause.
+
+
+WHAT CHANGED (deadhead.html / deploy/public/index.html, identical forks)
+
+  1. render()'s #plat-rows and #offer-list blocks now compute a cheap
+     signature of exactly what reaches their template (platform on/off +
+     rounded accept-rate + volume mult + the tutorial arrow flag; offer ids +
+     Math.ceil(o.left) — the displayed "Xs", not the raw float underneath it
+     — + the tutorial arrow flag + onClock + live-feed count for the
+     empty-state text) and skip the innerHTML reassignment when the
+     signature is unchanged from the last render. Mirrors the existing
+     lastMsgSeenCount pattern already used for the Messages panel.
+     deadheadKm(o) (per-car live distance) is deliberately left out of the
+     offer signature — folding it in cheaply isn't practical, and the cost
+     of that one readout lagging by up to ~1s is far smaller than the cost
+     of losing a click to a rebuild the player couldn't see coming.
+
+  2. clockOn() now wraps its body in try/catch. On any failure it reverts
+     S.onClock and S.shiftNo to their pre-attempt values, best-effort
+     re-renders, and shows a toast ("Could not start the shift — ...") —
+     never leaves the button silently dead again, regardless of what
+     actually threw. The swallowed catch in switchCity()'s restore-failure
+     path (console.warn only, no user-visible feedback) got the same
+     treatment — a bad city resume now also toasts instead of silently
+     restarting fresh with no explanation, since a bad restore() here is
+     exactly the kind of thing that could leave S in a state where a LATER,
+     seemingly-unrelated action throws.
+
+  3. deploy/test/click-reliability.test.js (new): proves #plat-rows survives
+     an unchanged re-render (a DOM marker on its first child is still there
+     after a second render() with nothing changed) but rebuilds on a real
+     state change; proves #offer-list survives a sub-second countdown tick
+     that doesn't cross a displayed integer boundary but rebuilds once it
+     does; proves clockOn() reverts onClock/shiftNo and toasts on an
+     internal render() failure (forced in the test by detaching #tb-day so
+     render()'s `$('tb-day').textContent=...` throws), and that clocking on
+     succeeds normally once the underlying element is restored.
+
+
+NOT FOUND, ON PURPOSE — FLAGGING FOR PAVEL
+
+  The exact throw site behind the original Tampa report is still unknown.
+  Everything Tampa-specific inspected clean. If it recurs post-0.68.0, the
+  new toast on clockOn()'s catch will now show the actual error message —
+  please paste it back verbatim; that will very likely be enough to find
+  the real root cause immediately, whereas before this fix there was
+  nothing at all to go on.
+
+
+TESTS
+
+  Full suite run from deploy/: all green, including the new file. Source/
+  deploy parity check passes.

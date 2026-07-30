@@ -1,0 +1,32 @@
+0.49.2 — Messages history was showing raw {NAME}/{CASH} tokens
+
+WHAT WAS WRONG
+
+Paolo's beat text is a const template in RAY[], with live figures like the
+player's name and cash left as tokens ({NAME}, {CASH}, {FLOOR}) filled at
+show time by rayFill() — see 0.46.1's paolo-numbers work. rayShow() calls
+rayFill() correctly for the live #ray card. But render()'s Messages/Comms
+history rebuild is a SEPARATE code path that re-lists every beat once it's
+been seen, and it was reading b.t straight off the RAY[] const — no
+rayFill() at all. The result: Paolo's beat 1, sitting in Messages after
+being dismissed, read "You're {NAME}, I'm told... {CASH} and no car"
+verbatim, literal braces and all (Pavel's screenshot, 2026-07-30).
+
+This was not an environment-specific bug — deadhead.html and the deployed
+copy are byte-identical, so the same broken text was live in production too.
+
+WHAT CHANGED
+
+One line: the Messages rebuild now maps each seen beat through rayFill(b.t)
+instead of the bare b.t. Consistent with the existing "fill every time it's
+shown, not a frozen snapshot" rule paolo-numbers already established for
+{FLOOR} — a beat re-read later in Messages shows CURRENT cash, not whatever
+was true the moment it first appeared, same as the live card would if
+reopened.
+
+TESTS
+
+paolo-numbers.test.js gained two checks: showing beat 1, dismissing it into
+history, and rendering — no `{TOKEN}` shape survives in #msg-list's HTML,
+and the real S.cash figure is present instead. Full suite passes clean (319
+checks, up from 317).
