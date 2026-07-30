@@ -2705,6 +2705,17 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
   background:transparent}
 .gar-slots .hint{font-size:11.5px;color:var(--text-4);line-height:1.4}
 .gar-slots[hidden]{display:none}
+/* ---- manufacturer promo CTA (transferplan.md §2) ----
+   Mirrors the affordable-row treatment (.avail's tint+ring) rather than
+   inventing a new banner style — this is a "you can afford this and it is
+   the cheap door in" message, same job .avail already does inside a card. */
+.gar-promo{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  margin:-4px 0 14px;padding:10px 14px;border-radius:var(--r-ctl);
+  border:1px solid var(--accent);background:rgba(var(--accent-2-rgb),.10)}
+.gar-promo[hidden]{display:none}
+.gar-promo .promo-txt{font-size:12.5px;color:var(--text-2);line-height:1.4}
+.gar-promo .promo-txt b{color:var(--text-1);font-weight:600}
+.gar-promo button{flex:none}
 /* Once a car is in service, leaving is the sensible next move, so the header
    button stops being a quiet dismiss and becomes the primary action. */
 #gar-close.go{border-color:var(--accent);color:var(--accent);font-weight:500}
@@ -3622,6 +3633,10 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
     </div>
     <div class="gar-sub" id="gar-sub"></div>
     <div class="gar-slots" id="gar-slots" hidden></div>
+    <!-- transferplan.md §2: the $99 manufacturer-promo CTA. Only ever one
+         row (the immediately previous city), so no list markup is needed —
+         see promoEligible()/renderGarage(). -->
+    <div class="gar-promo" id="gar-promo" hidden></div>
     <div class="cards" id="gar-cards"></div>
     <div class="sv-foot">
       <span class="note" id="gar-note"></span>
@@ -5633,6 +5648,12 @@ const S={
   /* True while the clock is auto-advancing from clock-off to next 06:00.
      Not saved — a reload always resumes paused. See startFastForward(). */
   ffwd:false, ffwdTarget:0,
+  /* True for the fixed 15s a manufacturer-promo car is animating in on the
+     map (transferplan.md §3). Not saved, same reasoning as ffwd just above —
+     a reload mid-transit is out of scope for v1 and always resumes paused,
+     never mid-animation. Gates offer/incident spawning and Paolo the same
+     way ffwd/the garage-open check already do. */
+  transferring:false,
   surge:1.0,
   /* Tutorial progress. Beats are recorded by number so a save resumes the
      script where it left off rather than replaying it. guided/dayIdx/
@@ -5864,6 +5885,7 @@ let spawnAcc=0;
 function spawnRides(dt){
   /* No feeds connected, or clocked off, means no offers. Demand does not
      wait for you — it simply goes to someone else. */
+  if(S.transferring) return;   /* promo car mid-transit — see startTransfer() */
   const live=livePlatforms();
   if(!S.onClock||!live.length) return;
   const h=hour();
@@ -7113,6 +7135,7 @@ function rayAdvise(){
      itself now force-closes any such leftover card first — see
      rayForceClose(). */
   if(!$('garage').hidden||!$('report').hidden) return;
+  if(S.transferring) return;   /* promo car mid-transit — see startTransfer() */
   if(S.ray.guided&&!S.ray.day1Done) return;   /* day 1 belongs to the script */
   /* advIdle, NOT idleFor. Beat 9 fires at idleFor>240 and the advisor fires
      at 75, so resetting the shared counter here would hold idleFor below 240
@@ -7509,6 +7532,23 @@ function rayCityUnlocked(id){
   const tabBtn=document.querySelector('.citytab[data-city="'+id+'"]');
   raySpotEl(tabBtn||$('citytabs'));
   rayPause();
+  /* transferplan.md §4.1: if the player can't even afford to RENT the
+     cheapest thing in the catalogue, and the promo would actually be usable
+     once they get there, mention it in this SAME card rather than stacking a
+     second one. Async (the previous city's save has to be read), so this
+     appends to the card already on screen instead of blocking it — if the
+     player has already moved on (dismissed it, or another card replaced it)
+     by the time it resolves, it does nothing. */
+  if(!promoUsed(id)&&!canAfford(cheapestRentEntry(),'rent')){
+    promoSourceFor(id).then(function(src){
+      if(!src||S.ray.cur!=='cityunlock') return;
+      const v=catalog(src.car.model);
+      $('ray-text').innerHTML+='<br><br>One more thing: a manufacturer promo can '+
+        'bring your '+escapeHtml(v?v.name:src.car.model)+' in from '+
+        escapeHtml(CITIES[src.prevId].name)+' for a flat '+money(PROMO_FEE)+' — '+
+        'look for it in the garage once you get there.';
+    });
+  }
 }
 function rayCoffee(){
   raySpotClear();
@@ -7734,6 +7774,13 @@ function raySkip(){
    that carries the whole Act 1 thesis: hours worked against hours billed. */
 function clockOn(){
   if(S.onClock||S.over||S.ffwd) return;
+  /* transferplan.md §1: a shift with nothing in service is a no-op that used
+     to just silently do nothing — the button worked, the clock never really
+     started earning, and there was no feedback telling the player why.
+     S.transferring is included here too: a car mid-transit is not yet in
+     S.cars, so this already covers it, but the intent is explicit either
+     way — there is nothing to clock on to until the promo car lands. */
+  if(!S.cars.length){ toast('No cars in service here.'); return; }
   /* Wrapped since 2026-07-30 (Pavel: "simply cannot start the shift by
      clicking Clock on" — reproduced after several other cities had already
      been played). S.onClock is set true on the very next line, BEFORE
@@ -11367,7 +11414,7 @@ const SLOTS=['slot1','slot2','slot3'];
    SAVE_V above is the STATE SHAPE version and moves only when the
    snapshot format changes — the two are deliberately independent, so
    shipping 0.9.0 does not invalidate 0.8.0 saves. */
-const VERSION='0.73.0';
+const VERSION='0.74.0';
 
 function snapshot(){
   return {
@@ -11645,6 +11692,7 @@ function restore(save,opts){
   const sharedCash=opts.sharedCash!==false;
   const s=migrate(save).s;
   S.ffwd=false;                   /* never resume mid fast-forward */
+  S.transferring=false; TRANSFER=null;   /* never resume mid promo-transit — see S.transferring's comment */
 
   /* scalars */
   S.t=s.t; S.day=s.day; S.cash=s.cash; S.fareMult=s.fareMult;
@@ -12004,7 +12052,12 @@ function progSave(){
   return Store.put('progress',{v:PROG_V, unlocked:PROG.unlocked,
     results:PROG.results, last:PROG.last, eggs:PROG.eggs,
     achv:PROG.achv, achvSeen:PROG.achvSeen, achvTold:PROG.achvTold,
-    soloSeatTold:PROG.soloSeatTold, companyCash:PROG.companyCash})
+    soloSeatTold:PROG.soloSeatTold, companyCash:PROG.companyCash,
+    /* transferplan.md §5: additive fields, no PROG_V bump needed — both are
+       read back defensively (progLoad() below, and promoUsed()/promoNudged()
+       at every call site) with typeof-object guards, same style as the
+       v4->v5 companyCash migration just above. */
+    promoUsed:PROG.promoUsed, promoNudged:PROG.promoNudged})
     .catch(function(){});
 }
 /* ---- EASTER EGGS ------------------------------------------------------
@@ -12287,6 +12340,11 @@ function progLoad(){
        the migration note there). No transform needed, nothing to migrate: an
        absent value IS the correct v4 state. */
     if(typeof r.companyCash==='number') PROG.companyCash=r.companyCash;
+    /* transferplan.md §5: absent on any record written before this feature —
+       an absent map reads as "no city has used/been nudged about the promo
+       yet", which is correct for every pre-existing save. */
+    if(r.promoUsed&&typeof r.promoUsed==='object') PROG.promoUsed=r.promoUsed;
+    if(r.promoNudged&&typeof r.promoNudged==='object') PROG.promoNudged=r.promoNudged;
     PROG.achvTold=!!r.achvTold;
     PROG.soloSeatTold=!!r.soloSeatTold;
     PROG.unlocked.austin=true;      /* the tutorial city is never locked */
@@ -13007,6 +13065,23 @@ function renderGarage(){
   $('gar-note').textContent=S.cars.length
     ? 'A rented car can be handed back; a financed one cannot.'
     : 'Fixed costs are charged at midnight whether you clock on or not.';
+  /* transferplan.md §2: one row, only ever from the immediately previous
+     city, only while this city's garage is genuinely empty and only until
+     PROG.promoUsed[S.city] closes the door for good. */
+  const gp=$('gar-promo');
+  if(gp){
+    if(promoEligible()){
+      const v=catalog(PROMO_SRC.car.model);
+      gp.hidden=false;
+      gp.innerHTML='<div class="promo-txt"><b>Manufacturer promo:</b> bring your '+
+        escapeHtml(v?v.name:PROMO_SRC.car.model)+' from '+
+        escapeHtml(CITIES[PROMO_SRC.prevId].name)+' — '+money(PROMO_FEE)+'</div>'+
+        '<button class="pri avail" id="gar-promo-go"'+
+        (S.cash<PROMO_FEE?' disabled':'')+'>Bring it in — '+money(PROMO_FEE)+'</button>';
+    } else {
+      gp.hidden=true; gp.innerHTML='';
+    }
+  }
 }
 
 /* ---------------- Take-control dodge mini-game ----------------
@@ -13365,11 +13440,237 @@ function closeDodge(){
   relockMap();   /* hand the map back its gesture shield */
 }
 
+/* ============================================================
+   MANUFACTURER PROMO — transferplan.md. Flat $99, adjacent-city only, one
+   shot per city. See sections 2-5 there for the full spec; the short version
+   lives in the comments below each piece.
+   ============================================================ */
+const PROMO_FEE=99;
+/* The city immediately before `id` in the linear unlock chain
+   (austin->dallas->miami->tampa->orlando->sf), or null for austin (nothing
+   before it) or an unknown id. Derived from CITIES[].order rather than a
+   hardcoded list — same reasoning as gateMet()'s 'shift1@<city>' naming: the
+   chain is data, not a literal array anywhere else in the file. */
+function prevCityId(id){
+  const c=CITIES[id]; if(!c||typeof c.order!=='number') return null;
+  const hit=Object.keys(CITIES).filter(function(k){return CITIES[k].order===c.order-1});
+  return hit[0]||null;
+}
+/* Real driving-adjacent great-circle distance in km between two CITIES
+   entries — used only to bump the arriving car's odometer (see
+   finishTransfer()). The $99 fee and the 15s transit time are BOTH flat
+   regardless of this number; only depreciation ever sees it. */
+function haversineKm(a,b){
+  const R=6371, rad=Math.PI/180;
+  const dLat=(b.lat-a.lat)*rad, dLon=(b.lon-a.lon)*rad;
+  const s=Math.sin(dLat/2)*Math.sin(dLat/2)+
+    Math.cos(a.lat*rad)*Math.cos(b.lat*rad)*Math.sin(dLon/2)*Math.sin(dLon/2);
+  return R*2*Math.atan2(Math.sqrt(s),Math.sqrt(1-s));
+}
+function promoUsed(id){ return !!(PROG.promoUsed&&PROG.promoUsed[id]) }
+function markPromoUsed(id){
+  PROG.promoUsed=PROG.promoUsed||{}; PROG.promoUsed[id]=true; progSave();
+}
+function promoNudged(id){ return !!(PROG.promoNudged&&PROG.promoNudged[id]) }
+function markPromoNudged(id){
+  PROG.promoNudged=PROG.promoNudged||{}; PROG.promoNudged[id]=true; progSave();
+}
+/* The cheapest car in the whole catalogue TO RENT — used only by the
+   Paolo hook on new-city entry (transferplan.md §4.1: "can't afford to rent
+   the cheapest catalogue vehicle"). Distinct from floorCost(), which finds
+   the cheapest FIXED cost for the same no-cars-yet case; renting has its own
+   up-front-plus-runway math (see rentReq()/canAfford()) that fixed cost
+   alone does not capture. */
+function cheapestRentEntry(){
+  return CATALOG.reduce(function(best,v){
+    return (!best||v.rent<best.rent)?v:best;
+  },null);
+}
+/* Cache of "does the previous city have a car we could pull in for THIS
+   city, right now" — S.city-scoped, in-memory only (transferplan.md §5: the
+   promo's eligibility check never needs to survive a reload; it just needs
+   to be re-derived, which refreshPromoSrc() below does lazily). Reading the
+   previous city's save is an async Store.get(), so this can't be computed
+   synchronously inside renderGarage() — it is refreshed whenever it goes
+   stale (ensurePromoSrc()) and renderGarage() re-runs once the fetch lands
+   if the garage is still open to see it. */
+let PROMO_SRC=null;
+function refreshPromoSrc(){
+  const cid=S.city, prevId=prevCityId(cid);
+  PROMO_SRC={city:cid, prevId:prevId, car:null, ready:!prevId};
+  if(!prevId) return Promise.resolve();
+  /* physKey() only rewrites the bare literal 'auto' — 'auto:<city>' passes
+     straight through Store.get() untouched, which is exactly what lets this
+     read the PREVIOUS city's slot without ever touching S.city. See the
+     physKey()/Store comment block above for why that split exists at all.
+     Built as a variable, not inlined into the call itself — test/
+     slot-allowed.test.js statically greps every literal-string Store.put
+     call in this file, and a bare "auto:" prefix quoted right there would
+     match its empty-city case, which is deliberately disallowed. */
+  const key='auto:'+prevId;
+  return Store.get(key).then(function(sv){
+    if(PROMO_SRC.city!==cid) return;  /* city moved again while this was in flight */
+    const cars=sv&&sv.s&&sv.s.cars;
+    PROMO_SRC.car=(cars&&cars.length)?cars[0]:null;
+    PROMO_SRC.ready=true;
+    if(!$('garage').hidden) renderGarage();
+  }).catch(function(){
+    if(PROMO_SRC.city===cid) PROMO_SRC.ready=true;
+  });
+}
+function ensurePromoSrc(){
+  if(!PROMO_SRC||PROMO_SRC.city!==S.city) refreshPromoSrc();
+}
+/* True only in the exact window the promo is meant for: this city's garage
+   is empty, nobody has ever bought/rented/financed a first car here (that
+   permanently closes the door — see acquire()), and the immediately
+   previous city actually has a car sitting in its save slot right now. */
+function promoEligible(){
+  return !!(S.cars.length===0 && !S.transferring && !promoUsed(S.city) &&
+    PROMO_SRC && PROMO_SRC.city===S.city && PROMO_SRC.ready && PROMO_SRC.car);
+}
+/* Same question, but for a city that is NOT necessarily the one on screen —
+   used only by rayCityUnlocked() below, which fires for a city the player
+   has not switched into yet. Async because it cannot lean on PROMO_SRC. */
+function promoSourceFor(id){
+  const prevId=prevCityId(id);
+  if(!prevId) return Promise.resolve(null);
+  return Store.get('auto:'+prevId).then(function(sv){
+    const cars=sv&&sv.s&&sv.s.cars;
+    return (cars&&cars.length)?{prevId:prevId,car:cars[0]}:null;
+  }).catch(function(){ return null });
+}
+/* Confirming is final (transferplan.md "Decisions": no recall/cancel). The
+   $99 debit and the splice out of the previous city's slot both happen HERE,
+   synchronously with the click — the 15s that follows is a visual only,
+   nothing left to undo if the player switches away mid-transit. */
+function promoConfirm(){
+  if(!promoEligible()) return;
+  if(S.cash<PROMO_FEE){ toast('Needs '+money(PROMO_FEE),true); return; }
+  const car=PROMO_SRC.car, prevId=PROMO_SRC.prevId, prevName=CITIES[prevId].name;
+  S.cash-=PROMO_FEE; PROG.companyCash=S.cash;
+  /* Variable, not a literal — see refreshPromoSrc()'s comment on why this
+     can't be a quoted 'auto:'+prevId directly inside the Store call. */
+  const key='auto:'+prevId;
+  Store.get(key).then(function(sv){
+    if(!sv||!sv.s||!sv.s.cars) return;
+    sv.s.cars=sv.s.cars.filter(function(c){ return c.id!==car.id });
+    return Store.put(key,sv);
+  }).catch(function(){});
+  /* Gone from the source city the instant it's confirmed — no ghost row for
+     a player who switches back before the animation finishes. */
+  PROMO_SRC.car=null;
+  log('Fleet','manufacturer promo — bringing '+car.id+' in from '+prevName+' for '+money(PROMO_FEE),0);
+  progSave(); renderGarage();
+  startTransfer(car,prevId);
+}
+/* The 15-second transit animation. Fixed duration for every leg regardless
+   of real mileage (transferplan.md §3) — real time via performance.now(),
+   not the sim clock, so it neither freezes nor races at fast-forward speed. */
+let TRANSFER=null;
+function startTransfer(car,prevId){
+  S.transferring=true;
+  TRANSFER={car:car,prevId:prevId,cityAtStart:S.city,start:
+    (typeof performance!=='undefined'&&performance.now)?performance.now():Date.now(),
+    dur:15000};
+  if(map&&typeof map.fitBounds==='function'){
+    try{
+      TRANSFER.savedCenter=map.getCenter(); TRANSFER.savedZoom=map.getZoom();
+      map.fitBounds([[CITIES[prevId].lat,CITIES[prevId].lon],
+        [currentCity().lat,currentCity().lon]],{padding:[40,40],animate:false});
+    }catch(e){ /* map not ready — the promo still works with no visual */ }
+    try{
+      TRANSFER.line=L.polyline([[CITIES[prevId].lat,CITIES[prevId].lon],
+        [currentCity().lat,currentCity().lon]],
+        {color:TONE.accent,weight:2,opacity:.55,dashArray:'4,7'}).addTo(map);
+      TRANSFER.marker=L.marker([CITIES[prevId].lat,CITIES[prevId].lon],
+        {icon:L.divIcon({className:'carpin transfer-pin',iconSize:[PIN_W,PIN_H],
+          html:carPinHtml()})}).addTo(map);
+    }catch(e){}
+  }
+  if(typeof requestAnimationFrame==='function') requestAnimationFrame(transferTick);
+  else setTimeout(finishTransfer,TRANSFER.dur);
+}
+function transferTick(now){
+  if(!TRANSFER) return;
+  if(now===undefined) now=(typeof performance!=='undefined'&&performance.now)?performance.now():Date.now();
+  const t=Math.min(1,(now-TRANSFER.start)/TRANSFER.dur);
+  if(TRANSFER.marker){
+    const a=CITIES[TRANSFER.prevId], b=currentCity();
+    TRANSFER.marker.setLatLng([a.lat+(b.lat-a.lat)*t, a.lon+(b.lon-a.lon)*t]);
+  }
+  if(t>=1){ finishTransfer(); return }
+  if(typeof requestAnimationFrame==='function') requestAnimationFrame(transferTick);
+  else setTimeout(function(){ transferTick() },50);
+}
+function finishTransfer(){
+  if(!TRANSFER) return;
+  const car=TRANSFER.car, prevId=TRANSFER.prevId;
+  if(map){
+    try{ if(TRANSFER.marker) map.removeLayer(TRANSFER.marker) }catch(e){}
+    try{ if(TRANSFER.line) map.removeLayer(TRANSFER.line) }catch(e){}
+    try{ if(TRANSFER.savedCenter) map.setView(TRANSFER.savedCenter,TRANSFER.savedZoom,{animate:false}) }catch(e){}
+  }
+  S.transferring=false;
+  /* Only land the car if the player is still in the city it was sent TO —
+     a reload or a city switch mid-transit is explicitly out of scope for v1
+     (transferplan.md §5); this just makes sure a stale timer from a
+     switched-away city cannot inject a car into whatever city is current now. */
+  if(S.city===TRANSFER.cityAtStart){
+    const dist=haversineKm(CITIES[prevId],currentCity());
+    S.seq++;
+    const z=ZONES[0], v=catalog(car.model);
+    /* Preserve the car's own identity (model, hold, soc, earn, owed,
+       unpaidDays) rather than minting a fresh default one — it is the SAME
+       car, just relocated. Everything else is city-local bookkeeping
+       (position, route, live-ride refs, queue, charger) that addCar() also
+       hands out fresh and that means nothing carried over from a different
+       city's geofence. */
+    S.cars.push(Object.assign({},car,{
+      id:(v?v.badge:'MY')+'-'+String(S.seq).padStart(2,'0'),
+      lat:z.lat+(Math.random()-.5)*.01, lng:z.lng+(Math.random()-.5)*.014,
+      state:'idle', route:[], ride:null, rideId:null, queue:[], queueIds:[],
+      blocked:0, needs:0, idleFor:0, ch:null, chName:null, recovTo:null, recovToName:null,
+      at:z.n, p0:null, hdg:0,
+      odo:(car.odo||0)+dist
+    }));
+    const nc=S.cars[S.cars.length-1];
+    markPromoUsed(S.city);
+    log('Fleet',nc.id+' arrived from '+CITIES[prevId].name+' — '+
+      uKm(dist,0)+' added to the odometer',0);
+    checkUnlocks(); renderGarage(); render();
+    autosaveSoon('promo-transfer');
+  }
+  TRANSFER=null;
+}
 function openGarage(){
-  $('garage').hidden=false; renderGarage();
+  $('garage').hidden=false; ensurePromoSrc(); renderGarage();
   /* The very first thing a new player sees is this screen, so Ray introduces
      himself here rather than waiting for a clock-on that cannot happen yet. */
   if(!raySeen(1)&&!S.ray.skipped&&!S.cars.length) rayShow(1);
+}
+/* transferplan.md §4.2: fires once per city, and only if the player leaves
+   the garage having bought nothing at all. Guarded the same way every other
+   ad-hoc Paolo card is (Pavel's stacking rule: never on top of #garage or
+   #report) — called from the close handlers below AFTER #garage.hidden is
+   already set, so the first half of that guard is trivially true by then. */
+function maybeNudgePromo(){
+  if(S.cars.length!==0) return;
+  if(promoNudged(S.city)) return;
+  if(!promoEligible()) return;
+  if(!$('garage').hidden||!$('report').hidden) return;
+  markPromoNudged(S.city);
+  raySpotClear();
+  S.ray.cur='promo';
+  const v=catalog(PROMO_SRC.car.model);
+  $('ray-text').innerHTML='<b>Leaving without a car?</b><br><br>Nothing earns until '+
+    'one is in service — but there\'s a cheaper door than the garage right now. A '+
+    'manufacturer promo can bring your '+escapeHtml(v?v.name:PROMO_SRC.car.model)+
+    ' in from '+escapeHtml(CITIES[PROMO_SRC.prevId].name)+' for a flat '+money(PROMO_FEE)+'.';
+  rayFoot('Got it','','');
+  $('ray').hidden=false;
+  raySpotEl($('garage-btn'));
+  rayPause();
 }
 
 function acquire(id,how){
@@ -13377,6 +13678,13 @@ function acquire(id,how){
      is paused used to sit unsaved until the player pressed play. */
   const v=catalog(id);
   if(!v||!canAfford(v,how)) return;
+  /* transferplan.md §2: "if player rents first car he is expected to stay" —
+     any successful real acquisition (buy/rent/finance, this function) closes
+     the $99 promo door for this city PERMANENTLY, even if the fleet later
+     goes back to zero (repossession). Marked here, not in the promo's own
+     confirm path, since this is the ONE place every kind of "got a car"
+     funnels through. */
+  markPromoUsed(S.city);
   if(how==='buy')     S.cash-=v.price;
   if(how==='finance') S.cash-=v.down;
   /* First day's rent is due at signing — a lease, not a free ride. Renting
@@ -13672,13 +13980,19 @@ $('tr-close').addEventListener('click',closeConsolePanel);
 
 $('saves').addEventListener('click',openSaves);
 $('garage-btn').addEventListener('click',openGarage);
-$('gar-close').addEventListener('click',function(){ $('garage').hidden=true });
+$('gar-close').addEventListener('click',function(){
+  $('garage').hidden=true;
+  maybeNudgePromo();   /* transferplan.md §4.2 — after close, never on top of it */
+});
 $('garage').addEventListener('click',function(e){
-  if(e.target===$('garage')) $('garage').hidden=true;
+  if(e.target===$('garage')){ $('garage').hidden=true; maybeNudgePromo() }
 });
 $('gar-cards').addEventListener('click',function(e){
   const b=e.target.closest('button[data-get]');
   if(b) acquire(b.dataset.get,b.dataset.how);
+});
+$('gar-promo').addEventListener('click',function(e){
+  if(e.target.closest('#gar-promo-go')) promoConfirm();
 });
 $('sv-close').addEventListener('click',function(){ $('savemgr').hidden=true });
 $('savemgr').addEventListener('click',function(e){
@@ -14123,6 +14437,10 @@ function newFleet(cityId,opts){
      after finding the auto-charge egg inherited automatic charging. Knowing the
      switch exists survives (that lives in PROG.eggs); having it on does not. */
   S.autoCharge=false;
+  /* Never carried between cities/runs — see the field's own comment on S. A
+     stale true here (e.g. a switch away mid-transit) would permanently block
+     clockOn() on a fleet that in fact has cars. */
+  S.transferring=false; TRANSFER=null;
   S.city=(cityId&&CITIES[cityId])?cityId:cityList()[0];
   /* Seed the clock from THIS city's real local time — see
      freshRunClockSeed() for why, and why it stops at dayStart rather than
@@ -14563,7 +14881,23 @@ window.DH_ACT1={
      stub, and offersPerHour/PLATFORMS let the test drive one deterministically. */
   queueEndPoint:queueEndPoint,spawnRides:spawnRides,
   /* Exposed for the shift-report/beat-12-14 spotlight-timing regression test. */
-  DAY1_ORDER:DAY1_ORDER,guideCheck:guideCheck};
+  DAY1_ORDER:DAY1_ORDER,guideCheck:guideCheck,
+  /* Exposed for test/promo-transfer.test.js and test/clock-on-gate.test.js —
+     transferplan.md. PROMO_SRC is a getter/setter pair, same pattern as
+     WX/LB/ROADS above: a test needs to seed it directly (Store.get() never
+     resolves in jsdom — there's no real indexedDB there) rather than round
+     -tripping through the real async Store. */
+  PROMO_FEE:PROMO_FEE,prevCityId:prevCityId,haversineKm:haversineKm,
+  promoUsed:promoUsed,markPromoUsed:markPromoUsed,
+  promoNudged:promoNudged,markPromoNudged:markPromoNudged,
+  cheapestRentEntry:cheapestRentEntry,
+  promoSrc:function(){ return PROMO_SRC },
+  setPromoSrc:function(v){ PROMO_SRC=v },
+  promoEligible:promoEligible,promoSourceFor:promoSourceFor,
+  promoConfirm:promoConfirm,refreshPromoSrc:refreshPromoSrc,
+  ensurePromoSrc:ensurePromoSrc,maybeNudgePromo:maybeNudgePromo,
+  transferring:function(){ return TRANSFER },
+  finishTransfer:finishTransfer};
 window.DH_SAVE={snapshot:snapshot,restore:restore,migrate:migrate,VERSION:VERSION,
   Store:Store,LocalStore:LocalStore,V:SAVE_V,SLOTS:SLOTS,
   refresh:renderSaves,toast:toast,autosave:autosave,open:openSaves,
