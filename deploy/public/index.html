@@ -897,6 +897,17 @@ html[data-theme="night"] #lockmsg .bubble{color:#F2F2F4}
   box-shadow:0 6px 16px -8px rgba(var(--accent-2-rgb),.9)}
 #buy.pri:hover:not(:disabled){background:linear-gradient(180deg,var(--accent-hi),var(--accent));
   border-color:transparent;color:#fff}
+/* Empty fleet, take two: the whole card, not just the button. --accent-rgb is
+   the live per-city tone (see applyCityTone()) rather than a literal, so
+   Miami reads pink here and Dallas orange for free, same as the .avail wash
+   on the garage's own buy rows. Same .09 opacity as that wash — a card-wide
+   fill reads louder than a small button chip at the same alpha, so this
+   stays at the established value rather than going lower and disappearing
+   under --glass, or higher and turning into a loud, off-brand fill. The
+   gradient-with-one-colour-twice is the same trick .p-head already uses to
+   layer a tint UNDER --glass instead of replacing it (glass blur survives).
+   Toggled in render(), not CSS-only, because it must track S.cars.length. */
+#panel-fleet.roster-empty{background:linear-gradient(rgba(var(--accent-rgb),.09),rgba(var(--accent-rgb),.09)),var(--glass)}
 /* ---- roster's own manufacturer-promo teaser ----
    Condensed on purpose: the full per-car list with photos lives in the
    garage modal (see .gar-promo below) — this is just visibility that the
@@ -10410,7 +10421,7 @@ function render(){
         '<td class="r">'+qCell+'</td></tr>';
     }).join('');
   }
-  $('buy').textContent=S.cars.length?'Add a vehicle':'Choose a vehicle';
+  $('buy').textContent=S.cars.length?'Add a vehicle':'Rent & Buy Robotaxi';
   $('buy').disabled=false;
   /* Empty fleet: this is THE action, so it borrows the same filled-gradient
      weight as the Clock-on CTA / the garage's own .pri buy rows (see the
@@ -10419,6 +10430,7 @@ function render(){
      ensurePromoSrc() is a no-op once PROMO_SRC is already fresh for this
      city, so calling it every render tick costs nothing extra. */
   $('buy').classList.toggle('pri',S.cars.length===0);
+  $('panel-fleet').classList.toggle('roster-empty',S.cars.length===0);
   if(S.cars.length===0) ensurePromoSrc();
   renderFleetPromo();
 
@@ -11499,7 +11511,7 @@ const SLOTS=['slot1','slot2','slot3'];
    SAVE_V above is the STATE SHAPE version and moves only when the
    snapshot format changes — the two are deliberately independent, so
    shipping 0.9.0 does not invalidate 0.8.0 saves. */
-const VERSION='0.75.0';
+const VERSION='0.76.0';
 
 function snapshot(){
   return {
