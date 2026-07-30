@@ -874,12 +874,44 @@ html[data-theme="night"] #lockmsg .bubble{color:#F2F2F4}
    place — the roster grows or shrinks inside its own share, everything
    else stays put. */
 #pb-fleet{display:flex;flex-direction:column;overflow:hidden}
-#pb-fleet .metrics,#pb-fleet #buy{flex:0 0 auto}
+#pb-fleet .metrics{flex:0 0 auto}
 #pb-fleet .dh-fleet-scroll{flex:1;min-height:0;overflow-y:auto;
   scrollbar-width:thin;scrollbar-gutter:stable;scrollbar-color:var(--brd-2) transparent}
 #pb-fleet .dh-fleet-scroll::-webkit-scrollbar{width:7px}
 #pb-fleet .dh-fleet-scroll::-webkit-scrollbar-track{background:transparent}
 #pb-fleet .dh-fleet-scroll::-webkit-scrollbar-thumb{background:var(--brd-2);border-radius:4px}
+/* #buy + the roster's promo teaser: siblings of #pb-fleet, not children of
+   it (see the HTML comment on #fleet-cta for why) — flex:0 0 auto here
+   keeps them pinned under the panel's own flex-column layout the same way
+   #pb-fleet's own children are pinned above. */
+#fleet-cta{flex:0 0 auto;padding:0 13px 12px}
+/* Empty fleet: this IS the primary action on screen, so it borrows the same
+   filled-gradient weight the Clock-on CTA (.t-cta) and the garage's own
+   .pri buy rows use elsewhere — never a new button style, the same one.
+   Only applied while the roster is genuinely empty (see render()); once a
+   car is in service "Add a vehicle" goes back to the quiet .wbtn it always
+   was, because at that point it's an option, not THE option. */
+#buy.pri{height:44px;font-size:13.5px;font-weight:600;letter-spacing:.02em;
+  background:linear-gradient(180deg,var(--accent-hi),var(--accent));
+  border-color:transparent;color:#fff;
+  box-shadow:0 6px 16px -8px rgba(var(--accent-2-rgb),.9)}
+#buy.pri:hover:not(:disabled){background:linear-gradient(180deg,var(--accent-hi),var(--accent));
+  border-color:transparent;color:#fff}
+/* ---- roster's own manufacturer-promo teaser ----
+   Condensed on purpose: the full per-car list with photos lives in the
+   garage modal (see .gar-promo below) — this is just visibility that the
+   offer EXISTS without opening the garage, same tint+ring language .avail
+   uses everywhere else for "you can afford this". */
+.fleet-promo-cta{display:flex;align-items:center;justify-content:space-between;
+  gap:10px;margin-top:8px;padding:8px 11px;border-radius:var(--r-ctl);
+  border:1px solid var(--accent);background:rgba(var(--accent-rgb),.09);
+  font-size:11.5px;color:var(--text-2)}
+.fleet-promo-cta b{color:var(--text-1);font-weight:600}
+.fleet-promo-cta[hidden]{display:none}
+.fleet-promo-cta button{flex:none;height:26px;padding:0 11px;border:none;
+  border-radius:13px;background:var(--accent);color:#fff;font:inherit;
+  font-size:11px;font-weight:500;cursor:pointer}
+.fleet-promo-cta button:hover{filter:brightness(1.08)}
 
 /* ---- shared bits ---- */
 .lbl{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--text-4);display:block}
@@ -2708,14 +2740,45 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
 /* ---- manufacturer promo CTA (transferplan.md §2) ----
    Mirrors the affordable-row treatment (.avail's tint+ring) rather than
    inventing a new banner style — this is a "you can afford this and it is
-   the cheap door in" message, same job .avail already does inside a card. */
-.gar-promo{display:flex;align-items:center;justify-content:space-between;gap:12px;
-  margin:-4px 0 14px;padding:10px 14px;border-radius:var(--r-ctl);
+   the cheap door in" message, same job .avail already does inside a card.
+
+   Was a single flex row (one previous-city car, implicitly picked for you).
+   Now a header line plus a LIST of rows — the previous city can have more
+   than one car sitting in its slot, and the player picks which one to bring
+   in, so .gar-promo switches to block layout and each candidate gets its
+   own .promo-row (see promoRowHtml()/renderGarage()). */
+.gar-promo{display:block;margin:-4px 0 14px;padding:10px 14px;
+  border-radius:var(--r-ctl);
   border:1px solid var(--accent);background:rgba(var(--accent-2-rgb),.10)}
 .gar-promo[hidden]{display:none}
 .gar-promo .promo-txt{font-size:12.5px;color:var(--text-2);line-height:1.4}
 .gar-promo .promo-txt b{color:var(--text-1);font-weight:600}
 .gar-promo button{flex:none}
+/* One candidate car from the previous city's saved slot. Thumbnail, model
+   name + its own id, and its own "Bring it in" button — a row per car, not
+   one row for the whole promo. */
+.promo-row{display:flex;align-items:center;gap:11px;padding:9px 0;
+  border-top:1px solid rgba(var(--accent-2-rgb),.22)}
+.promo-row:first-of-type{border-top:0;padding-top:2px}
+.promo-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.promo-info b{font-size:12.5px;font-weight:600;color:var(--text-1)}
+.promo-info small{font-size:10.5px;color:var(--text-3)}
+/* Reuses the SAME photo/fallback convention as .card-art (PHOTO_FOR, the
+   <img>, the onerror-added .noimg class) at thumbnail size rather than
+   inventing new image-handling — see promoThumbHtml(). A distinct class
+   name (not .card-art itself) only because the aspect-ratio box needs to be
+   84px wide here instead of filling a full card header. */
+.promo-thumb{position:relative;width:84px;flex:none;aspect-ratio:5/2;
+  border-radius:8px;overflow:hidden;
+  background:radial-gradient(120% 150% at 50% 15%,#22262D 0%,#15171C 70%)}
+.promo-thumb .card-photo{position:absolute;inset:0;width:100%;height:100%;
+  object-fit:cover;display:none}
+.promo-thumb.has-photo .card-photo{display:block}
+.promo-thumb.has-photo .carart{display:none}
+.promo-thumb.has-photo.noimg .carart{display:block}
+.promo-thumb.has-photo.noimg .card-photo{display:none}
+.promo-thumb .carart{position:absolute;left:50%;top:46%;
+  transform:translate(-50%,-50%);width:78%;height:auto;display:block}
 /* Once a car is in service, leaving is the sensible next move, so the header
    button stops being a quiet dismiss and becomes the primary action. */
 #gar-close.go{border-color:var(--accent);color:var(--accent);font-weight:500}
@@ -3225,7 +3288,19 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
             <table><thead><tr><th>Vehicle</th><th>State</th><th class="r">SoC</th><th class="r">Today</th><th class="r">Queue</th></tr></thead>
             <tbody id="fleet-rows"></tbody></table>
           </div>
+        </div>
+        <!-- Buy/Add-a-vehicle and the roster's own manufacturer-promo teaser
+             (transferplan.md §2 extension) live OUTSIDE #pb-fleet on purpose —
+             siblings of it, like .lockbar already is (see paintLocks()) —
+             so that when the panel is locked (S.cars.length===0, stage
+             'fleet' not yet earned) the CSS that greys out #pb-fleet and
+             sets pointer-events:none on it does not also swallow the ONE
+             button that gets a player OUT of that locked state. Before this
+             it silently could not be clicked at all while the panel was
+             locked; the top-nav Garage icon was the only working door in. -->
+        <div class="fleet-cta" id="fleet-cta">
           <button class="wbtn" id="buy">Buy</button>
+          <div class="fleet-promo-cta" id="fleet-promo-cta" hidden></div>
         </div>
       </section>
 
@@ -3633,9 +3708,10 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
     </div>
     <div class="gar-sub" id="gar-sub"></div>
     <div class="gar-slots" id="gar-slots" hidden></div>
-    <!-- transferplan.md §2: the $99 manufacturer-promo CTA. Only ever one
-         row (the immediately previous city), so no list markup is needed —
-         see promoEligible()/renderGarage(). -->
+    <!-- transferplan.md §2: the $99 manufacturer-promo CTA. Always the
+         immediately previous city, but that city's slot can hold more than
+         one car — renderGarage() lists every one of them here, each with
+         its own "Bring it in" button (promoRowHtml()/promoConfirm(carId)). -->
     <div class="gar-promo" id="gar-promo" hidden></div>
     <div class="cards" id="gar-cards"></div>
     <div class="sv-foot">
@@ -7541,10 +7617,10 @@ function rayCityUnlocked(id){
      by the time it resolves, it does nothing. */
   if(!promoUsed(id)&&!canAfford(cheapestRentEntry(),'rent')){
     promoSourceFor(id).then(function(src){
-      if(!src||S.ray.cur!=='cityunlock') return;
-      const v=catalog(src.car.model);
+      if(!src||!src.cars||!src.cars.length||S.ray.cur!=='cityunlock') return;
+      const car0=src.cars[0], v=catalog(car0.model);
       $('ray-text').innerHTML+='<br><br>One more thing: a manufacturer promo can '+
-        'bring your '+escapeHtml(v?v.name:src.car.model)+' in from '+
+        'bring your '+escapeHtml(v?v.name:car0.model)+' in from '+
         escapeHtml(CITIES[src.prevId].name)+' for a flat '+money(PROMO_FEE)+' — '+
         'look for it in the garage once you get there.';
     });
@@ -10336,6 +10412,15 @@ function render(){
   }
   $('buy').textContent=S.cars.length?'Add a vehicle':'Choose a vehicle';
   $('buy').disabled=false;
+  /* Empty fleet: this is THE action, so it borrows the same filled-gradient
+     weight as the Clock-on CTA / the garage's own .pri buy rows (see the
+     #buy.pri CSS) instead of sitting there as a plain, muted button. Also
+     the moment the roster's own promo teaser needs to be kept in sync —
+     ensurePromoSrc() is a no-op once PROMO_SRC is already fresh for this
+     city, so calling it every render tick costs nothing extra. */
+  $('buy').classList.toggle('pri',S.cars.length===0);
+  if(S.cars.length===0) ensurePromoSrc();
+  renderFleetPromo();
 
   /* The operators panel is Act 2 material — in Act 1 you ARE the operator,
      so that panel is now Platforms and is rendered further down. Latency is
@@ -11414,7 +11499,7 @@ const SLOTS=['slot1','slot2','slot3'];
    SAVE_V above is the STATE SHAPE version and moves only when the
    snapshot format changes — the two are deliberately independent, so
    shipping 0.9.0 does not invalidate 0.8.0 saves. */
-const VERSION='0.74.0';
+const VERSION='0.75.0';
 
 function snapshot(){
   return {
@@ -13035,6 +13120,54 @@ function renderSlots(){
   el.innerHTML=h;
   el.hidden=false;
 }
+/* One promo candidate's photo, at thumbnail size — SAME img/fallback
+   convention artHtml() uses for the catalogue cards (PHOTO_FOR, onerror
+   adding .noimg to reveal the silhouette), just scoped to .promo-thumb
+   instead of .card-art so it can be 84px wide instead of a full card
+   header. No new image-handling logic, only a smaller box for it. */
+function promoThumbHtml(v){
+  const photo=v&&PHOTO_FOR[v.id];
+  const img=photo?'<img class="card-photo" src="'+photo+'" alt="" aria-hidden="true" '+
+    'loading="lazy" onerror="this.parentElement.classList.add(\'noimg\')">':'';
+  return '<div class="promo-thumb'+(photo?' has-photo':'')+'">'+img+
+    (v?silhouette(v.id):'')+'</div>';
+}
+/* One row per car sitting in the previous city's slot — model, its own id,
+   and its own "Bring it in" button, parameterised by car id so promoConfirm()
+   knows exactly which one was picked (see promoConfirm(carId) below). */
+function promoRowHtml(c){
+  const v=catalog(c.model);
+  return '<div class="promo-row">'+
+    promoThumbHtml(v)+
+    '<div class="promo-info"><b>'+escapeHtml(v?v.name:c.model)+'</b>'+
+      '<small>'+escapeHtml(c.id)+'</small></div>'+
+    '<button class="pri avail" data-promo-go="'+escapeHtml(c.id)+'"'+
+    (S.cash<PROMO_FEE?' disabled':'')+'>Bring it in — '+money(PROMO_FEE)+'</button>'+
+  '</div>';
+}
+/* Condensed promo visibility inside the Fleet Roster panel itself, not only
+   the garage modal — Pavel's ask: the player should be able to tell the
+   promo EXISTS without opening the garage. Summary only (count + city +
+   flat fee); the full per-car picker with photos still lives in the
+   garage's own .gar-promo list, one click away via openGarage(). Called
+   from render() whenever the roster is empty, and again the moment
+   refreshPromoSrc()'s async Store.get() lands or a transfer changes the
+   fleet count — same "re-render when the fetch resolves" pattern
+   renderGarage() already uses. */
+function renderFleetPromo(){
+  const el=$('fleet-promo-cta');
+  if(!el) return;
+  if(promoEligible()){
+    const n=PROMO_SRC.cars.length;
+    el.hidden=false;
+    el.innerHTML='<span>Manufacturer promo available — '+
+      (n>1?n+' cars':'a car')+' from <b>'+escapeHtml(CITIES[PROMO_SRC.prevId].name)+
+      '</b>, from '+money(PROMO_FEE)+'</span>'+
+      '<button id="fleet-promo-open">View</button>';
+  } else {
+    el.hidden=true; el.innerHTML='';
+  }
+}
 function renderGarage(){
   $('gar-cash').textContent=money(S.cash);
   $('gar-cards').innerHTML=CATALOG.map(cardHtml).join('');
@@ -13065,19 +13198,19 @@ function renderGarage(){
   $('gar-note').textContent=S.cars.length
     ? 'A rented car can be handed back; a financed one cannot.'
     : 'Fixed costs are charged at midnight whether you clock on or not.';
-  /* transferplan.md §2: one row, only ever from the immediately previous
-     city, only while this city's garage is genuinely empty and only until
-     PROG.promoUsed[S.city] closes the door for good. */
+  /* transferplan.md §2: every car sitting in the immediately previous
+     city's slot, only while this city's garage is genuinely empty and only
+     until PROG.promoUsed[S.city] closes the door for good. One row per car
+     (promoRowHtml()) — the player picks which one to bring in, not just
+     whichever happened to be first. */
   const gp=$('gar-promo');
   if(gp){
     if(promoEligible()){
-      const v=catalog(PROMO_SRC.car.model);
+      const prevName=CITIES[PROMO_SRC.prevId].name;
       gp.hidden=false;
-      gp.innerHTML='<div class="promo-txt"><b>Manufacturer promo:</b> bring your '+
-        escapeHtml(v?v.name:PROMO_SRC.car.model)+' from '+
-        escapeHtml(CITIES[PROMO_SRC.prevId].name)+' — '+money(PROMO_FEE)+'</div>'+
-        '<button class="pri avail" id="gar-promo-go"'+
-        (S.cash<PROMO_FEE?' disabled':'')+'>Bring it in — '+money(PROMO_FEE)+'</button>';
+      gp.innerHTML='<div class="promo-txt"><b>Manufacturer promo:</b> bring a car in '+
+        'from '+escapeHtml(prevName)+' for a flat '+money(PROMO_FEE)+' — pick one:</div>'+
+        PROMO_SRC.cars.map(promoRowHtml).join('');
     } else {
       gp.hidden=true; gp.innerHTML='';
     }
@@ -13497,7 +13630,7 @@ function cheapestRentEntry(){
 let PROMO_SRC=null;
 function refreshPromoSrc(){
   const cid=S.city, prevId=prevCityId(cid);
-  PROMO_SRC={city:cid, prevId:prevId, car:null, ready:!prevId};
+  PROMO_SRC={city:cid, prevId:prevId, cars:[], ready:!prevId};
   if(!prevId) return Promise.resolve();
   /* physKey() only rewrites the bare literal 'auto' — 'auto:<city>' passes
      straight through Store.get() untouched, which is exactly what lets this
@@ -13511,9 +13644,13 @@ function refreshPromoSrc(){
   return Store.get(key).then(function(sv){
     if(PROMO_SRC.city!==cid) return;  /* city moved again while this was in flight */
     const cars=sv&&sv.s&&sv.s.cars;
-    PROMO_SRC.car=(cars&&cars.length)?cars[0]:null;
+    /* EVERY car sitting in the previous city's slot, not just the first —
+       the player picks which one to bring in (renderGarage()'s promo list,
+       plus the roster's own condensed teaser — see renderFleetPromo()). */
+    PROMO_SRC.cars=(cars&&cars.length)?cars.slice():[];
     PROMO_SRC.ready=true;
     if(!$('garage').hidden) renderGarage();
+    renderFleetPromo();
   }).catch(function(){
     if(PROMO_SRC.city===cid) PROMO_SRC.ready=true;
   });
@@ -13524,10 +13661,12 @@ function ensurePromoSrc(){
 /* True only in the exact window the promo is meant for: this city's garage
    is empty, nobody has ever bought/rented/financed a first car here (that
    permanently closes the door — see acquire()), and the immediately
-   previous city actually has a car sitting in its save slot right now. */
+   previous city actually has at least one car sitting in its save slot
+   right now. */
 function promoEligible(){
   return !!(S.cars.length===0 && !S.transferring && !promoUsed(S.city) &&
-    PROMO_SRC && PROMO_SRC.city===S.city && PROMO_SRC.ready && PROMO_SRC.car);
+    PROMO_SRC && PROMO_SRC.city===S.city && PROMO_SRC.ready &&
+    PROMO_SRC.cars && PROMO_SRC.cars.length>0);
 }
 /* Same question, but for a city that is NOT necessarily the one on screen —
    used only by rayCityUnlocked() below, which fires for a city the player
@@ -13537,17 +13676,25 @@ function promoSourceFor(id){
   if(!prevId) return Promise.resolve(null);
   return Store.get('auto:'+prevId).then(function(sv){
     const cars=sv&&sv.s&&sv.s.cars;
-    return (cars&&cars.length)?{prevId:prevId,car:cars[0]}:null;
+    return (cars&&cars.length)?{prevId:prevId,cars:cars.slice()}:null;
   }).catch(function(){ return null });
 }
 /* Confirming is final (transferplan.md "Decisions": no recall/cancel). The
    $99 debit and the splice out of the previous city's slot both happen HERE,
    synchronously with the click — the 15s that follows is a visual only,
-   nothing left to undo if the player switches away mid-transit. */
-function promoConfirm(){
+   nothing left to undo if the player switches away mid-transit.
+
+   carId picks WHICH of the previous city's cars comes in — the garage's
+   per-row button always passes one explicitly; it defaults to the first
+   car only for callers (existing tests, the roster's own condensed nudge)
+   that never had more than one to choose from. */
+function promoConfirm(carId){
   if(!promoEligible()) return;
+  const cars=PROMO_SRC.cars||[];
+  const car=carId?cars.filter(function(c){ return c.id===carId })[0]:cars[0];
+  if(!car) return;
   if(S.cash<PROMO_FEE){ toast('Needs '+money(PROMO_FEE),true); return; }
-  const car=PROMO_SRC.car, prevId=PROMO_SRC.prevId, prevName=CITIES[prevId].name;
+  const prevId=PROMO_SRC.prevId, prevName=CITIES[prevId].name;
   S.cash-=PROMO_FEE; PROG.companyCash=S.cash;
   /* Variable, not a literal — see refreshPromoSrc()'s comment on why this
      can't be a quoted 'auto:'+prevId directly inside the Store call. */
@@ -13559,9 +13706,9 @@ function promoConfirm(){
   }).catch(function(){});
   /* Gone from the source city the instant it's confirmed — no ghost row for
      a player who switches back before the animation finishes. */
-  PROMO_SRC.car=null;
+  PROMO_SRC.cars=cars.filter(function(c){ return c.id!==car.id });
   log('Fleet','manufacturer promo — bringing '+car.id+' in from '+prevName+' for '+money(PROMO_FEE),0);
-  progSave(); renderGarage();
+  progSave(); renderGarage(); renderFleetPromo();
   startTransfer(car,prevId);
 }
 /* The 15-second transit animation. Fixed duration for every leg regardless
@@ -13638,7 +13785,7 @@ function finishTransfer(){
     markPromoUsed(S.city);
     log('Fleet',nc.id+' arrived from '+CITIES[prevId].name+' — '+
       uKm(dist,0)+' added to the odometer',0);
-    checkUnlocks(); renderGarage(); render();
+    checkUnlocks(); renderGarage(); renderFleetPromo(); render();
     autosaveSoon('promo-transfer');
   }
   TRANSFER=null;
@@ -13662,10 +13809,11 @@ function maybeNudgePromo(){
   markPromoNudged(S.city);
   raySpotClear();
   S.ray.cur='promo';
-  const v=catalog(PROMO_SRC.car.model);
+  const car0=PROMO_SRC.cars[0], v=catalog(car0.model);
+  const extra=PROMO_SRC.cars.length>1?' (or one of '+(PROMO_SRC.cars.length-1)+' others)':'';
   $('ray-text').innerHTML='<b>Leaving without a car?</b><br><br>Nothing earns until '+
     'one is in service — but there\'s a cheaper door than the garage right now. A '+
-    'manufacturer promo can bring your '+escapeHtml(v?v.name:PROMO_SRC.car.model)+
+    'manufacturer promo can bring your '+escapeHtml(v?v.name:car0.model)+extra+
     ' in from '+escapeHtml(CITIES[PROMO_SRC.prevId].name)+' for a flat '+money(PROMO_FEE)+'.';
   rayFoot('Got it','','');
   $('ray').hidden=false;
@@ -13992,7 +14140,17 @@ $('gar-cards').addEventListener('click',function(e){
   if(b) acquire(b.dataset.get,b.dataset.how);
 });
 $('gar-promo').addEventListener('click',function(e){
-  if(e.target.closest('#gar-promo-go')) promoConfirm();
+  /* One "Bring it in" button per candidate car now, not a single fixed
+     #gar-promo-go — data-promo-go carries which car THIS row's button is
+     for, straight into promoConfirm(carId). */
+  const b=e.target.closest('button[data-promo-go]');
+  if(b) promoConfirm(b.dataset.promoGo);
+});
+$('fleet-promo-cta').addEventListener('click',function(e){
+  /* The roster's condensed teaser never lists cars itself (see
+     renderFleetPromo()) — its one button just opens the garage, where the
+     full per-car picker with photos already lives. */
+  if(e.target.closest('#fleet-promo-open')) openGarage();
 });
 $('sv-close').addEventListener('click',function(){ $('savemgr').hidden=true });
 $('savemgr').addEventListener('click',function(e){
@@ -14896,6 +15054,7 @@ window.DH_ACT1={
   promoEligible:promoEligible,promoSourceFor:promoSourceFor,
   promoConfirm:promoConfirm,refreshPromoSrc:refreshPromoSrc,
   ensurePromoSrc:ensurePromoSrc,maybeNudgePromo:maybeNudgePromo,
+  renderFleetPromo:renderFleetPromo,promoRowHtml:promoRowHtml,
   transferring:function(){ return TRANSFER },
   finishTransfer:finishTransfer};
 window.DH_SAVE={snapshot:snapshot,restore:restore,migrate:migrate,VERSION:VERSION,
