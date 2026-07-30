@@ -1,21 +1,39 @@
-# Deadhead
+<div align="center">
 
 <img width="2752" height="1536" alt="Deadhead — a robotaxi fleet simulator" src="https://github.com/user-attachments/assets/d26dc3ce-3da6-4391-bb7f-4b20c49e5fb8" />
 
+# DEADHEAD
+
+### You never drive. That's the job.
+
 **A robotaxi fleet simulator where you never touch a steering wheel.**
+
+[![Play free in your browser](https://img.shields.io/badge/▶_PLAY_FREE-game.deadhead.workers.dev-3E6AE1?style=for-the-badge&labelColor=171A20)](https://game.deadhead.workers.dev/)
+[![No install](https://img.shields.io/badge/no%20install-1F8A4C?style=flat-square&labelColor=171A20)](#-play-it-now)
+[![No account](https://img.shields.io/badge/no%20account-1F8A4C?style=flat-square&labelColor=171A20)](#-play-it-now)
+[![Free forever](https://img.shields.io/badge/free%20forever-1F8A4C?style=flat-square&labelColor=171A20)](#buy-paolo-a-coffee)
+[![One HTML file](https://img.shields.io/badge/one%20HTML%20file-no%20build%20step-DE9A4E?style=flat-square&labelColor=171A20)](deadhead.html)
+
+<img width="75%" alt="Deadhead gameplay — the centre-console fleet manager in action" src="https://github.com/user-attachments/assets/72f0fab7-906a-4ec9-800b-75fa35a31023" />
+
+</div>
 
 You are not the driver. You are the person the driver got replaced by — and the job turns
 out to be harder. Six cars, six real cities mapped to the metre, and a spreadsheet
 that bites. All of it happens on one screen: the car's own centre console.
 
-<div align="center">
-<img width="75%" alt="Deadhead gameplay — the centre-console fleet manager in action" src="https://github.com/user-attachments/assets/72f0fab7-906a-4ec9-800b-75fa35a31023" />
-</div>
-
 > *Deadhead* — the trade word for driving with no fare aboard. It is the thing that quietly
 > kills a robotaxi fleet's margin, and the reason this game is named after it.
 
-## ▶ [Play it now — game.deadhead.workers.dev](https://game.deadhead.workers.dev/)
+<div align="center">
+
+| 💵 $800 | 🚗 6 | 🏙️ 6 | 📵 0 |
+|:---:|:---:|:---:|:---:|
+| starting cash | real vehicles | real cities | ads, ever |
+
+</div>
+
+## ▶ Play it now — [game.deadhead.workers.dev](https://game.deadhead.workers.dev/)
 
 No install. No account. No download. It runs in the browser you already have.
 
@@ -31,10 +49,10 @@ That is not a difficulty spike, it is the lesson. You cannot buy your way in, so
 choose *how you hold the asset* — and each way of holding it is wrong in a different way.
 
 | | up front | per day | what it really costs |
-|---|---|---|---|
-| **Buy outright** | $30,000+ | least | impossible on day one, and that's the point |
-| **Finance** | 15% down | middling | a debt you cannot hand back |
-| **Rent** | nothing | most | the meter never stops. Ever. |
+|---|:---:|:---:|---|
+| 🏦 **Buy outright** | $30,000+ | least | impossible on day one, and that's the point |
+| 📄 **Finance** | 15% down | middling | a debt you cannot hand back |
+| 🔑 **Rent** | nothing | most | the meter never stops. Ever. |
 
 Renting costs nothing today and the most every day after. Financing is cheaper for exactly
 as long as you keep working, and a mistake the moment you stop. **Neither is wrong.**
@@ -42,6 +60,12 @@ as long as you keep working, and a mistake the moment you stop. **Neither is wro
 None of the six are financeable on day one — $800 doesn't clear a single down payment plus
 lender reserve. Renting is the only door in; financing is a later move once you've earned
 your way to it.
+
+<div align="center">
+<img src="docs/img/garage.jpg" alt="The garage: six vehicle cards, each showing buy/finance/rent, with $800 on screen and every buy-outright and finance option greyed out" width="820">
+
+<sub>Day one, real numbers on screen. $30,000 and up is greyed out — not a lock, just arithmetic.</sub>
+</div>
 
 ---
 
@@ -53,7 +77,7 @@ mass-market robotaxi hardware actually achieves in 2026, and the ladder between 
 of it is flavour text; each spec feeds a system that is already running.
 
 | | pack | range | seats | what it means for you |
-|---|---|---|---|---|
+|---|:---:|:---:|:---:|---|
 | **Cab** | 48 kWh | 300 mi | 4 | no wheel, no pedals, cheapest to own — and on a charger constantly |
 | **Saloon** | 62 kWh | 321 mi | 5 | the entry trim: cheap to hold, short on legs |
 | **Crossover** | 70 kWh | 321 mi | 5 | more pack, more frontal area — same distance for more money |
@@ -70,18 +94,24 @@ notice for two days.
 ## Six cities, one chain
 
 Austin is the tutorial. Clock off your first shift there and Dallas unlocks; clock off in
-Dallas and Miami unlocks; then Tampa, then Orlando, then San Francisco. Every city is a real,
+Dallas and Miami unlocks; then Tampa, then Orlando, then San Francisco. Every city is a real
 city where driverless ride-hailing is actually operating, built from its published service
 area, real electricity tariff and real permit status — not a reskin with a new coat of paint.
 
+<div align="center">
+
+**Austin** → **Dallas** → **Miami** → **Tampa** → **Orlando** → **San Francisco** → 🔒 Phoenix → 🔒 Las Vegas
+
+</div>
+
 | city | permit | fleet cap | goal | what's actually true about it |
-|---|---|---|---|---|
-| **Austin** | Supervised | 17 | $40,000 | the tutorial. Seven zones plus the airport, and Austin Energy's real five-hour evening peak |
-| **Dallas** | Unsupervised | 24 | $60,000, safety ≥ 70 | launched with no safety monitor at all. Highway-speed trips wear the car harder, but S Riverfront is 34 stalls at 325 kW — the best charging site in the game |
-| **Miami** | Unsupervised | 16 | $50,000, safety ≥ 75 | a tiny geofence with no airport and no downtown. FPL's peak runs nine straight hours, and Florida carries the harshest insurance rates in the table |
-| **Tampa** | Unsupervised | 14 | $45,000 | the exact mirror of Miami: all core, no suburbs, and an evening rush instead of a morning one — plus the cheapest overnight power in the game, if the fleet can wait for it |
-| **Orlando** | Unsupervised | 14 | $42,000 | a corridor that runs past MCO without touching it. No airport zone, no brewery zones, the thinnest demand of the six — and the cheapest power of all of them |
-| **San Francisco** | Supervised | 12 | $38,000, safety ≥ 75 | still invite-only in reality, hence the smallest fleet in the game. PG&E's off-peak price alone beats every other city's peak. Highest insurance, worst congestion — and the first city where the airport run is real |
+|---|:---:|:---:|---|---|
+| 🎓 **Austin** | Supervised | 17 | $40,000 | the tutorial. Seven zones plus the airport, and Austin Energy's real five-hour evening peak |
+| 🤠 **Dallas** | Unsupervised | 24 | $60,000, safety ≥ 70 | launched with no safety monitor at all. Highway-speed trips wear the car harder, but S Riverfront is 34 stalls at 325 kW — the best charging site in the game |
+| 🌴 **Miami** | Unsupervised | 16 | $50,000, safety ≥ 75 | a tiny geofence with no airport and no downtown. FPL's peak runs nine straight hours, and Florida carries the harshest insurance rates in the table |
+| 🌇 **Tampa** | Unsupervised | 14 | $45,000 | the exact mirror of Miami: all core, no suburbs, and an evening rush instead of a morning one — plus the cheapest overnight power in the game, if the fleet can wait for it |
+| 🎢 **Orlando** | Unsupervised | 14 | $42,000 | a corridor that runs past MCO without touching it. No airport zone, no brewery zones, the thinnest demand of the six — and the cheapest power of all of them |
+| 🌉 **San Francisco** | Supervised | 12 | $38,000, safety ≥ 75 | still invite-only in reality, hence the smallest fleet in the game. PG&E's off-peak price alone beats every other city's peak. Highest insurance, worst congestion — and the first city where the airport run is real |
 
 Nothing above is tuned for difficulty after the fact. Where the real service area excludes
 downtown, the airport, or every brewery in town, the game excludes it too.
@@ -93,6 +123,10 @@ tab simply doing nothing.
 ---
 
 ## What you actually do
+
+<div align="center">
+<img src="docs/img/console.jpg" alt="A real Deadhead shift in Austin: fleet roster, platforms, rapid-charge network, map, vehicle card, books and offer board all on one console" width="820">
+</div>
 
 **Clock on.** Cars only earn while you are watching them — you are the remote operator.
 Clock off and they park, and still owe their fixed cost at midnight. A four-hour shift owns
@@ -131,17 +165,14 @@ Whether "eventually" is soon enough is your problem.
 
 ## Real data, not set dressing
 
-- **Six real geofences** — Austin, Dallas, Miami, Tampa, Orlando, San Francisco — each drawn
-  from the actual published or reported service area, not a symmetric shape dropped on the map
-- **Live weather** for whichever city you're in, and its real local clock
-- **Real charging sites** in every city, with actual coordinates, stall counts and peak kW —
-  a 72 kW site charges slower because it genuinely does
-- **Real fares** calibrated against observed prices in each market: about $18 for a downtown
-  Austin hop, $29–32 from Austin's airport, and a different scale entirely in each other city
-- **Real MSRP** on all six cars, with a cost side scaled to match
-- **Real time-of-use electricity** from each city's actual utility — Austin Energy, Oncor,
-  FPL, TECO, OUC, PG&E — which is why charging at 4am is a strategy in most cities and barely
-  worth it in San Francisco, where even the cheap hour is dear
+|   |   |
+|---|---|
+| ✅ **Six real geofences** | Austin, Dallas, Miami, Tampa, Orlando, San Francisco — each drawn from the actual published or reported service area, not a symmetric shape dropped on the map |
+| ✅ **Live weather** | for whichever city you're in, and its real local clock |
+| ✅ **Real charging sites** | in every city, with actual coordinates, stall counts and peak kW — a 72 kW site charges slower because it genuinely does |
+| ✅ **Real fares** | calibrated against observed prices in each market: about $18 for a downtown Austin hop, $29–32 from Austin's airport, and a different scale entirely in each other city |
+| ✅ **Real MSRP** | on all six cars, with a cost side scaled to match |
+| ✅ **Real time-of-use electricity** | from each city's actual utility — Austin Energy, Oncor, FPL, TECO, OUC, PG&E — which is why charging at 4am is a strategy in most cities and barely worth it in San Francisco, where even the cheap hour is dear |
 
 Everything *around* the hardware — Hitchr, Zipp, Meridian, Halo — is invented. The cars and
 the numbers are not. That line is deliberate.
@@ -149,6 +180,8 @@ the numbers are not. That line is deliberate.
 ---
 
 ## Paolo
+
+<img src="docs/img/paolo.jpg" alt="Paolo Cortez, the in-game tutorial and advisor character" align="right" width="180" style="margin-left:16px;border-radius:8px">
 
 Forty-one years in a cab before he got out, while getting out was still his idea. He walks
 you through your first day, then goes quiet — and speaks again only once you've been stuck
@@ -158,15 +191,22 @@ he's usually right.
 A standing **Now** line always names the single most useful next thing, so you're never
 lost. It never tells you what to *choose*.
 
+<br clear="right">
+
 ---
 
 ## Also in the box
 
-- Save anywhere, or sign in for cloud saves synced across devices
-- Light and dark themes
-- Works on a phone, a laptop and an ultrawide — the layout genuinely reworks itself
-- Passwords are never transmitted: key derivation runs in your browser
-- One HTML file, no build step — [download it](deadhead.html) and it runs offline
+- 💾 Save anywhere, or sign in for cloud saves synced across devices
+- 🌗 Light and dark themes
+- 📱 Works on a phone, a laptop and an ultrawide — the layout genuinely reworks itself
+- 🔒 Passwords are never transmitted: key derivation runs in your browser
+- 📄 One HTML file, no build step — [download it](deadhead.html) and it runs offline
+
+<div align="center">
+<img src="marketing/screens/console-wide-day.jpg" alt="Deadhead console, day theme" width="49%">
+<img src="marketing/screens/console-wide-night.jpg" alt="Deadhead console, night theme" width="49%">
+</div>
 
 ---
 
@@ -182,8 +222,11 @@ There's a **Coffee** button in the top right of the game, too. Paolo will ask yo
 
 ---
 
-**[▶ Play Deadhead](https://game.deadhead.workers.dev/)** · Building or deploying it? See
-**[DEVELOPING.md](DEVELOPING.md)**.
+<div align="center">
+
+### [▶ Play Deadhead](https://game.deadhead.workers.dev/)
+
+Building or deploying it? See **[DEVELOPING.md](DEVELOPING.md)**.
 
 <sub>Deadhead is an independent work of fiction. It is not affiliated with, endorsed by,
 sponsored by or connected to any vehicle manufacturer or ride-hailing operator, and it uses
@@ -192,3 +235,5 @@ and commercial term in the game — Axiom, Hitchr, Zipp, Meridian, Halo — is i
 real is the arithmetic: the service areas, electricity tariffs, permit regimes and observed
 street fares are drawn from public information, because a simulation whose numbers you can
 check is the only kind worth arguing with.</sub>
+
+</div>
