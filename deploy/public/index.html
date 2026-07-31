@@ -825,26 +825,28 @@ html[data-theme="night"] .panel[data-tone="amber"]{--tone-rgb:245,185,46;--tone-
    a tail, the name line above in small caps-ish grey. display:block on the
    bubble and the column is not cosmetic — it is what makes a paragraph paint as
    one rounded box instead of as ragged per-line fragments. */
-#ray .thread,#lockmsg .thread{display:flex;align-items:flex-end;gap:8px}
-#ray .avatar,#lockmsg .avatar{flex:0 0 30px;width:30px;height:30px;
+#ray .thread,#lockmsg .thread,#msg-list .th-row{display:flex;align-items:flex-end;gap:8px}
+#ray .avatar,#lockmsg .avatar,#msg-list .avatar{flex:0 0 30px;width:30px;height:30px;
   border-radius:50%;background:linear-gradient(160deg,#9AA0AB,#6C7178);
   color:#fff;font-size:11px;font-weight:600;letter-spacing:.02em;
   display:flex;align-items:center;justify-content:center}
-#ray .ray-lines,#lockmsg .col{flex:1;min-width:0;display:block}
+#ray .ray-lines,#lockmsg .col,#msg-list .col{flex:1;min-width:0;display:block}
 #ray .who,#lockmsg .who{display:flex;align-items:baseline;gap:6px;margin:0 0 5px 3px}
 #ray .who b,#lockmsg .who b{font-size:11px;font-weight:500;letter-spacing:.02em;
   color:var(--text-3)}
 #ray .who span,#lockmsg .who span{font-size:9px;letter-spacing:.09em;
   text-transform:uppercase;color:var(--text-4)}
-#ray .bubble,#lockmsg .bubble{display:block;position:relative;background:#E9E9EB;
+#ray .bubble,#lockmsg .bubble,#msg-list .bubble{display:block;position:relative;background:#E9E9EB;
   border-radius:18px 18px 18px 5px;padding:9px 13px;
   box-shadow:inset 0 0 0 1px rgba(0,0,0,.03)}
 html[data-theme="night"] #ray .bubble,
-html[data-theme="night"] #lockmsg .bubble{background:#2C2C2E;
+html[data-theme="night"] #lockmsg .bubble,
+html[data-theme="night"] #msg-list .bubble{background:#2C2C2E;
   box-shadow:inset 0 0 0 1px rgba(255,255,255,.05)}
-#ray .body,#lockmsg .bubble{font-size:13px;line-height:1.45;color:#171A20}
+#ray .body,#lockmsg .bubble,#msg-list .bubble{font-size:13px;line-height:1.45;color:#171A20}
 html[data-theme="night"] #ray .body,
-html[data-theme="night"] #lockmsg .bubble{color:#F2F2F4}
+html[data-theme="night"] #lockmsg .bubble,
+html[data-theme="night"] #msg-list .bubble{color:#F2F2F4}
 /* The requirement is a SECOND MESSAGE, not a caption — two bubbles in a row is
    how a person actually texts a rule after an opinion, and it stops the sentence
    that matters most being set in the smallest, palest type on screen (which is
@@ -852,6 +854,79 @@ html[data-theme="night"] #lockmsg .bubble{color:#F2F2F4}
    side so the pair reads as one thread. */
 #lockmsg .bubble+.bubble{margin-top:5px;border-radius:18px 18px 18px 5px}
 #lockmsg .need{font-weight:500}
+/* ---- THE THREAD (Messages panel) -----------------------------------------
+   Bubble/avatar/who values are NOT repeated here — this surface is added to
+   the shared selector lists above, per the rule at the top of that block.
+   What is genuinely its own: the vertical rhythm of a scrolling
+   conversation, the day separators, and the timestamp under each message. */
+#pb-msg{max-height:340px;overflow-y:auto;overscroll-behavior:contain}
+#msg-list{display:flex;flex-direction:column;gap:10px;padding:2px 1px 4px}
+#msg-list .th-row{align-items:flex-end}
+/* The avatar repeats beside every message on purpose: it is one voice, and a
+   thread that drops it after the first bubble stops reading as a phone. */
+#msg-list .bubble{width:fit-content;max-width:100%}
+#msg-list .bubble.pic{padding:7px;margin-top:5px}
+#msg-list .bubble.pic img,#msg-list .bubble.pic video{display:block;width:100%;
+  max-width:210px;height:auto;border-radius:12px;background:#fff}
+#msg-list .bubble.pic .cap{display:block;padding:6px 3px 1px;font-size:10.5px;
+  line-height:1.4;color:#5C5E62}
+html[data-theme="night"] #msg-list .bubble.pic .cap{color:#A9ACB2}
+#msg-list .th-time{margin:3px 0 0 4px;font-size:9.5px;color:var(--text-4);
+  font-variant-numeric:tabular-nums}
+#msg-list .th-day{display:flex;align-items:center;justify-content:center;margin:4px 0 2px}
+#msg-list .th-day span{font-size:9px;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--text-4);background:var(--inset);border-radius:9px;padding:3px 9px}
+
+/* ---- THE SIGNED CONTRACT (the finale) --------------------------------------
+   The photograph ships with an EMPTY signature line — no name, no date, no
+   figure anywhere in the pixels. That is the same rule the job-ad poster
+   broke and had to be cropped for: it baked "you currently meet 0 of 9"
+   into the art, which was true for exactly one moment and stale forever
+   after. Everything player-specific here is live DOM on top of the photo.
+
+   Positioned in PERCENTAGES of the image, measured off the real signature
+   line in finale-contract.jpg (it runs from 908,1003 to 1244,898 in the
+   1920x1288 original, i.e. -17.36 degrees), so it stays locked to the line
+   at any rendered size — the card, the thread and a phone are all different
+   widths.
+
+   container-type:inline-size + cqw for the font: the signature has to scale
+   WITH the photo, and cqw is the only unit that means "percent of this
+   box's width" for type. The exact size is set inline per player, because
+   a long display name has to shrink to stay on the line — see sigSize(). */
+.contract{position:relative;container-type:inline-size;
+  width:100%;max-width:100%;margin-top:2px;cursor:zoom-in}
+/* Tap to enlarge — a photo in a phone thread opens, and at card width the
+   contract is only ~296px across, which is no way to end a game. Same
+   markup, same percentage geometry, just a bigger container: the signature
+   is sized in cqw so it scales with it for free. */
+#photolb{position:fixed;inset:0;z-index:1300;display:flex;align-items:center;
+  justify-content:center;padding:24px;background:rgba(10,11,14,.82);
+  cursor:zoom-out}
+#photolb[hidden]{display:none}
+#photolb .contract{width:min(1100px,92vw);max-width:none;cursor:zoom-out}
+#photolb .contract img{border-radius:14px;
+  box-shadow:0 40px 90px -30px rgba(0,0,0,.7)}
+.contract img{display:block;width:100%;height:auto;border-radius:12px;background:#fff}
+.contract .sig{position:absolute;left:48.85%;top:77.41%;
+  transform-origin:0 0;transform:rotate(-17.36deg) translateY(-100%);
+  white-space:nowrap;line-height:1;color:#1B2030;
+  /* System handwriting faces only — no webfont download for one moment in
+     the game. Falls back to an italic serif, which still reads as signed. */
+  font-family:'Snell Roundhand','Segoe Script','Bradley Hand','Lucida Handwriting',cursive;
+  font-style:italic;font-weight:600}
+html[data-theme="night"] .contract .sig{color:#1B2030}
+.contract .stamp{position:absolute;left:6%;bottom:5%;font-size:2.2cqw;
+  letter-spacing:.08em;text-transform:uppercase;color:#8A8F98}
+/* The career readback under the contract. Deliberately plain — a receipt,
+   not a trophy case; the Trophies panel already does celebration. */
+.fin-sum{margin-top:9px;padding-top:8px;border-top:1px solid var(--brd)}
+.fin-head{font-size:9px;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--text-4);margin-bottom:5px}
+.fin-row{display:flex;justify-content:space-between;gap:10px;font-size:11.5px;
+  padding:2px 0;font-variant-numeric:tabular-nums}
+.fin-row.tot{margin-top:4px;padding-top:5px;border-top:1px solid var(--brd);
+  color:var(--text-3)}
 /* On the dark in-car strip the same button needs the opposite contrast. */
 .t-ctl .ihelp,.t-cardbar .ihelp{border-color:rgba(255,255,255,.25);
   color:rgba(255,255,255,.55)}
@@ -1108,6 +1183,26 @@ html[data-theme="night"] .console{background:rgba(39,44,51,.4);
 #dh-recenter[aria-pressed="false"]{background:var(--accent);
   border-color:transparent;color:#fff}
 #dh-recenter[aria-pressed="false"]:hover{opacity:.88;background:var(--accent)}
+/* Follow shares every value with Recenter — one pill style on this map, not
+   two that can drift — and only overrides where it genuinely differs: it
+   sits above Recenter, and its pressed/unpressed meaning is INVERTED.
+   Recenter is quiet while following because following is its resting state;
+   Follow is loud while following, because riding with one car is the
+   deliberate, temporary thing you chose and should be able to see at a
+   glance that you are in. */
+#dh-follow{position:absolute;left:10px;bottom:48px;z-index:700;
+  display:flex;align-items:center;gap:6px;padding:5px 11px 5px 9px;
+  border:1px solid rgba(255,255,255,.22);border-radius:20px;
+  background:rgba(23,26,32,.82);color:#fff;font:inherit;font-size:10.5px;
+  letter-spacing:.08em;text-transform:uppercase;cursor:pointer;
+  box-shadow:0 1px 6px rgba(0,0,0,.28);
+  transition:background var(--dur-fast),border-color var(--dur-fast),opacity var(--dur-fast)}
+#dh-follow .ms{font-size:14px}
+#dh-follow:hover{background:rgba(23,26,32,.95);border-color:rgba(255,255,255,.5)}
+#dh-follow[aria-pressed="true"]{background:var(--accent);border-color:transparent}
+#dh-follow[aria-pressed="true"]:hover{opacity:.88;background:var(--accent)}
+#dh-follow:disabled{opacity:.4;cursor:default}
+#dh-follow:disabled:hover{background:rgba(23,26,32,.82);border-color:rgba(255,255,255,.22)}
 /* Other-city pins, directly on the real Leaflet map (v0.57.0) — replaced the
    separate stylised "Cities" overview modal (see COMMIT_0.57.0.txt). A real
    L.marker at the city's actual lat/lon, so it is only ever visible if the
@@ -3020,6 +3115,12 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
    card is a decision the player hasn't made yet (unlike .owned, which marks
    a unit already in service), it just happens to cost nothing. */
 .card.owncar{border-color:var(--accent)}
+/* The competency promo — northstarplan.md §4a. --s-charge (the same green
+   .owned uses): this card only ever exists because the player already
+   cleared a real bar, so it reads as an earned, positive state rather than
+   a plain purchase decision — same colour language as "already in your
+   fleet," a beat early. */
+.card.comppromo{border-color:var(--s-charge)}
 /* ---- Card art -------------------------------------------------------
    A drawn side profile on a dark ground, full bleed, with the vehicle's
    identity on a gradient scrim over it. This replaced nine full-bleed press
@@ -3453,6 +3554,16 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
               aria-label="Recenter the map on the service area"
               title="Following the service area — recenters every 30s. Pan or zoom to take over.">
               <svg class="ms"><use href="#i-recenter"/></svg><span>Recenter</span>
+            </button>
+            <!-- Ride along with one car. Sits beside Recenter, which is its
+                 off switch: Recenter means "show me everything again", so
+                 the two read as a pair. Pressed = currently following.
+                 Disabled with no cars, rather than hidden, so the control
+                 does not appear and disappear as the fleet changes. -->
+            <button id="dh-follow" type="button" aria-pressed="false"
+              aria-label="Ride along with the selected car"
+              title="Ride along with the selected car">
+              <svg class="ms"><use href="#i-recenter"/></svg><span>Follow</span>
             </button>
 
             <!-- "Take control" plays right here, in the car's own display,
@@ -3937,6 +4048,10 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
 
 <!-- Ray. Bottom-left, above the dock, never modal, never over the car rail.
      iMessage thread: avatar + contact line + a received bubble. -->
+<!-- Full-size photo view. Outside .app for the same reason #ray and the
+     modals are: .app is position:relative z-index:2, a stacking context
+     nothing inside can escape. -->
+<div id="photolb" hidden role="dialog" aria-modal="true" aria-label="Contract"></div>
 <div id="ray" hidden>
   <div class="thread">
     <div class="avatar" aria-hidden="true">PC</div>
@@ -5798,6 +5913,9 @@ const NAMES=['D. Kowalski','R. Trujillo','S. Okafor','M. Vance'];
 const S={
   t:CFG.dayStart, day:1, cash:CFG.startCash, speed:0, running:false, over:false,
   fareMult:1.0, carsPerOp:3, sel:null, seq:0,
+  /* Which car the map is riding with, and whether the one-car auto-engage
+     has already had its single chance this run. See setCamFollow(). */
+  camFollow:null, camInit:false,
   cars:[], rides:[], ops:[], log:[],
   safety:80, permit:'Supervised',
   /* Which CITIES entry is live. Only 'austin' exists today, but every
@@ -7109,6 +7227,9 @@ function checkUnlocks(){
      already throttled to its own ~1/sec by wall clock. */
   checkAchievements();
   checkApp();
+  /* The ending (v0.95.0). Same short-table-of-cheap-predicates reasoning as
+     the two above, and the same ~1/sec wall-clock throttle. */
+  checkFinale();
   return gained;
 }
 
@@ -7204,8 +7325,13 @@ const RAY=[
    t:"Read the whole thing, not just the bottom line. Cost per mile tells you how "+
      "hard the car worked. It isn't what you're paid.<br><br>Don't chase it."},
   {n:13, spot:'panel-platforms',
-   t:"They're scoring you. Two bad weeks and they switch you off — and the "+
-     "{FLOOR} a day doesn't switch off with you.<br><br>Run both apps."},
+   /* 2026-07-31 — "switch you off" overstated checkSafety()'s real
+      consequence. Safety under 65 throttles demand by half (permit
+      'Under review', offersPerHour()'s share*=0.5) — a real bite, but not
+      a cutoff, and the fixed costs the second half of this line is
+      actually about keep coming either way. */
+   t:"They're scoring you. Two bad weeks and they cut your rides in half — "+
+     "and the {FLOOR} a day doesn't cut in half with them.<br><br>Run both apps."},
   /* §9.3: the thesis of the game, and it points at the HOURS line, not at
      the financing offer. The reveal is "you are the bottleneck", not "buy
      another car". Originally closed on "a second pair of eyes does" —
@@ -7530,6 +7656,7 @@ function rayAdvise(){
   $('ray').hidden=false;
   S.ray.cur='advice';                         /* a string, not a beat number */
   raySpot(t.spot);
+  rayRecord();
   rayPause();
 }
 /* ============================================================
@@ -7657,6 +7784,7 @@ function noFeedTick(realSec){
   /* Same target the 'plat' task uses. raySpot() no-ops safely if the panel is
      covered by an open modal or not rendered at this breakpoint. */
   raySpot('panel-platforms');
+  rayRecord();
   rayPause();
 }
 
@@ -7697,6 +7825,124 @@ function rayFoot(go, skip, count){
   $('ray-go').innerHTML=go+' <small id="ray-count"></small>';
   $('ray-count').textContent=count||'';
   $('ray-skip').textContent=skip;
+}
+
+/* ---- THE THREAD RECORDER (Pavel's ask, 2026-07-31) ------------------------
+   Paolo's card has always been write-once-then-gone: #ray-text is
+   overwritten by the next card and the old message exists nowhere. The
+   Messages panel looked like a history but was reconstructed from
+   S.ray.seen, so it only ever held the 15 SCRIPTED beats — the ad, the
+   rejection, the interview, city unlocks, the garage welcome, every piece
+   of advice, all of it vanished the moment it was dismissed.
+
+   rayRecord() is the fix, and it reads the LIVE DOM rather than taking the
+   text as an argument. That is the whole trick: whatever it records is
+   necessarily what the player actually saw, tokens already filled by
+   rayFill(), captions already resolved — it cannot drift from the card the
+   way a parallel "also log this" string would. (The Messages panel's own
+   {NAME}/{CASH} bug, fixed 2026-07-30, was exactly that kind of drift.)
+
+   Called by every function that opens a card, as its last act before
+   rayPause(). It is deliberately NOT called from inside rayPause(), which
+   early-returns when a card is already open — chained cards (appoffer1 ->
+   appoffer2, or the ad chaining off a city unlock) would then go
+   unrecorded. thread-recorder.test.js asserts the call sites keep pace
+   with the card functions, because a new card that forgets to record would
+   be invisible rather than broken. */
+let rayMsgId=0, rayMsgLive=null;
+function rayRecord(){
+  if(!PROG.thread) PROG.thread=[];
+  const txt=$('ray-text')?$('ray-text').innerHTML:'';
+  if(!txt) return;
+  const pic=$('ray-pic');
+  const hasPic=!!(pic&&!pic.hidden);
+  const rec={
+    id:rayMsgLive||(++rayMsgId),
+    t:Date.now(),
+    cur:(typeof S.ray.cur==='number')?('beat'+S.ray.cur):(S.ray.cur||''),
+    html:txt,
+    img:hasPic?($('ray-pic-img').getAttribute('src')||''):'',
+    cap:hasPic?($('ray-pic-cap').textContent||''):''
+  };
+  /* Same id => the SAME card, updated rather than duplicated.
+     rayCityUnlocked() appends a second sentence to a card that is already
+     on screen (the promo line, fetched after the card opens) and calls
+     this again; without the id check that would read as Paolo sending the
+     same message twice. */
+  const last=PROG.thread[PROG.thread.length-1];
+  if(last&&rayMsgLive&&last.id===rayMsgLive) PROG.thread[PROG.thread.length-1]=rec;
+  else { PROG.thread.push(rec); rayMsgLive=rec.id }
+  while(PROG.thread.length>THREAD_MAX) PROG.thread.shift();
+  progSave();
+  renderThread();
+}
+/* Ends the current message, so the next rayRecord() starts a new one rather
+   than overwriting. Called wherever a card closes. */
+function rayRecordEnd(){ rayMsgLive=null }
+
+/* ---- THE THREAD, RENDERED --------------------------------------------------
+   The Messages panel used to reconstruct a fake history from S.ray.seen —
+   the 15 scripted beats only, each stamped "Ray · 4 of 15" like a numbered
+   tutorial step rather than something a person sent you. This renders the
+   REAL thread instead: everything Paolo has actually said, in the order he
+   said it, oldest at the top and newest at the bottom, the way every phone
+   on earth does it.
+
+   Reuses the shared bubble/avatar/who rules (see the CSS note above
+   #lockmsg — one place for the values, add a selector rather than copy),
+   so Paolo looks identical here, on the card, and on a locked city tab.
+
+   Day separators rather than a timestamp per bubble: a stamp on every
+   message is noise, and the useful fact is almost always "was this today
+   or was this three sessions ago". Real wall-clock, not sim time — these
+   are text messages from a person, not entries in the shift log. */
+function threadStamp(ms){
+  const d=new Date(ms), now=new Date();
+  const sameDay=d.toDateString()===now.toDateString();
+  const y=new Date(now.getTime()-86400000);
+  if(sameDay) return 'Today';
+  if(d.toDateString()===y.toDateString()) return 'Yesterday';
+  return d.toLocaleDateString(undefined,{month:'short',day:'numeric'});
+}
+function hhmmReal(ms){
+  const d=new Date(ms);
+  return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+}
+function renderThread(){
+  const el=$('msg-list');
+  if(!el) return;
+  const th=PROG.thread||[];
+  if(!th.length){ el.innerHTML='<div class="sub">No messages yet.</div>'; return }
+  let out='', lastDay='';
+  th.forEach(function(m){
+    const day=threadStamp(m.t);
+    if(day!==lastDay){ lastDay=day; out+='<div class="th-day"><span>'+escapeHtml(day)+'</span></div>' }
+    out+='<div class="th-row"><div class="avatar" aria-hidden="true">PC</div><div class="col">';
+    /* m.html is Paolo's own card markup, already built and escaped by the
+       card that produced it — stored verbatim precisely so the history
+       cannot disagree with what was on screen. Not re-escaped here: doing
+       so would print the <br> tags his longer messages rely on. */
+    out+='<div class="bubble">'+m.html+'</div>';
+    if(m.img){
+      out+='<div class="bubble pic"><img src="'+escapeHtml(m.img)+'" alt="" loading="lazy">'+
+        (m.cap?'<span class="cap">'+escapeHtml(m.cap)+'</span>':'')+'</div>';
+    }
+    if(m.vid){
+      /* preload="none" is not optional — see the intro video's own note.
+         An unopened <video> in a scrollable history would otherwise open a
+         connection for every clip every time the panel is drawn. */
+      out+='<div class="bubble pic"><video src="'+escapeHtml(m.vid)+'" controls playsinline '+
+        'preload="none"'+(m.poster?' poster="'+escapeHtml(m.poster)+'"':'')+'></video>'+
+        (m.cap?'<span class="cap">'+escapeHtml(m.cap)+'</span>':'')+'</div>';
+    }
+    out+='<div class="th-time">'+escapeHtml(hhmmReal(m.t))+'</div>';
+    out+='</div></div>';
+  });
+  el.innerHTML=out;
+  /* Newest at the bottom means the useful end is the bottom — land there,
+     the way opening a real conversation does. */
+  const box=$('pb-msg');
+  if(box) box.scrollTop=box.scrollHeight;
 }
 
 /* ---- PAUSING WHILE PAOLO IS TALKING (Pavel's ask, 2026-07-30) --------------
@@ -7830,6 +8076,7 @@ function rayDodgeBrief(carId){
   rayFoot('Take control','Not now','');
   $('ray').hidden=false;
   rayPosition($('map-wrap')||$('map'));
+  rayRecord();
   rayPause();
 }
 /* ============================================================
@@ -7858,6 +8105,7 @@ function rayFirstDecline(){
   rayFoot('Got it','Skip','');
   $('ray').hidden=false;
   raySpot('panel-offers');
+  rayRecord();
   rayPause();
 }
 /* ============================================================
@@ -7905,6 +8153,7 @@ function rayCityUnlocked(id){
      button hasn't been (re)built yet) rather than pointing at nothing. */
   const tabBtn=document.querySelector('.citytab[data-city="'+id+'"]');
   raySpotEl(tabBtn||$('citytabs'));
+  rayRecord();
   rayPause();
   /* transferplan.md §4.1: if the player can't even afford to RENT the
      cheapest thing in the catalogue, and the promo would actually be usable
@@ -7921,8 +8170,94 @@ function rayCityUnlocked(id){
         'bring your '+escapeHtml(v?v.name:car0.model)+' in from '+
         escapeHtml(CITIES[src.prevId].name)+' for a flat '+money(PROMO_FEE)+' — '+
         'look for it in the garage once you get there.';
+      /* Re-record the SAME message rather than adding a second one — the
+         id check in rayRecord() updates the entry already in the thread,
+         so the history ends up holding the card as the player finally read
+         it, promo sentence included, not the half of it that existed the
+         instant it opened. */
+      rayRecord();
     });
   }
+}
+/* ============================================================
+   THE GARAGE WELCOME — one per city, the first time its garage opens empty.
+
+   Fixed a real bug on the way to this (Pavel's screenshot, 2026-07-31):
+   openGarage()'s rayShow(1) call only ever checked raySeen(1)/skipped/
+   S.cars.length — never S.ray.guided — and S.ray.seen is rebuilt to []
+   by newFleet() on EVERY city (by design, so a beat can be re-shown to a
+   different S.ray in principle), so opening Dallas's empty garage made
+   raySeen(1) false again and replayed Austin's DAY-1 "the car you already
+   own" script over a city that has no such option. Fixed at the source —
+   see openGarage()'s rayShow(1) guard, now gated on S.ray.guided too, which
+   is only ever true in the one city running the scripted tutorial.
+
+   This replaces that accidental beat with a real one: Pavel's ask was for
+   Paolo to actually talk about THIS city — promote it, mention both real
+   doors into a first car (buy/rent/finance, and the manufacturer transfer
+   promo if one is showing), and tie it back to the application (northstar-
+   plan.md §5) so a new city reads as a fresh line on the CV, not just a
+   reskinned Austin. One-shot per city, tracked at the PROG level
+   (garageWelcomed/markGarageWelcomed) rather than S.ray.seen, precisely
+   because S.ray.seen is NOT meant to survive a city switch and this needs
+   to. Austin and SF are excluded: Austin has its own opener (v0.85.0's
+   "your car"), and SF is the finale itself — its garage-open beat belongs
+   to the (not yet built) SF rework, §7, not this generic city welcome. */
+function garageWelcomed(city){ return !!(PROG.garageWelcomed&&PROG.garageWelcomed[city]) }
+function markGarageWelcomed(city){
+  PROG.garageWelcomed=PROG.garageWelcomed||{}; PROG.garageWelcomed[city]=true; progSave();
+}
+/* One line establishing what makes THIS city different — deliberately
+   short, since goal.text (below) already carries the "what you're here to
+   prove" line in Paolo's own voice, read straight off CITIES[id].goal, and
+   the CV line reads straight off REQS' own exp-<city> name. Nothing here
+   duplicates either — three short facts, not one long paragraph. */
+const GARAGE_CITY_FLAVOR={
+  dallas:'No safety monitor here, and the miles run at highway speed — different city, same car.',
+  miami:'Coastal, dense, and Axiom drew the operating box tight. Stay inside it.',
+  tampa:'This one only pays after dark, and the weather means it.',
+  orlando:'Feast or famine around the parks — the trick is telling which one you\'re in.'
+};
+/* A short SPOKEN read of each competency's REQS[] name — the full sentence
+   ("Platform reliability of 85% or better, sustained across a city") is
+   written for the application panel, not for Paolo to say out loud beside
+   a car. Not a second definition of the bar itself, just a shorter one. */
+const COMP_SHORT_LABEL={
+  'comp-accept':'platform reliability at 85% or better',
+  'comp-safety':'safety held at 80 or above',
+  'comp-profit':'three profitable shifts in a row',
+  'comp-deadhead':'deadhead mileage under target'
+};
+function garageWelcomeHtml(cityId){
+  const c=CITIES[cityId];
+  const flavor=GARAGE_CITY_FLAVOR[cityId]||'';
+  const req=reqById('exp-'+cityId);
+  const cp=compPromoFor(cityId);
+  let t='<b>'+escapeHtml(c.name)+'.</b>'+(flavor?' '+flavor:'')+'<br><br>'+
+    escapeHtml(c.goal.text)+'<br><br>'+
+    'Buy outright, finance, or rent — same three doors as always.';
+  if(req){
+    t+=' Finish a shift here and it\'s another line on your application: '+
+      '&ldquo;'+escapeHtml(req.name)+'.&rdquo;';
+  }
+  if(cp){
+    const label=COMP_SHORT_LABEL[cp.reqId]||'';
+    const v=catalog(cp.trim);
+    t+=' Clear '+escapeHtml(c.name)+'\'s own bar'+(label?' — '+label:'')+
+      ' — and there\'s a manufacturer deal waiting on a '+
+      escapeHtml(v?v.name:cp.trim)+', here only.';
+  }
+  return t;
+}
+function rayGarageWelcome(){
+  raySpotClear();
+  S.ray.cur='garagewelcome';
+  $('ray-text').innerHTML=garageWelcomeHtml(S.city);
+  rayFoot('Got it','Later','');
+  $('ray').hidden=false;
+  raySpot('gar-cards');
+  rayRecord();
+  rayPause();
 }
 /* ============================================================
    THE JOB AD — northstarplan.md §2.1/§5.
@@ -7955,12 +8290,18 @@ function rayAppOffer1(){
   $('ray-pic-cap').textContent='Supervising Driver — San Francisco';
   $('ray-pic').hidden=false;
   $('ray').hidden=false;
+  rayRecord();
   rayPause();
 }
 function rayAppOffer2(){
   raySpotClear();
   S.ray.cur='appoffer2';
-  $('ray-text').innerHTML="You just ran a whole city for a week.<br><br>Apply.";
+  /* 2026-07-31 — "ran a whole city for a week" overstated the actual
+     trigger: this card chains straight off the FIRST city-unlock card a
+     player ever sees, which fires on shift1@austin — one clocked-off
+     shift, possibly the player's first real hour with the game. Rewritten
+     to something the trigger can actually back up. */
+  $('ray-text').innerHTML="You just clocked off your first shift. On your own, no manager riding along.<br><br>Apply.";
   rayFoot("I'll apply","I'll think about it",'');
   $('ray-pic-img').src='northstar-ad-closeup.jpg';
   $('ray-pic-img').alt='Supervising Driver — Robotaxi Operations Center, San Francisco';
@@ -7972,6 +8313,7 @@ function rayAppOffer2(){
   $('ray-pic-cap').textContent='9 requirements. You currently meet '+appMetList().length+'.';
   $('ray-pic').hidden=false;
   $('ray').hidden=false;
+  rayRecord();
   rayPause();
 }
 /* The rejection letter, northstarplan.md §5 — shown the moment the player
@@ -8006,7 +8348,143 @@ function rayShowRejection(){
   rayFoot('Got it','Close','');
   $('ray-pic').hidden=true;
   $('ray').hidden=false;
+  rayRecord();
   rayPause();
+}
+/* The other letter, northstarplan.md §8 step 9 — same automated-corporate
+   voice as rejectionLetterHtml() (deliberately: it's the SAME mailbox,
+   just a different outcome this time), fired once appAllMet() flips true.
+   Two ways in, both safe to call any number of times: (1) automatically,
+   the moment checkApp() notices 9/9 for the first time (see checkApp()
+   itself); (2) on demand, from a locked SF tab click or the console's
+   "Apply now" button, for a player who dismissed the automatic card with
+   "Not yet" and wants it back. invited only records that the card has
+   been GENERATED at least once (so the automatic path never repeats
+   itself) — it is not consent, and does not gate the manual paths. */
+function interviewLetterHtml(){
+  return 'Thank you for your interest in the Supervising Driver position.'+
+    '<br><br>Your application has been reviewed against our operational '+
+    'requirements. You meet '+REQS.length+' of '+REQS.length+
+    '.<br><br>San Francisco is open, whenever you are.'+
+    '<br><br><i>This message was generated automatically.</i>';
+}
+function rayShowInterview(){
+  raySpotClear();
+  S.ray.cur='interview';
+  if(!PROG.app.invited){ PROG.app.invited=true; progSave() }
+  $('ray-text').innerHTML=interviewLetterHtml();
+  rayFoot('Accept the job','Not yet','');
+  $('ray-pic').hidden=true;
+  $('ray').hidden=false;
+  rayRecord();
+  rayPause();
+}
+/* ============================================================
+   THE FINALE — northstarplan.md §7, and the game's first success state.
+
+   Until this shipped, Deadhead could only ever END badly: `S.over` means
+   bankruptcy and nothing else, and although every city's goal was checked
+   and written to PROG.results[city].goalMet, absolutely nothing read it
+   back. A player could clear all six cities and never be told once.
+
+   Pavel's calls, both honoured here:
+     - Reaching the goal does NOT end the game. S.over is untouched, the
+       sim keeps running, SF stays playable afterwards. The ending is
+       something you're given, not something taken away.
+     - It comes from PAOLO, not from the company. He is emphatically not
+       your employer (see the RAY header) and he is not renamed into one:
+       he's the man who sold you your first car, told you this job was a
+       step down (beat 15), and drove out to watch you take it anyway. The
+       ambivalence §7 asks to protect lives exactly there — he's proud of
+       you and he still thinks he was right.
+
+   The contract photo carries NO baked facts (see the .contract CSS note).
+   The signature is live DOM over the real, empty signature line. */
+function sigSize(name){
+  /* The line is ~18% of the photo's width. An italic script face runs about
+     0.6em per character, so a name of length L fits at roughly 28/L cqw.
+     Clamped at both ends: big enough to read on a phone, small enough that
+     a very long display name still lands on the line instead of running off
+     the edge of the page. */
+  const L=Math.max(1,String(name||'').length);
+  return Math.max(2.0,Math.min(3.6,28/L));
+}
+function contractHtml(){
+  const nm=playerName();
+  return '<div class="contract">'+
+    '<img src="finale-contract.jpg" width="1920" height="1288" '+
+      'alt="Axiom employment contract, Supervising Driver, San Francisco, signed">'+
+    '<span class="sig" style="font-size:'+sigSize(nm).toFixed(2)+'cqw">'+
+      escapeHtml(nm)+'</span></div>';
+}
+/* The career readback. Every number here already existed and was already
+   being written — PROG.results per city, and the empty-mile sums v0.82.0
+   added. Nothing new is tracked for the ending; it reads the record the
+   player has been building for five cities without ever being shown it. */
+function finaleSummaryHtml(){
+  const ids=cityList().filter(function(id){
+    const r=PROG.results[id]; return r&&r.shiftDone;
+  });
+  let days=0, miles=0, empty=0;
+  ids.forEach(function(id){
+    const r=PROG.results[id]||{};
+    days+=r.day||0; miles+=r.milesSum||0; empty+=r.emptySum||0;
+  });
+  const pct=miles>0?Math.round(empty/miles*100):0;
+  const rows=ids.map(function(id){
+    const r=PROG.results[id]||{};
+    return '<div class="fin-row"><span>'+escapeHtml(CITIES[id].name)+'</span>'+
+      '<span>'+money(r.bestCash||0)+'</span></div>';
+  }).join('');
+  return '<div class="fin-sum"><div class="fin-head">The record</div>'+rows+
+    '<div class="fin-row tot"><span>'+ids.length+' cit'+(ids.length===1?'y':'ies')+
+    ' &middot; '+days+' days</span><span>'+pct+'% empty</span></div></div>';
+}
+function rayFinale(){
+  raySpotClear();
+  S.ray.cur='finale';
+  const nm=escapeHtml(playerName());
+  $('ray-text').innerHTML=
+    "Well. There it is, "+nm+".<br><br>"+
+    "You cleared the number they set you, in their city, in their car, with "+
+    "your name on their paper. Nobody handed you any of that.<br><br>"+
+    "I still think it's a step down. I'm not going to pretend otherwise "+
+    "today of all days.<br><br>"+
+    "But I drove out here to watch you sign it, and I'd do it again."+
+    contractHtml()+
+    finaleSummaryHtml();
+  rayFoot('Thanks, Paolo','','');
+  $('ray-pic').hidden=true;
+  $('ray').hidden=false;
+  rayRecord();
+  rayPause();
+}
+/* Piggybacked on checkUnlocks() like checkApp(), and throttled the same way
+   — a cheap comparison against one number, run about once a second rather
+   than on every tick. */
+let lastFinaleCheck=0;
+function finaleReady(){
+  if(PROG.finale) return false;
+  if(S.city!=='sf') return false;
+  if(!(PROG.app&&PROG.app.hired)) return false;
+  const g=currentCity().goal;
+  return !!(g&&typeof g.cash==='number'&&S.cash>=g.cash);
+}
+function checkFinale(){
+  const now=Date.now();
+  if(now-lastFinaleCheck<900) return false;
+  lastFinaleCheck=now;
+  if(!finaleReady()) return false;
+  /* Same overlap guard every other self-firing card uses: never on top of
+     another card, the dodge camera, the garage, or a shift report. Note it
+     does NOT check S.ray.skipped — skipping the tutorial silences Paolo's
+     ADVICE, and this is the ending of the game, not a hint. */
+  if(S.ray.cur||!$('dodge-incar').hidden||!$('garage').hidden||!$('report').hidden) return false;
+  PROG.finale={t:Date.now(), cash:Math.round(S.cash), name:playerName()};
+  progSave();
+  log('System','San Francisco goal cleared — '+money(S.cash),0);
+  rayFinale();
+  return true;
 }
 function rayCoffee(){
   raySpotClear();
@@ -8029,6 +8507,7 @@ function rayCoffee(){
   $('ray-pic').hidden=false;
   $('ray').hidden=false;
   rayAtCoffee();               /* under its own button, not the default corner */
+  rayRecord();
   rayPause();
 }
 /* The daily fixed cost Paolo calls "the floor": what the fleet owes for a day
@@ -8069,6 +8548,7 @@ function rayShow(n){
   rayFoot('Got it','Skip',n+' of '+RAY.length);
   $('ray').hidden=false;
   raySpot(b.spot);
+  rayRecord();
   rayPause();
 }
 
@@ -8206,6 +8686,7 @@ function rayDismiss(){
     }
   }
   S.ray.cur=null;
+  rayRecordEnd();
   rayResume();
   $('ray').hidden=true;
   raySpotClear();
@@ -8222,6 +8703,7 @@ function raySkip(){
      incidents, or low-charge cars once the player has said they don't want
      the tutorial at all. */
   S.ray.skipped=true; S.ray.cur=null; S.ray.guided=false; S.ray.day1Done=true;
+  rayRecordEnd();
   rayResume();
   $('ray').hidden=true; raySpotClear();
   render();
@@ -8335,6 +8817,7 @@ function rayClockOffWarn(){
   $('ray').hidden=false;
   S.ray.cur='clockoff';
   raySpot('panel-platforms');
+  rayRecord();
   rayPause();
 }
 
@@ -8601,6 +9084,7 @@ function rayForceClose(){
   if($('ray').hidden) return;
   $('ray').hidden=true;
   S.ray.cur=null;
+  rayRecordEnd();
   RAY_PAUSED=false; RAY_PREV_SPEED=null;
   /* Pavel's report, 2026-07-30: a city unlocked right as a shift ended, the
      report modal force-closed the Ray card that was about to explain it (see
@@ -8737,6 +9221,23 @@ function row(a,b){ return '<div class="rp-row"><span>'+a+'</span><span>'+b+'</sp
 /* The clock is continuous now: closing the report does not advance time or
    reset the world. You come back to the hour you left. */
 $('rp-go').addEventListener('click',function(){ $('report').hidden=true; render(); rayCheck() });
+/* Delegated on purpose: the contract appears in Paolo's live card AND in
+   the Messages thread afterwards, and the thread's innerHTML is rebuilt
+   whenever a message lands — a listener bound to the element itself would
+   be thrown away on the next rebuild. */
+document.addEventListener('click',function(e){
+  const lb=$('photolb');
+  if(!lb) return;
+  if(!lb.hidden){ lb.hidden=true; lb.innerHTML=''; return }
+  const c=e.target.closest?e.target.closest('.contract'):null;
+  if(!c) return;
+  lb.innerHTML=c.outerHTML;
+  lb.hidden=false;
+});
+document.addEventListener('keydown',function(e){
+  const lb=$('photolb');
+  if(e.key==='Escape'&&lb&&!lb.hidden){ lb.hidden=true; lb.innerHTML='' }
+});
 $('ray-go').addEventListener('click',function(){
   if(S.ray.cur==='dodge'){
     const id=dodgePending; dodgePending=null;
@@ -8773,8 +9274,22 @@ $('ray-go').addEventListener('click',function(){
      of Austin) is read live off REQS/PROG.app, not written into this card's
      copy — the same rayFill()-style discipline paolo-numbers established
      for {CASH}/{FLOOR}, applied to a number that changes even faster. */
-  if(S.ray.cur==='appoffer2'){ rayShowRejection(); return; }
+  if(S.ray.cur==='appoffer2'){ if(appAllMet()) rayShowInterview(); else rayShowRejection(); return; }
   if(S.ray.cur==='rejection'){ rayDismiss(); return; }
+  /* "Accept the job" — the SF hand-off itself, northstarplan.md §8 step 9.
+     The one and only place PROG.app.hired ever becomes true. Order matters:
+     set it and save BEFORE rayDismiss(), which reads S.ray.cur and would
+     otherwise race a render() against a still-locked tab. renderCityTabs()/
+     buildCityPinLayer() here rather than waiting for the next tick — the
+     player just accepted a job, the tab should already read as open behind
+     the card as it closes. */
+  if(S.ray.cur==='interview'){
+    PROG.app.hired=true; progSave();
+    renderCityTabs(); buildCityPinLayer();
+    log('System','Hired — San Francisco is open.',0);
+    rayDismiss();
+    return;
+  }
   rayDismiss();
 });
 $('ray-skip').addEventListener('click',function(){
@@ -8801,7 +9316,15 @@ $('ray-skip').addEventListener('click',function(){
      and nothing is marked applied. The console panel (§3.2) badge is where
      "you still haven't applied" lives from here on, not a nagging card. */
   if(S.ray.cur==='coffee'||S.ray.cur==='dodge'||S.ray.cur==='cityunlock'||
-     S.ray.cur==='appoffer1'||S.ray.cur==='appoffer2'||S.ray.cur==='rejection'){
+     S.ray.cur==='appoffer1'||S.ray.cur==='appoffer2'||S.ray.cur==='rejection'||
+     S.ray.cur==='garagewelcome'||S.ray.cur==='interview'||S.ray.cur==='finale'){
+    /* "Not yet" on the interview card is the genuine-defer case again — the
+       job hasn't been declined, only deferred. PROG.app.invited is already
+       true either way (rayShowInterview() sets it on generation, not on
+       acceptance), so the automatic pop never repeats, but hired stays
+       false and the SF tab stays exactly as locked as before. The way back
+       in is a deliberate click — the locked tab itself (see the city-tab
+       handler) or "Apply now" in the console — never another surprise pop. */
     dodgePending=null; rayDismiss(); return;
   }
   /* "Clock off anyway" is a real action, not a dismissal — the player has
@@ -9961,6 +10484,114 @@ function recenterMap(){
   }
   return true;
 }
+/* ---- RIDE WITH ONE CAR (cameraplan.md §1.3) --------------------------------
+   A THIRD camera state, layered on the two that already existed: follow the
+   service area (followFleet, above) or don't. This one follows a single
+   vehicle.
+
+   Pavel's framing, and it is the reason this is safe to ship everywhere
+   rather than only in San Francisco: following a car is a LENS, not a
+   LEVER. Dispatch is automatic — pickCar() decides which vehicle takes a
+   ride and the player's only inputs are Accept and Decline — so watching
+   one car cannot advantage or disadvantage anything. It changes what you
+   look at, never what happens. cameraplan.md scoped this as an SF feature;
+   it is general because there is no reason for it not to be.
+
+   Where it EARNS itself is still SF. Everywhere else you are running up to
+   sixteen cars and the map is a logistics overview; a soloSeat city hands
+   you exactly one, and a dashboard view of one car is just a worse
+   dashboard. Hence the auto-engage in drawMap() below — SF opens riding
+   with the car, which is the "depth in exchange for breadth" §7 asks for.
+
+   Mutually exclusive with followFleet by construction: you cannot frame the
+   whole service area and one moving car at once, so engaging either one
+   switches the other off. */
+function camCar(){
+  if(!S.camFollow) return null;
+  return S.cars.filter(function(c){ return c.id===S.camFollow })[0]||null;
+}
+function setCamFollow(id){
+  const had=S.camFollow;
+  S.camFollow=id||null;
+  /* Taking the wheel for one car means letting go of the whole area. */
+  if(S.camFollow&&followFleet) setFollow(false);
+  if(S.camFollow&&!had) camSnap(true);
+  paintCamBtn();
+  if(!S.camFollow&&!had) return;
+  render();
+}
+/* Centres on the followed car. `zoomIn` only on the first engage — after
+   that the player's own zoom level is left alone, so they can pull out for
+   context or push in on the street while still riding along.
+
+   NOT the 30-second heartbeat the area-follow uses. This runs from
+   drawMap(), i.e. every 200ms on the sim tick, so the car genuinely stays
+   under the crosshair the whole time it is moving. */
+/* The STATE half of the camera, deliberately separate from drawMap().
+   drawMap() opens with `if(!map) return` — correct for drawing, wrong for
+   this: whether a sold car is still being followed, and whether the button
+   is disabled, are facts about the fleet, not about Leaflet. Keeping them
+   here means they hold even when the map is absent (a blocked CDN, a
+   headless test) instead of silently not running. Called from render(). */
+function camTick(){
+  /* ONE CAR MEANS RIDE WITH IT — Pavel, 2026-07-31, generalising this off
+     San Francisco: "the same in the one car garage". A single-vehicle fleet
+     is a single-vehicle fleet whether that is SF's permanent constraint or
+     Austin's opening morning, and in both cases a whole-service-area frame
+     is mostly empty map. SF is then simply the city where it never stops
+     being true.
+     Once only: S.camInit latches and is saved, so a player who switches
+     follow off does not have it forced back on next tick, or next session. */
+  if(!S.camInit&&S.cars.length===1){
+    S.camInit=true;
+    setCamFollow(S.cars[0].id);
+  }
+  /* A followed car that has been sold silently stops being followed rather
+     than freezing the camera on a ghost. */
+  if(S.camFollow&&!camCar()) setCamFollow(null);
+  paintCamBtn();
+}
+function camSnap(zoomIn){
+  const c=camCar();
+  if(!c||!map||typeof map.setView!=='function') return;
+  const fix=roadFix(c);
+  const at=fix?fix.pt:[c.lat,c.lng];
+  /* followSuppress for the same reason recenterMap() holds it: a
+     programmatic move fires the very events area-follow reads as "the
+     player took over", and would switch that off behind our back.
+     (Car-follow itself only yields to a real drag, and Leaflet never fires
+     dragstart for a programmatic move — but the flag costs nothing and the
+     two follows share this map.) */
+  followSuppress=true;
+  try{
+    const z=zoomIn?Math.max(map.getZoom()||13,CAM_ZOOM):map.getZoom();
+    /* Smoothness, deliberately conditional. At 1x-4x the car crawls and a
+       200ms eased pan between ticks reads as continuous motion — the Waze
+       feel Pavel asked for — because the pan duration matches the tick
+       that produced it. Past that the car jumps far enough per tick that
+       an animation is always chasing a position two frames stale, so it
+       snaps instead. animate:true is safe here where it was not safe for
+       recenterMap(): panTo fires movestart, never dragstart, and dragstart
+       is the only event car-follow yields to. */
+    const smooth=!zoomIn&&S.speed<=4&&z===map.getZoom();
+    if(smooth) map.panTo(at,{animate:true,duration:0.2,easeLinearity:1});
+    else map.setView(at,z,{animate:false});
+  }catch(e){ console.warn('follow failed',e) }
+  finally{ followSuppress=false }
+}
+/* Street level, not district level — following a car from the service-area
+   zoom would just be the same overview with a moving dot in the middle. */
+const CAM_ZOOM=17;
+function paintCamBtn(){
+  const b=$('dh-follow');
+  if(!b) return;
+  const on=!!S.camFollow;
+  b.setAttribute('aria-pressed',String(on));
+  b.disabled=!S.cars.length;
+  b.title=on
+    ?'Riding with '+S.camFollow+'. Drag the map to take over.'
+    :(S.cars.length?'Ride along with the selected car':'No cars to follow yet');
+}
 function setFollow(on){
   followFleet=!!on;
   const b=$('dh-recenter');
@@ -10097,8 +10728,17 @@ function initMap(){
      shows up as zoomstart, which fitBounds fires too. Hence followSuppress,
      which recenterMap() holds up across its own synchronous fit. */
   map.on('dragstart zoomstart',function(){
-    if(followSuppress||!followFleet) return;
-    setFollow(false);
+    if(followSuppress) return;
+    if(followFleet) setFollow(false);
+  });
+  /* Car-follow yields to a DRAG only, not to a zoom — unlike area-follow.
+     Panning away plainly means "I want to look somewhere else", but zooming
+     while riding along is a thing you actually want to do (pull out for
+     context, push in on the street), and breaking follow on it made the
+     camera feel like it was fighting the player. */
+  map.on('dragstart',function(){
+    if(followSuppress||!S.camFollow) return;
+    setCamFollow(null);
   });
   /* Open on the followed view rather than a fixed z13, so auto-follow's first
      tick 30s in has nothing to change and the player never sees an unprompted
@@ -10292,13 +10932,23 @@ function wxFrame(ts){
 function drawMap(){
   if(!map) return;
   updateWxOverlay();
+  if(S.camFollow) camSnap(false);
   S.cars.forEach(function(c){
     let m=carLayer[c.id];
     if(!m){
       m=L.marker([c.lat,c.lng],{icon:L.divIcon({className:'carpin',
         iconSize:[PIN_W,PIN_H],iconAnchor:[PIN_W/2,PIN_H/2],
         html:carPinHtml()})}).addTo(map);
-      m.on('click',function(){ S.sel=c.id; render() });
+      /* Picking a car IS asking to watch it (Pavel, 2026-07-31) — one
+         click both selects and rides along, rather than cameraplan.md's
+         original click-to-focus / double-click-to-follow split. Recenter
+         is the way back out, so the gesture that turns it off is separate
+         and obvious; needing a second, different click to start following
+         the car you just clicked on was ceremony for its own sake.
+         dblclick is kept as a harmless alias — doubleClickZoom is disabled
+         on this map, so it cannot zoom underneath the gesture. */
+      m.on('click',function(){ S.sel=c.id; setCamFollow(c.id); render() });
+      m.on('dblclick',function(){ S.sel=c.id; setCamFollow(c.id) });
       m.bindTooltip('',{direction:'top'});
       carLayer[c.id]=m;
     }
@@ -10423,8 +11073,13 @@ let cityTabSig='';
 function cityTabsHtml(night){
   return cityList().map(function(id){
     const c=CITIES[id], open=cityUnlocked(id), live=(id===S.city);
+    /* SF's own hover title, like its click bubble (cityLockMsg()), reads the
+       real gate now — the live requirement count — rather than gateHint()'s
+       shift1@orlando phrasing, which reads as done-and-therefore-wrong for
+       any player who has actually reached this padlock. */
     const tip=open?(live?c.name+' — current run':'Switch to '+c.name)
-                  :c.name+' — '+gateHint(c.needs);
+                  :(id==='sf'?c.name+' — '+appMetList().length+' of '+REQS.length+' application requirements met'
+                             :c.name+' — '+gateHint(c.needs));
     /* Every card carries its own colour, locked or not — see the tone-line note
        in the CSS. A city without a tone falls back to the live --city-tint
        rather than rendering an invisible bar. */
@@ -10534,11 +11189,27 @@ const LOCK_LINES={
   orlando:"Orlando sits close enough to that airport to hear the planes and "+
     "not close enough to take the fare. Work a shift in Tampa first. A thin "+
     "town will empty a man who never learned to count.",
+  /* 2026-07-31, northstarplan.md §8 step 9 — used to end on "finish a shift
+     in Orlando first," which went stale the moment cityUnlocked('sf') moved
+     from CITIES.sf.needs to PROG.app.hired: most players reading this line
+     have already cleared Orlando and are stuck on something else entirely.
+     Points at the application generally now — the live count sits in the
+     SECOND bubble (cityLockMsg's own sf branch, below), not repeated here.
+     Rewritten again same day, after settling SF's own direction (discussed,
+     not yet built — northstarplan.md §7/§8 item 8): "the clock can't run
+     ahead of you" described the 1x speed lock removed earlier today, and
+     is gone for that reason alone. What replaced it is the actual strategy
+     call for SF — one person, not a new character. The stakes there won't
+     be a supervisor with an opinion; they'll be an impersonal, accumulating
+     record, and the solitude is the point, not a gap something else fills.
+     This line foreshadows that plainly, without overclaiming a scenario
+     that isn't built yet. */
   sf:"San Francisco's one car, and it's yours — you're the one in the seat, "+
-    "not a name on a payroll. Axiom pays for that, and the clock can't run "+
-    "ahead of you the way it does everywhere else. Finish a shift in Orlando "+
-    "first — you should know how to count before they hand you the only car "+
-    "in the fleet."
+    "not a name on a payroll. Axiom pays for that, and nobody else rides "+
+    "along this time — no fleet, no crew, just you and the one machine. "+
+    "Nobody hands you the only car in the fleet off one good week, though. "+
+    "Clear what they're actually asking for first — it's all sitting in "+
+    "your application."
 };
 function cityLockLine(id){
   if(LOCK_LINES[id]) return LOCK_LINES[id];
@@ -10636,9 +11307,17 @@ function cityLockMsg(btn,id){
     '<span>Messages</span></div>'+
     '<div class="bubble">'+escapeHtml(cityLockLine(id))+'</div>'+
     /* The rule as a second message: how a person texts a condition after an
-       opinion, and it keeps the sentence that matters out of caption type. */
+       opinion, and it keeps the sentence that matters out of caption type.
+       SF's own rule isn't the shift1@orlando gate any more (that only ever
+       decided whether this padlocked tab exists at all) — it's the live
+       9-requirement count, the same number the console panel and the
+       rejection letter already read off REQS/PROG.app, so this can never
+       drift from what the Application actually says. Every other city keeps
+       reading its real needs gate exactly as before. */
     '<div class="bubble"><span class="need">'+escapeHtml(c.name)+'</span> — '+
-    escapeHtml(gateHint(c.needs))+'.</div></div>';
+    (id==='sf'
+      ? (appMetList().length+' of '+REQS.length+' application requirements met.')
+      : escapeHtml(gateHint(c.needs)))+'.</div></div>';
   lockEl.hidden=false;
   const r=btn.getBoundingClientRect(), m=8;
   const lw=lockEl.offsetWidth, lh=lockEl.offsetHeight;
@@ -10742,7 +11421,20 @@ document.addEventListener('click',function(e){
      can explain itself. cityUnlocked() is the authority here, not the attribute
      — the strip is rebuilt from state, but a stale DOM must never be what
      decides whether a city opens. */
-  if(!cityUnlocked(b.dataset.city)){ cityLockMsg(b,b.dataset.city); if(inPop) cityPopHide(); return }
+  if(!cityUnlocked(b.dataset.city)){
+    /* SF's own padlock has a second door behind it, northstarplan.md §8 step
+       9 — a player who cleared all 9 and dismissed the automatic invitation
+       with "Not yet" would otherwise be stuck reading Paolo's generic
+       locked-tab line forever, with no way back to the card that actually
+       decides this. Re-open it here instead, same overlay guard every other
+       ray card uses before claiming the thread. */
+    if(b.dataset.city==='sf'&&appAllMet()&&!(PROG.app&&PROG.app.hired)){
+      if($('ray').hidden&&$('garage').hidden&&$('report').hidden) rayShowInterview();
+      if(inPop) cityPopHide();
+      return;
+    }
+    cityLockMsg(b,b.dataset.city); if(inPop) cityPopHide(); return;
+  }
   switchCity(b.dataset.city);
   if(inPop) cityPopHide();
 });
@@ -10763,9 +11455,12 @@ function stateCell(c){
 }
 /* Dirty-flag cache for panels render() would otherwise rebuild unconditionally
    every tick (CFG.tickMs, ~200ms) regardless of whether their source data
-   changed. Messages is first because raySeen() only grows on a beat being
-   dismissed — comparing its length is a cheap, sufficient "did this change"
-   test, and skips re-joining up to 14 beats' HTML ~5x/second for nothing. */
+   changed.
+   (Messages used to head this list, dirty-checked on raySeen().length. It
+   no longer renders from render() at all — the thread draws itself from
+   rayRecord(), i.e. only when Paolo actually sends something, so there is
+   nothing left to dirty-check. lastMsgSeenCount survives only because
+   resetRenderCaches() still zeroes it; see v0.94.0.) */
 let lastMsgSeenCount=-1;
 /* Same dirty-check idea, for #plat-rows and #offer-list (2026-07-30: Pavel
    had to click Connect ~30 times some of the time, and Accept needed a
@@ -10822,6 +11517,10 @@ function render(){
      else to pick. This self-heals every tick regardless of entry point
      (acquire, city switch, sell/return down to one car). */
   if(S.cars.length===1) S.sel=S.cars[0].id;
+  /* The ride-along camera's state half — auto-engage on a one-car fleet,
+     drop a followed car that has been sold, keep the button honest. Here
+     rather than in drawMap(), which returns early without Leaflet. */
+  camTick();
   /* Cheap and idempotent: the strip is five buttons, and deriving the pressed
      state here is what stops it drifting from S.city. The city NAME is the
      pressed tab — there is no separate readout for it any more. */
@@ -11416,26 +12115,12 @@ function render(){
     }).join('')||'<div class="t-ev"><span>Waiting for the first ride.</span></div>';
   }
 
-  /* Messages: every beat stays readable afterwards. seen.length only moves
-     when raySeen() gains an entry (a beat gets dismissed), so it's a cheap
-     dirty flag — skip the innerHTML rebuild entirely on every tick where
-     nothing changed, rather than re-joining the same HTML ~5x/second. */
-  const seen=RAY.filter(function(b){return raySeen(b.n)});
-  $('msg-tag').textContent=String(seen.length);
-  if(seen.length!==lastMsgSeenCount){
-    lastMsgSeenCount=seen.length;
-    $('msg-list').innerHTML=seen.length?seen.slice().reverse().map(function(b){
-      /* rayFill(), not the bare b.t — rayShow() fills the live card, but this
-         is a SEPARATE render path (the Messages history), and it was reading
-         the raw template straight off the RAY[] const, {NAME}/{CASH}/{FLOOR}
-         and all, literally on screen (Pavel's screenshot, 2026-07-30). Same
-         "fill every time it's shown, not just the first" rule paolo-numbers
-         already established for {FLOOR} — consistent with rayShow() re-firing
-         rayFill() fresh each time a card opens, not a frozen snapshot of
-         whatever cash/name were true the moment the beat was first seen. */
-      return '<div class="msg"><b>Ray · '+b.n+' of '+RAY.length+'</b>'+rayFill(b.t)+'</div>';
-    }).join(''):'<div class="sub">No messages yet.</div>';
-  }
+  /* Messages: the thread renders itself (renderThread(), called by
+     rayRecord() whenever a message lands) rather than being rebuilt on
+     every render() tick — it changes only when Paolo actually says
+     something, which is orders of magnitude rarer than 5x/second. The tag
+     still updates here because it is cheap and sits in the panel head. */
+  $('msg-tag').textContent=String((PROG.thread||[]).length);
 
   renderApplication();
 
@@ -11681,7 +12366,11 @@ $('cpo-dn').addEventListener('click',function(){S.carsPerOp=clamp(S.carsPerOp-1,
 $('buy').addEventListener('click',openGarage);
 /* no hire button: staffing follows the cars-per-operator ratio */
 $('fleet-rows').addEventListener('click',function(e){
-  const tr=e.target.closest('tr[data-car]'); if(tr){ S.sel=tr.dataset.car; render() }
+  /* Same rule as clicking the pin on the map: choosing a car in the Fleet
+     roster is asking to watch it, and it is the other half of Pavel's "or
+     clicking the car in the Fleet tab" — the way back to follow after
+     Recenter has switched it off. */
+  const tr=e.target.closest('tr[data-car]'); if(tr){ S.sel=tr.dataset.car; setCamFollow(tr.dataset.car); render() }
 });
 /* Send the selected car to a NAMED charger. Delegated, because the rows are
    rebuilt on every render. */
@@ -11948,7 +12637,7 @@ function closeConsolePanel(){
    fire from a controlled sequence. */
 $('app-apply-btn').addEventListener('click',function(){
   if(!$('ray').hidden||!$('garage').hidden||!$('report').hidden) return;
-  rayShowRejection();
+  if(appAllMet()) rayShowInterview(); else rayShowRejection();
 });
 $('dh-cp-close').addEventListener('click',closeConsolePanel);
 document.querySelectorAll('.t-apps .t-app').forEach(function(b){
@@ -12071,7 +12760,7 @@ const SLOTS=['slot1','slot2','slot3'];
    SAVE_V above is the STATE SHAPE version and moves only when the
    snapshot format changes — the two are deliberately independent, so
    shipping 0.9.0 does not invalidate 0.8.0 saves. */
-const VERSION='0.89.0';
+const VERSION='0.96.0';
 
 function snapshot(){
   return {
@@ -12080,6 +12769,7 @@ function snapshot(){
     s:{
       t:S.t, day:S.day, cash:S.cash, fareMult:S.fareMult, carsPerOp:S.carsPerOp,
       sel:S.sel, seq:S.seq, safety:S.safety, permit:S.permit,
+      camFollow:S.camFollow, camInit:S.camInit,
       over:S.over, d:S.d, city:S.city,
       surge:S.surge, ray:S.ray, unlocked:S.unlocked,
       /* Player settings. Absent from older saves; restore() defaults them. */
@@ -12391,7 +13081,9 @@ function restore(save,opts){
      .map-sat class follow the save; a bare assignment left them stale. */
   setMapStyle(s.mapStyle==='satellite'?'satellite':'standard');
   if(S.ray.cur==='advice'||S.ray.cur==='coffee'||S.ray.cur==='dodge'||S.ray.cur==='decline'||S.ray.cur==='clockoff'||
-     S.ray.cur==='appoffer1'||S.ray.cur==='appoffer2'||S.ray.cur==='rejection') S.ray.cur=null;
+     S.ray.cur==='appoffer1'||S.ray.cur==='appoffer2'||S.ray.cur==='rejection'||
+     S.ray.cur==='garagewelcome'||S.ray.cur==='interview'||
+     S.ray.cur==='finale') S.ray.cur=null;
   if(typeof S.ray.dodgeSeen!=='boolean') S.ray.dodgeSeen=false;
   if(typeof S.ray.declineSeen!=='boolean') S.ray.declineSeen=false;
   if(typeof S.ray.firstAcceptDone!=='boolean') S.ray.firstAcceptDone=false;
@@ -12529,6 +13221,12 @@ function restore(save,opts){
 
   /* selection must name a real car */
   if(!live[S.sel=s.sel]) S.sel=S.cars.length?S.cars[0].id:null;
+  /* Same validation as S.sel, and for the same reason: a followed car
+     that no longer exists in this save would freeze the camera on a
+     ghost. camInit is a plain latch — absent on older saves, which
+     correctly reads as "the one-car auto-engage has not happened yet". */
+  S.camFollow=(s.camFollow&&live[s.camFollow])?s.camFollow:null;
+  S.camInit=!!s.camInit;
 
   /* Leaflet markers close over the OLD car objects — purge and rebuild.
      Without this, stale pins linger for cars not in the loaded save. */
@@ -12706,9 +13404,39 @@ let PROG={unlocked:{austin:true}, results:{}, last:'austin', eggs:{}, achv:{},
      application"; offered is the one-shot latch on Paolo's ad card itself
      (northstarplan.md §2.1) — separate from met/seen because it gates a
      STORY beat, not a requirement; hired is set once, at the SF hand-off
-     (not built yet — see northstarplan.md §8 step 9). */
-  app:{met:{}, seen:{}, applied:0, hired:false, offered:false}
+     (northstarplan.md §8 step 9, shipped v0.92.0) — see rayShowInterview()/
+     cityUnlocked('sf'); invited is the one-shot latch on the interview card
+     itself, same shape as offered, so re-opening it (a locked-tab click, or
+     "Apply now" from the console) never double-fires the automatic pop. */
+  app:{met:{}, seen:{}, applied:0, hired:false, offered:false, invited:false},
+  /* THE THREAD — every message Paolo has ever sent, in order.
+     Lives on PROG rather than S deliberately: S.ray.seen is rebuilt to []
+     by newFleet() on EVERY city (see deadhead_garage_welcome_2026_07 — that
+     reset is by design and caused a real bug once already), and a
+     conversation that forgets itself the moment you open Dallas is not a
+     conversation. This is the one Paolo structure that must outlive a city.
+     Additive, like promoUsed/app above: no PROG_V bump, read back
+     defensively.
+     CAPPED at THREAD_MAX. It rides in the 'progress' cloud slot, which is
+     one D1 write per save (deadhead_freetier_2026_07), so it is not allowed
+     to grow without bound — oldest messages fall off the top, exactly like
+     S.log's own 60-entry cap. */
+  thread:[],
+  /* THE ENDING. Set once, the first time the player clears San Francisco's
+     cash goal — the game's first and only success state.
+     Worth stating plainly, because it was a genuine hole: until v0.95.0
+     Deadhead had a fail state and nothing else. `S.over` means bankruptcy
+     and only bankruptcy; every city's goal was checked, written to
+     PROG.results[city].goalMet ... and read by absolutely nothing. You
+     could clear Austin, Dallas, Miami, Tampa, Orlando and SF and the game
+     would never once acknowledge it.
+     Deliberately NOT an end: Pavel's call (2026-07-31) — reaching the goal
+     opens the ending, it does not take the game away. S.over is untouched
+     here, the sim keeps running, and the player can carry on driving SF
+     afterwards for as long as they like. */
+  finale:null
   };
+const THREAD_MAX=60;
 function progSave(){
   return Store.put('progress',{v:PROG_V, unlocked:PROG.unlocked,
     results:PROG.results, last:PROG.last, eggs:PROG.eggs,
@@ -12719,7 +13447,8 @@ function progSave(){
        at every call site) with typeof-object guards, same style as the
        v4->v5 companyCash migration just above. */
     promoUsed:PROG.promoUsed, promoNudged:PROG.promoNudged,
-    app:PROG.app})
+    app:PROG.app, thread:PROG.thread, finale:PROG.finale,
+    compPromoUsed:PROG.compPromoUsed, garageWelcomed:PROG.garageWelcomed})
     .catch(function(){});
 }
 /* ---- EASTER EGGS ------------------------------------------------------
@@ -13061,6 +13790,24 @@ function bestDeadheadStat(){
   },'low');
   return v===null?null:Math.round(v);
 }
+/* One predicate per competency, over a SINGLE city record — shared by
+   REQS[].met() below (via anyCityRec(), "ever, in any one city") AND
+   northstarplan.md §4a's per-city promo eligibility (a SPECIFIC city's own
+   record, since a Dallas deal has to be earned in Dallas). Extracting these
+   is what keeps the two from drifting apart the way deadheadKm() once
+   drifted from assign() before 0.81.0's pickCar() fix — one definition of
+   "what counts as clearing this bar," not two. */
+function compAcceptMet(r){
+  return !!(r&&r.shiftDone&&typeof r.acceptFloor==='number'&&r.acceptFloor>=0.85);
+}
+function compSafetyMet(r){
+  return !!(r&&r.shiftDone&&typeof r.safetyFloor==='number'&&r.safetyFloor>=80);
+}
+function compProfitMet(r){ return !!(r&&(r.profitStreak||0)>=3) }
+function compDeadheadMet(r){
+  return !!(r&&r.shiftDone&&(r.milesSum||0)>1&&
+    ((r.emptySum||0)/r.milesSum*100)<=REQ_DEADHEAD_MAX);
+}
 const REQS=[
   {id:'exp-austin', kind:'exp',
    name:'Commercial dispatch experience — Austin',
@@ -13085,11 +13832,7 @@ const REQS=[
      does. */
   {id:'comp-accept', kind:'comp',
    name:'Platform reliability of 85% or better, sustained across a city',
-   met:function(){
-     return anyCityRec(function(r){
-       return r.shiftDone&&typeof r.acceptFloor==='number'&&r.acceptFloor>=0.85;
-     });
-   },
+   met:function(){ return anyCityRec(compAcceptMet) },
    miss:function(){
      const b=bestAcceptPct();
      return b===null?'no shift long enough to measure yet':b+'%';
@@ -13101,27 +13844,18 @@ const REQS=[
      without it being a number invented for this requirement alone. */
   {id:'comp-safety', kind:'comp',
    name:'Safety held at or above 80, from a city’s first shift to its last',
-   met:function(){
-     return anyCityRec(function(r){
-       return r.shiftDone&&typeof r.safetyFloor==='number'&&r.safetyFloor>=80;
-     });
-   },
+   met:function(){ return anyCityRec(compSafetyMet) },
    miss:function(){
      const b=bestSafetyFloorStat();
      return b===null?'no shift long enough to measure yet':Math.round(b);
    }},
   {id:'comp-profit', kind:'comp',
    name:'Three consecutive profitable shifts, in one city',
-   met:function(){ return anyCityRec(function(r){ return (r.profitStreak||0)>=3 }) },
+   met:function(){ return anyCityRec(compProfitMet) },
    miss:function(){ return bestProfitStreakStat() }},
   {id:'comp-deadhead', kind:'comp',
    name:'Deadhead mileage under '+REQ_DEADHEAD_MAX+'%, across a completed city',
-   met:function(){
-     return anyCityRec(function(r){
-       return r.shiftDone&&(r.milesSum||0)>1&&
-         ((r.emptySum||0)/r.milesSum*100)<=REQ_DEADHEAD_MAX;
-     });
-   },
+   met:function(){ return anyCityRec(compDeadheadMet) },
    miss:function(){
      const b=bestDeadheadStat();
      return b===null?'not yet measurable':b+'%';
@@ -13130,6 +13864,11 @@ const REQS=[
 function reqById(id){ return REQS.filter(function(r){return r.id===id})[0]||null }
 function appMet(id){ return !!(PROG.app&&PROG.app.met&&PROG.app.met[id]) }
 function appMetList(){ return Object.keys((PROG.app&&PROG.app.met)||{}) }
+/* The real "9/9" signal, northstarplan.md §8 step 9 — the one place that
+   decides eligibility for the interview invitation and the SF hand-off.
+   REQS.length rather than a hardcoded 9 so nothing here rots if the table
+   ever grows. */
+function appAllMet(){ return appMetList().length>=REQS.length }
 /* Same "earned but never looked at" contract as achvUnread(). */
 function appUnread(){
   const seen=(PROG.app&&PROG.app.seen)||{};
@@ -13138,7 +13877,7 @@ function appUnread(){
 /* Same contract as achvMarkSeen(): every currently-met id is marked seen,
    called the moment the panel opens (see the nav click handler). */
 function appMarkSeen(){
-  if(!PROG.app) PROG.app={met:{},seen:{},applied:0,hired:false,offered:false};
+  if(!PROG.app) PROG.app={met:{},seen:{},applied:0,hired:false,offered:false,invited:false};
   if(!PROG.app.seen) PROG.app.seen={};
   let changed=false;
   appMetList().forEach(function(id){
@@ -13174,7 +13913,7 @@ function paintAppBadge(){
    actually gets its moment, not here. */
 function awardApp(id){
   const r=reqById(id); if(!r) return false;
-  if(!PROG.app) PROG.app={met:{},seen:{},applied:0,hired:false,offered:false};
+  if(!PROG.app) PROG.app={met:{},seen:{},applied:0,hired:false,offered:false,invited:false};
   if(!PROG.app.met) PROG.app.met={};
   if(PROG.app.met[id]) return false;
   PROG.app.met[id]=Date.now();
@@ -13216,10 +13955,16 @@ function appRowsHtml(){
   /* The tenth line, northstarplan.md §4 — static, never in REQS itself (it
      has no met() of its own; it IS the SF tab, which cityUnlocked() already
      answers elsewhere). Included in the list purely so the player reads the
-     whole thing as one road, not nine bars plus an unrelated afterthought. */
-  const tenth='<div class="app-row app-tenth"><span class="mk">&#10007;</span>'+
+     whole thing as one road, not nine bars plus an unrelated afterthought.
+     2026-07-31, §8 step 9: now reads PROG.app.hired directly, the one real
+     answer to whether this line is actually done — everything else here was
+     already asking a live question, this one shouldn't be the exception. */
+  const hired=!!(PROG.app&&PROG.app.hired);
+  const tenth='<div class="app-row app-tenth'+(hired?' ok':'')+'"><span class="mk">'+
+    (hired?'&#10003;':'&#10007;')+'</span>'+
     '<span class="grow">Relocate to San Francisco'+
-    '<div class="sub">the final requirement — this is that tab.</div></span></div>';
+    '<div class="sub">'+(hired?'done — Axiom is waiting.':'the final requirement — this is that tab.')+
+    '</div></span></div>';
   return rows+tenth;
 }
 /* A signature over exactly what appRowsHtml() would produce differently —
@@ -13227,7 +13972,7 @@ function appRowsHtml(){
    the console panel's dirty-flag cache doesn't have to build the HTML twice
    to know whether it changed. */
 function appRowsSig(){
-  const parts=[appMetList().length];
+  const parts=[appMetList().length,'hired:'+(PROG.app&&PROG.app.hired?1:0)];
   REQS.forEach(function(r){
     const ok=appMet(r.id);
     parts.push(r.id+':'+(ok?1:0));
@@ -13286,7 +14031,7 @@ function checkApp(){
   const now=Date.now();
   if(now-lastAppLiveCheck<900) return 0;
   lastAppLiveCheck=now;
-  if(!PROG.app) PROG.app={met:{},seen:{},applied:0,hired:false,offered:false};
+  if(!PROG.app) PROG.app={met:{},seen:{},applied:0,hired:false,offered:false,invited:false};
   if(!PROG.app.met) PROG.app.met={};
   let n=0;
   REQS.forEach(function(a){
@@ -13295,6 +14040,18 @@ function checkApp(){
     try{ got=!!a.met() }catch(e){ got=false }
     if(got&&awardApp(a.id)) n++;
   });
+  /* The automatic half of the interview invitation, northstarplan.md §8
+     step 9 — the moment 9/9 is first true, not a click away. Same overlay
+     guard rayCityUnlocked()'s own auto-fire uses (progGates(), below):
+     never on top of another ray card, the dodge camera, the garage, or a
+     shift report. !PROG.app.hired keeps this from ever firing again once
+     the job is actually taken; !PROG.app.invited keeps it from repeating
+     if the player already saw and dismissed it once — from there the only
+     way back in is a deliberate click (locked SF tab, or "Apply now"). */
+  if(appAllMet()&&!PROG.app.hired&&!PROG.app.invited&&!S.ray.skipped&&
+     !S.ray.cur&&$('dodge-incar').hidden&&$('garage').hidden&&$('report').hidden){
+    rayShowInterview();
+  }
   return n;
 }
 
@@ -13330,13 +14087,31 @@ function progApply(r){
        yet", which is correct for every pre-existing save. */
     if(r.promoUsed&&typeof r.promoUsed==='object') PROG.promoUsed=r.promoUsed;
     if(r.promoNudged&&typeof r.promoNudged==='object') PROG.promoNudged=r.promoNudged;
+    /* BUG FIX 2026-07-31 (v0.94.0). These two shipped the same day, in
+       v0.90.0 and v0.91.0, and BOTH were written by their mark* functions
+       (which dutifully called progSave()) while progSave()'s own payload
+       literal never listed them and this function never read them back —
+       so they were live for one session and silently gone on reload.
+       Consequences, both real: the per-city garage welcome re-fired on
+       every reload, and — worse — markCompPromoUsed()'s one-shot door
+       reopened, letting the discounted competency car be bought again and
+       again by reloading. Same class of mistake as the cloud slot-whitelist
+       bug (deadhead_cloud_save_slots_2026_07): the write looked fine at the
+       call site and died silently one layer down. */
+    if(r.compPromoUsed&&typeof r.compPromoUsed==='object') PROG.compPromoUsed=r.compPromoUsed;
+    if(r.garageWelcomed&&typeof r.garageWelcomed==='object') PROG.garageWelcomed=r.garageWelcomed;
+    /* The thread (v0.94.0). Absent on every pre-existing save, which reads
+       correctly as "no history yet" — the conversation starts from the next
+       thing Paolo says, rather than being fabricated retroactively. */
+    if(Array.isArray(r.thread)) PROG.thread=r.thread.slice(-THREAD_MAX);
+    if(r.finale&&typeof r.finale==='object') PROG.finale=r.finale;
     /* The application record predates this record if r.app is entirely
        absent — captured BEFORE the defensive merge below overwrites the
        signal, same "absence IS the migration flag" style as promoUsed/
        companyCash above. Used once, right after PROG.results is in place. */
     const appIsNew=!(r.app&&typeof r.app==='object');
     if(!appIsNew){
-      PROG.app=Object.assign({met:{},seen:{},applied:0,hired:false,offered:false},r.app);
+      PROG.app=Object.assign({met:{},seen:{},applied:0,hired:false,offered:false,invited:false},r.app);
       if(!PROG.app.met||typeof PROG.app.met!=='object') PROG.app.met={};
       if(!PROG.app.seen||typeof PROG.app.seen!=='object') PROG.app.seen={};
     }
@@ -13404,7 +14179,7 @@ function progApply(r){
          migration block is exactly the kind of rarely-hit path where a
          missing guard would go unnoticed for a long time if that ever
          stopped being true. */
-      if(!PROG.app) PROG.app={met:{},seen:{},applied:0,hired:false,offered:false};
+      if(!PROG.app) PROG.app={met:{},seen:{},applied:0,hired:false,offered:false,invited:false};
       if(!PROG.app.met) PROG.app.met={};
       const everFinished=Object.keys(PROG.results).some(function(id){
         const rec=PROG.results[id]; return !!(rec&&rec.shiftDone);
@@ -13710,6 +14485,13 @@ function gateHint(kind){
 function cityUnlocked(id){
   const c=CITIES[id];
   if(!c) return false;
+  /* SF is the tenth line made real (northstarplan.md §4/§8 step 9) — the
+     ordinary shift1@orlando gate only ever decided whether the TAB shows up
+     in the strip at all (see progGates()'s own sf special-case, below);
+     actually opening it needs the job, not just the city. Checked before
+     the generic needs/PROG.unlocked path so it can never fall through to
+     "just clock a shift in Orlando" the way every other city does. */
+  if(id==='sf') return !!(PROG.app&&PROG.app.hired);
   if(!c.needs) return true;
   if(PROG.unlocked[id]) return true;
   return gateMet(c.needs);
@@ -13731,9 +14513,17 @@ function progGates(){
   });
   if(gained||dirty) progSave();
   if(gained){
-    log('System',CITIES[gained].name+' unlocked',0);
     renderCityTabs();
     buildCityPinLayer();
+    /* SF is the one city this ladder is not allowed to announce, northstarplan.md
+       §8 step 9 — gateMet('shift1@orlando') going true here is real (it's what
+       lets the tab exist at all, still padlocked — see cityUnlocked('sf')'s own
+       hired check) but it is NOT the reveal. "San Francisco unlocked" over a
+       tab that opens straight back into a lock message would read as a bug the
+       moment it was clicked. The real reveal is rayShowInterview(), fired
+       separately by checkApp() the instant appAllMet() actually goes true. */
+    if(gained==='sf') return;
+    log('System',CITIES[gained].name+' unlocked',0);
     /* Same overlap guard rayFirstDecline()/rayDodgeBrief() use before
        claiming the card: never steal it from an active tutorial beat,
        another Paolo card already up, the dodge mini-game, or (2026-07-30)
@@ -13956,6 +14746,11 @@ function canAfford(v,how){
      else, but with no cash test at all — the whole point is that it costs
      nothing. */
   if(how==='own')      return true;
+  /* The competency promo — northstarplan.md §4a. A real (discounted) price,
+     unlike 'own' above, so the ordinary cash check applies; compPromoPrice()
+     is looked up fresh here rather than passed in, since v is the SPECIFIC
+     promo trim, not the cheapest car the discount is priced at. */
+  if(how==='deal')    return S.cash>=compPromoPrice();
   if(how==='buy')     return S.cash>=v.price;
   if(how==='finance') return S.cash>=v.down+CFG.financeReserve;
   /* Pay the first day's rent now, then still have two days of runway left
@@ -13982,6 +14777,7 @@ function affordWhy(v,how){
     }
     return currentCity().name+' is capped at '+cap+(cap===1?' car':' cars');
   }
+  if(how==='deal')    return 'Needs '+money(compPromoPrice());
   if(how==='buy')     return 'Needs '+money(v.price);
   if(how==='finance') return 'Needs '+money(v.down+CFG.financeReserve)+
                              ' (deposit plus reserve)';
@@ -14145,13 +14941,29 @@ function promoRowHtml(c){
 function renderFleetPromo(){
   const el=$('fleet-promo-cta');
   if(!el) return;
+  /* Two independent doors, same teaser slot — northstarplan.md §4a's
+     competency deal reuses this "tell the player it exists without opening
+     the garage" surface rather than inventing a second one. They can both
+     be eligible at once in the same city (a transferred car sitting in the
+     previous city's slot AND that city's own competency cleared are
+     unrelated facts), so the competency line is checked first and simply
+     appended rather than picking one over the other. */
+  const dp=compPromoEligible()?compPromoFor(S.city):null;
+  const dealLine=dp
+    ? '<span>Manufacturer deal available — a '+escapeHtml(catalog(dp.trim).name)+
+      ', earned clearing '+escapeHtml(currentCity().name)+'\'s own bar, from '+
+      money(compPromoPrice())+'</span>'
+    : '';
   if(promoEligible()){
     const n=PROMO_SRC.cars.length;
     el.hidden=false;
-    el.innerHTML='<span>Manufacturer promo available — '+
+    el.innerHTML=dealLine+'<span>Manufacturer promo available — '+
       (n>1?n+' cars':'a car')+' from <b>'+escapeHtml(CITIES[PROMO_SRC.prevId].name)+
       '</b>, from '+money(PROMO_FEE)+'</span>'+
       '<button id="fleet-promo-open">View</button>';
+  } else if(dp){
+    el.hidden=false;
+    el.innerHTML=dealLine+'<button id="fleet-promo-open">View</button>';
   } else {
     el.hidden=true; el.innerHTML='';
   }
@@ -14197,7 +15009,8 @@ function ownCardHtml(){
 }
 function renderGarage(){
   $('gar-cash').textContent=money(S.cash);
-  $('gar-cards').innerHTML=(showOwnCard()?ownCardHtml():'')+CATALOG.map(cardHtml).join('');
+  $('gar-cards').innerHTML=(showOwnCard()?ownCardHtml():'')+
+    (compPromoEligible()?compPromoCardHtml():'')+CATALOG.map(cardHtml).join('');
   /* The title tracks the same distinction the Fleet button does (see $('buy')
      above): the first one is a choice, the next one is an addition. */
   $('garage-title').textContent=S.cars.length?'Add a vehicle':'Choose a vehicle';
@@ -14645,6 +15458,97 @@ function promoNudged(id){ return !!(PROG.promoNudged&&PROG.promoNudged[id]) }
 function markPromoNudged(id){
   PROG.promoNudged=PROG.promoNudged||{}; PROG.promoNudged[id]=true; progSave();
 }
+/* ============================================================
+   THE COMPETENCY PROMO — northstarplan.md §4a. A SECOND opener into the
+   manufacturer-deal idea above, not a new system: meeting one of the
+   application's four competency requirements (comp-accept/comp-safety/
+   comp-profit/comp-deadhead — see REQS above) IN A SPECIFIC CITY unlocks a
+   steep, one-time discount on that city's own signature trim there. Kept on
+   its OWN flag (PROG.compPromoUsed, not PROG.promoUsed) rather than sharing
+   the transfer-promo's boolean: the two are independent doors into
+   different cars, and reusing one flag for both would let taking either
+   one silently close the other in the same city — nothing in the plan asks
+   for that, and promoNudged already sits beside promoUsed as its own flag
+   for the identical reason (a second one-shot needs a second latch).
+
+   The city/trim mapping is a provisional creative call, flagged here and in
+   the release notes, not a design-doc decision: comp-profit -> dallas ->
+   truck is explicit in Pavel's own example ("clear Dallas's profitability
+   bar and a Truck becomes available there"); the other three pair each
+   city's own flavour text with a trim most players never otherwise meet
+   (deadhead_car_photos_2026_07/deadhead_catalog_trim_2026_07 — two of six
+   trims is typical) — Tampa's adverse-weather framing with the longest-
+   range Saloon Long (comp-safety), Miami's mixed-density coastal framing
+   with the six-seat Crossover Six (comp-accept), Orlando's event-cycle
+   framing with the efficiency-minded Crossover (comp-deadhead). Revisit
+   freely; nothing downstream depends on this exact pairing. */
+const COMP_PROMOS=[
+  {city:'dallas', reqId:'comp-profit', trim:'truck'},
+  {city:'tampa', reqId:'comp-safety', trim:'saloonlong'},
+  {city:'miami', reqId:'comp-accept', trim:'crosssix'},
+  {city:'orlando', reqId:'comp-deadhead', trim:'cross'}
+];
+/* Same per-record predicates REQS[].met() uses, just applied to ONE city's
+   record instead of "any city, ever" — a Dallas deal has to be earned IN
+   Dallas, not banked from a Miami shift the requirement panel already
+   credited career-wide. */
+const COMP_PROMO_PRED={
+  'comp-accept':compAcceptMet, 'comp-safety':compSafetyMet,
+  'comp-profit':compProfitMet, 'comp-deadhead':compDeadheadMet
+};
+function compPromoFor(city){
+  return COMP_PROMOS.filter(function(p){ return p.city===city })[0]||null;
+}
+function compPromoUsed(city){ return !!(PROG.compPromoUsed&&PROG.compPromoUsed[city]) }
+function markCompPromoUsed(city){
+  PROG.compPromoUsed=PROG.compPromoUsed||{}; PROG.compPromoUsed[city]=true; progSave();
+}
+/* "The price of the cheapest car in the catalogue" — Pavel's own words,
+   computed live from CATALOG rather than hardcoded, so a future trim added
+   or repriced can never leave this number quietly stale. */
+function compPromoPrice(){
+  return CATALOG.reduce(function(m,v){ return Math.min(m,v.price) },Infinity);
+}
+function compPromoEligible(){
+  const p=compPromoFor(S.city);
+  if(!p||compPromoUsed(S.city)) return false;
+  const pred=COMP_PROMO_PRED[p.reqId];
+  return !!(pred&&PROG.results&&pred(PROG.results[S.city]));
+}
+/* The garage card itself — same spec-row shape cardHtml() draws for every
+   catalogue entry (so the numbers can never drift from what the player
+   compares it against a moment later), framed as a reward rather than a
+   purchase decision: one button, the discounted price, no rent/finance
+   rows — this is a one-time deal, not a new way to hold the car long-term. */
+function compPromoCardHtml(){
+  const p=compPromoFor(S.city);
+  const v=catalog(p.trim);
+  const price=compPromoPrice();
+  const rangeTxt=uImp()?v.rangeMi+' mi':Math.round(v.rangeMi*KM_PER_MI)+' km';
+  const chargeMin=Math.round((0.57*v.kwh)/(Math.min(CFG.chargeKW,v.kw)*0.73)*60);
+  const ok=canAfford(v,'deal');
+  return '<div class="card comppromo">'+
+    artHtml(v,0)+
+    '<div class="spec">'+
+      specRow('Battery',v.kwh+' kWh')+
+      specRow('Range',rangeTxt)+
+      specRow('Charge 28→85%',chargeMin+' min')+
+      specRow('Seats',String(v.seats))+
+      specRow('Efficiency',uEff(v.kwhPerKm))+
+      specRow('Energy',uPerDist(v.kwhPerKm*0.19*KM_PER_MI))+
+      specRow('Fixed cost',money2(v.fixed)+'/day')+
+    '</div>'+
+    '<div class="card-note">Manufacturer deal — you earned this clearing '+
+      escapeHtml(currentCity().name)+'\'s own bar. One-time price, this '+
+      'city only.</div>'+
+    '<div class="card-acts">'+
+      '<button class="pri'+(ok?' avail':'')+'" data-get="'+p.trim+
+      '" data-how="deal"'+(ok?'':' disabled')+'>'+
+        '<span>Claim the deal</span><small>'+money(price)+' now</small></button>'+
+      (ok?'<div class="ready">Available now</div>'
+         :'<div class="why">Needs '+money(price)+'</div>')+
+    '</div></div>';
+}
 /* The cheapest car in the whole catalogue TO RENT — used only by the
    Paolo hook on new-city entry (transferplan.md §4.1: "can't afford to rent
    the cheapest catalogue vehicle"). Distinct from floorCost(), which finds
@@ -14850,8 +15754,21 @@ function finishTransfer(){
 function openGarage(){
   $('garage').hidden=false; ensurePromoSrc(); renderGarage();
   /* The very first thing a new player sees is this screen, so Ray introduces
-     himself here rather than waiting for a clock-on that cannot happen yet. */
-  if(!raySeen(1)&&!S.ray.skipped&&!S.cars.length) rayShow(1);
+     himself here rather than waiting for a clock-on that cannot happen yet.
+     S.ray.guided is a 2026-07-31 fix (Pavel's screenshot): without it, this
+     could re-fire in ANY city's empty garage, because S.ray.seen is rebuilt
+     to [] by newFleet() every single city — raySeen(1) alone was never
+     enough to keep this Austin-only script from replaying somewhere it
+     makes no sense (Dallas, showing "the car you already own" over a city
+     with no such option). guided is only ever true in the one city running
+     the scripted tutorial. See THE GARAGE WELCOME, above rayCityUnlocked(),
+     for the real per-city replacement below. */
+  if(!raySeen(1)&&!S.ray.skipped&&S.ray.guided&&!S.cars.length) rayShow(1);
+  else if(S.city!=='austin'&&S.city!=='sf'&&!S.cars.length&&!S.ray.skipped&&
+          !garageWelcomed(S.city)){
+    markGarageWelcomed(S.city);
+    rayGarageWelcome();
+  }
 }
 /* transferplan.md §4.2: fires once per city, and only if the player leaves
    the garage having bought nothing at all. Guarded the same way every other
@@ -14875,6 +15792,7 @@ function maybeNudgePromo(){
   rayFoot('Got it','','');
   $('ray').hidden=false;
   raySpotEl($('garage-btn'));
+  rayRecord();
   rayPause();
 }
 
@@ -14895,9 +15813,17 @@ function acquire(id,how){
   /* First day's rent is due at signing — a lease, not a free ride. Renting
      used to charge nothing at all (see canAfford/rentReq above). */
   if(how==='rent')    S.cash-=v.rent;
-  addCar(id,how==='buy'?'own':how);
+  /* The competency promo — northstarplan.md §4a. A real, discounted price
+     (unlike 'own'), debited here same as any other paid acquisition. */
+  if(how==='deal')    S.cash-=compPromoPrice();
+  addCar(id,(how==='buy'||how==='deal')?'own':how);
   const c=S.cars[S.cars.length-1];
-  log('Fleet',(how==='buy'?'bought ':how==='rent'?'rented ':how==='own'?'registered ':'financed ')+
+  /* One-shot: the deal is claimed, in THIS city, for good — same rule as
+     PROG.promoUsed/PROG.promoNudged, on its own separate flag (see the
+     COMPETENCY PROMO block above for why it isn't the same boolean). */
+  if(how==='deal') markCompPromoUsed(S.city);
+  log('Fleet',(how==='buy'?'bought ':how==='rent'?'rented ':how==='own'?'registered ':
+    how==='deal'?'claimed the manufacturer deal on ':'financed ')+
     v.name+' — '+c.id,0);
   checkUnlocks();
   renderGarage(); render();
@@ -15715,7 +16641,7 @@ function showIntro(next){
 function newFleet(cityId,opts){
   opts=opts||{};
   S.cars=[]; S.rides=[]; S.offers=[]; S.log=[];
-  S.day=1; S.seq=0; S.sel=null;
+  S.day=1; S.seq=0; S.sel=null; S.camFollow=null; S.camInit=false;
   S.onClock=false; S.shiftNo=0; S.workedSec=0; S.billedSec=0;
   /* Calendar-day flag for the soloSeat stipend (see billMidnight()) —
      distinct from workedSec, which is shift-scoped and reset by clockOn().
@@ -15931,9 +16857,21 @@ setInterval(function(){
   if(document.hidden) return;
   recenterMap();
 },30000);
+$('dh-follow').addEventListener('click',function(){
+  /* Toggle. Engaging with nothing selected falls back to the selected car,
+     then the first one — there is always an obvious "the car" when a player
+     presses this with a one-car fleet, which is the case it exists for. */
+  if(S.camFollow){ setCamFollow(null); return }
+  const c=selCar()||S.cars[0];
+  if(c) setCamFollow(c.id);
+});
 $('dh-recenter').addEventListener('click',function(){
-  /* One button, both jobs: put the view back, and resume following. Pressing
-     it is how the player hands the wheel back after panning. */
+  /* One button, three jobs now: stop riding with a car, put the view back,
+     and resume following the area. Recenter is the "show me everything
+     again" gesture, so it has to be able to get out of car-follow too —
+     otherwise the camera would snap straight back to the car it was
+     riding. */
+  if(S.camFollow) setCamFollow(null);
   setFollow(true);
   if(!recenterMap()) centerCity();   /* nothing to fit: fall back on the city */
 });
@@ -16094,6 +17032,14 @@ window.DH_ACT1={
   bestProfitStreakStat:bestProfitStreakStat,bestDeadheadStat:bestDeadheadStat,
   rayAppOffer1:rayAppOffer1,rayAppOffer2:rayAppOffer2,
   rejectionLetterHtml:rejectionLetterHtml,rayShowRejection:rayShowRejection,
+  rayRecord:rayRecord,rayRecordEnd:rayRecordEnd,renderThread:renderThread,
+  setCamFollow:setCamFollow,camCar:camCar,camSnap:camSnap,paintCamBtn:paintCamBtn,
+  camTick:camTick,followingFleet:function(){ return followFleet },
+  CAM_ZOOM:CAM_ZOOM,
+  rayFinale:rayFinale,checkFinale:checkFinale,finaleReady:finaleReady,
+  contractHtml:contractHtml,finaleSummaryHtml:finaleSummaryHtml,sigSize:sigSize,
+  THREAD_MAX:THREAD_MAX,threadStamp:threadStamp,
+  appAllMet:appAllMet,interviewLetterHtml:interviewLetterHtml,rayShowInterview:rayShowInterview,
   appRowsHtml:appRowsHtml,appRowsSig:appRowsSig,
   appReportHeaderHtml:appReportHeaderHtml,appReportWideHtml:appReportWideHtml,
   openTrophies:openTrophies,loadBoard:loadBoard,
@@ -16210,6 +17156,15 @@ window.DH_ACT1={
   promoConfirm:promoConfirm,refreshPromoSrc:refreshPromoSrc,
   ensurePromoSrc:ensurePromoSrc,maybeNudgePromo:maybeNudgePromo,
   renderFleetPromo:renderFleetPromo,promoRowHtml:promoRowHtml,
+  /* The competency promo — northstarplan.md §4a. */
+  COMP_PROMOS:COMP_PROMOS,compPromoFor:compPromoFor,
+  compPromoUsed:compPromoUsed,markCompPromoUsed:markCompPromoUsed,
+  compPromoPrice:compPromoPrice,compPromoEligible:compPromoEligible,
+  compPromoCardHtml:compPromoCardHtml,
+  compAcceptMet:compAcceptMet,compSafetyMet:compSafetyMet,
+  compProfitMet:compProfitMet,compDeadheadMet:compDeadheadMet,
+  garageWelcomed:garageWelcomed,markGarageWelcomed:markGarageWelcomed,
+  garageWelcomeHtml:garageWelcomeHtml,rayGarageWelcome:rayGarageWelcome,
   transferring:function(){ return TRANSFER },
   finishTransfer:finishTransfer,
   /* Exposed for the inter-city-roads regression test: INTERCITY_ROADS is a
