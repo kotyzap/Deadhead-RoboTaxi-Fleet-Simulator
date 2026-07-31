@@ -2635,6 +2635,118 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
    Fix: the narrow tier now sets its own single-column grid-template-columns
    (1fr) so there is only ever one track to place into, matching the one
    visible child. */
+/* ---- THE PROLOGUE (storyplan.md §3) --------------------------------------
+   Sits at z-index 92: ABOVE #intro (90) so the handover needs no reflow, and
+   above the splash in its .splash-back state (80) so the artwork shows through
+   as this overlay's backdrop, exactly like the intro's. Below the loading
+   splash itself (200), which must always win.
+
+   COLOURS, honestly: the phone's own shell is a FIXED dark (#0d0f13, with white
+   alphas for its chrome) and does NOT follow the theme. That is deliberate —
+   this is a physical object being held up in front of the screen, and a handset
+   that turned cream in light mode would read as a UI panel wearing a phone
+   costume. It is also why the shell needs no second rule set for night mode:
+   it already is night. Everything that belongs to the GAME rather than to the
+   phone — the accent button, easing — uses tokens. */
+#prologue{position:fixed;inset:0;z-index:92;display:grid;place-items:center;
+  padding:16px}
+#prologue[hidden]{display:none}
+/* Just enough scrim to hold text against a bright golden-hour photo. The
+   tutorial scrim taught this the hard way — see #dimscrim's note on why
+   brightness compensation could never work; a flat dark layer is the only
+   thing that makes arbitrary artwork safe to put type on. */
+.pro-scrim{position:absolute;inset:0;background:rgba(6,7,9,.5);
+  backdrop-filter:blur(2px)}
+.pro-stage{position:relative;display:flex;flex-direction:column;
+  align-items:center;gap:14px;max-height:100%}
+/* THE PHONE. Sized in vh as well as px so a short laptop viewport never gets a
+   phone taller than the window — the thread scrolls inside instead. */
+.pro-phone{position:relative;width:min(92vw,380px);
+  max-height:min(84vh,720px);display:flex;flex-direction:column;
+  background:#0d0f13;color:#f4f5f7;
+  border:1px solid rgba(255,255,255,.16);border-radius:34px;
+  box-shadow:0 30px 70px rgba(0,0,0,.6),0 0 0 4px rgba(0,0,0,.55);
+  padding:11px 11px 13px;overflow:hidden}
+.pro-notch{position:absolute;top:9px;left:50%;transform:translateX(-50%);
+  width:74px;height:6px;border-radius:3px;background:rgba(255,255,255,.22)}
+.pro-status{display:flex;align-items:center;justify-content:space-between;
+  padding:9px 8px 7px;font-size:10.5px;letter-spacing:.03em;
+  color:rgba(255,255,255,.62);font-variant-numeric:tabular-nums}
+.pro-status-r{display:inline-flex;align-items:center;gap:2px}
+.pro-sig{display:inline-block;width:3px;background:rgba(255,255,255,.55);border-radius:1px}
+.pro-sig:nth-child(1){height:4px}
+.pro-sig:nth-child(2){height:6px}
+.pro-sig:nth-child(3){height:8px}
+.pro-batt{margin-left:5px;width:16px;height:8px;border-radius:2px;
+  border:1px solid rgba(255,255,255,.5);position:relative}
+.pro-batt::after{content:'';position:absolute;inset:1.5px;right:5px;
+  background:rgba(255,255,255,.75);border-radius:1px}
+.pro-head{display:flex;align-items:center;gap:9px;padding:6px 8px 10px;
+  border-bottom:1px solid rgba(255,255,255,.1)}
+.pro-av{width:30px;height:30px;border-radius:50%;flex:0 0 auto;
+  display:grid;place-items:center;font-size:11px;font-weight:600;
+  background:rgba(255,255,255,.14);color:#fff;letter-spacing:.02em}
+.pro-who{display:flex;flex-direction:column;line-height:1.25;min-width:0}
+.pro-who b{font-size:13px;font-weight:600}
+.pro-who small{font-size:10.5px;color:rgba(255,255,255,.45);min-height:13px}
+.pro-thread{flex:1 1 auto;overflow-y:auto;padding:12px 6px 4px;
+  display:flex;flex-direction:column;gap:9px;scrollbar-width:thin}
+/* Each bubble animates in once, on arrival. `both` matters: without it the
+   bubble is briefly visible at full opacity before the animation starts. */
+.pro-msg{align-self:flex-start;max-width:88%;padding:9px 12px;
+  border-radius:16px 16px 16px 5px;background:rgba(255,255,255,.11);
+  font-size:12.5px;line-height:1.45;
+  animation:pro-in .34s var(--ease) both}
+@keyframes pro-in{from{opacity:0;transform:translateY(7px) scale(.98)}}
+/* A photo Paolo sends. Fixed aspect box so the bubble does not jump height
+   while the jpg decodes and shove the thread around mid-read. */
+.pro-shot{align-self:flex-start;max-width:88%;padding:5px;
+  border-radius:16px 16px 16px 5px;background:rgba(255,255,255,.11);
+  animation:pro-in .34s var(--ease) both}
+.pro-shot img{display:block;width:100%;border-radius:12px;
+  aspect-ratio:4/3;object-fit:cover;background:rgba(255,255,255,.05)}
+.pro-shot.wide img{aspect-ratio:16/9}
+.pro-shot small{display:block;padding:5px 7px 2px;font-size:10.5px;
+  color:rgba(255,255,255,.5);line-height:1.35}
+/* The three-dot "he is typing" bubble. */
+.pro-typing{align-self:flex-start;display:inline-flex;gap:4px;padding:11px 13px;
+  border-radius:16px 16px 16px 5px;background:rgba(255,255,255,.11)}
+.pro-typing i{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.5);
+  animation:splash-dot 1.1s ease-in-out infinite}
+.pro-typing i:nth-child(2){animation-delay:.14s}
+.pro-typing i:nth-child(3){animation-delay:.28s}
+.pro-foot{padding:11px 6px 2px;display:flex;flex-direction:column;gap:8px}
+.pro-btn{width:100%;height:40px;border:0;border-radius:20px;cursor:pointer;
+  font:inherit;font-size:13px;font-weight:500;
+  background:var(--accent);color:#fff;transition:opacity .15s var(--ease)}
+.pro-btn:hover{opacity:.88}
+.pro-btn[disabled]{opacity:.4;cursor:default}
+/* The fork's two answers. .pro-btn-alt is the independent one — equal weight
+   on purpose, per storyplan §3.4's naming rule: the choice screen must state
+   what each option costs rather than steering. */
+.pro-btn-alt{background:rgba(255,255,255,.13);color:#f4f5f7;
+  border:1px solid rgba(255,255,255,.2)}
+.pro-btn small{display:block;font-size:10.5px;font-weight:400;opacity:.75;
+  margin-top:1px}
+.pro-btn.tall{height:auto;padding:9px 14px;line-height:1.3}
+.pro-skip{border:0;background:none;cursor:pointer;font:inherit;font-size:11.5px;
+  letter-spacing:.05em;color:rgba(255,255,255,.55);padding:4px 10px}
+.pro-skip:hover{color:rgba(255,255,255,.85)}
+@media (max-width:420px){
+  .pro-phone{width:96vw;border-radius:26px}
+  .pro-msg,.pro-shot{max-width:92%}
+}
+/* Short landscape (a laptop, or a phone on its side): the phone would be taller
+   than the window, so let the thread do the scrolling and trim the chrome. */
+@media (max-height:620px){
+  .pro-phone{max-height:94vh;padding:8px 9px 10px;border-radius:24px}
+  .pro-status,.pro-notch{display:none}
+  .pro-thread{padding-top:8px}
+}
+@media (prefers-reduced-motion:reduce){
+  .pro-msg,.pro-shot{animation:none}
+  .pro-typing i{animation:none}
+}
 #intro{position:fixed;inset:0;z-index:90;display:grid;
   background:radial-gradient(120% 120% at 50% 0%,rgba(38,42,52,.92),rgba(6,7,9,.95));
   grid-template-columns:var(--wing) minmax(0,1fr) var(--wing)}
@@ -4114,6 +4226,60 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
 <!-- Welcome intro video — the game's cold open, shown once before the
      tutorial starts. 16:9, controls visible, autoplay off on purpose (see
      the CSS block above and showIntro() for why). -->
+<!-- ============ THE PROLOGUE (storyplan.md §3) ============
+     Runs ONCE per run, between the intro/account card and the garage. Before
+     this existed the game opened on a car showroom and a stranger already
+     mid-sentence; Pavel noticed the gap from the other side ("I do not see any
+     Intro with photo of the ad from Paolo before entering garage").
+
+     WHY A PHONE. Pavel's framing, and it solves a problem the RAY cards have:
+     Paolo is a man who was given your number by your father. A text message is
+     what that man sends. The player is sitting at a PC, so a phone held up in
+     front of the screen is the literal staging of the fiction — and it makes
+     the messages feel received rather than displayed. The rest of the game
+     talks to you through a console; this one moment does not.
+
+     WHY IT SITS ON THE SPLASH ART. Same reasoning as v0.58.0's intro handover
+     (see .intro-onsplash): the splash is already the backdrop for the video
+     and the account card, so continuing onto it makes one unbroken opening
+     instead of three unrelated screens. The SF office photo lands INSIDE the
+     phone conversation, not as a third full-screen background — the office is
+     something Paolo sends you, not somewhere you are.
+
+     The wide office art is a DAY/NIGHT PAIR of the identical room (Pavel spotted
+     it): northstar-ad-wide.jpg at dusk, northstar-hired-wide.jpg at golden
+     hour. prologueOfficeArt() picks by the player's own wall clock — see its
+     note for what that costs. -->
+<div id="prologue" hidden>
+  <div class="pro-scrim" aria-hidden="true"></div>
+  <div class="pro-stage">
+    <!-- The phone. A frame, a notch, a status bar and a thread — deliberately
+         NOT a photograph of a phone: a drawn shell scales to any viewport and
+         restyles with the theme, and a photo would fight the splash art behind
+         it at every aspect ratio. -->
+    <div class="pro-phone" role="dialog" aria-modal="true" aria-label="Messages from Paolo Cortez">
+      <div class="pro-notch" aria-hidden="true"></div>
+      <div class="pro-status" aria-hidden="true">
+        <span id="pro-clock">--:--</span>
+        <span class="pro-status-r"><i class="pro-sig"></i><i class="pro-sig"></i><i class="pro-sig"></i><b class="pro-batt"></b></span>
+      </div>
+      <div class="pro-head">
+        <span class="pro-av">PC</span>
+        <span class="pro-who"><b>Paolo Cortez</b><small id="pro-sub">typing…</small></span>
+      </div>
+      <!-- aria-live so a screen reader hears each message as it lands rather
+           than only on the final focus change. -->
+      <div class="pro-thread" id="pro-thread" aria-live="polite"></div>
+      <div class="pro-foot">
+        <button type="button" id="pro-next" class="pro-btn">Read</button>
+      </div>
+    </div>
+    <!-- Skip stays OUTSIDE the phone: it is the player talking to the game, not
+         to Paolo. Always available — nobody should be trapped in a cutscene. -->
+    <button type="button" id="pro-skip" class="pro-skip">Skip</button>
+  </div>
+</div>
+
 <div id="intro" hidden>
   <div class="intro-wing" aria-hidden="true"></div>
   <div class="intro-frame">
@@ -7546,6 +7712,12 @@ function markRaySeen(n){
 }
 /* Same, for the skip. raySkip() still sets S.ray.skipped for this city; this
    is what makes the decision outlive the city switch. */
+/* storyplan.md §3 — the prologue is once per RUN. */
+function prologueSeen(){ return !!(PROG&&PROG.prologueSeen) }
+function markPrologueSeen(){
+  if(!PROG||PROG.prologueSeen) return;
+  PROG.prologueSeen=true; progSave();
+}
 function markRaySkipped(){
   if(!PROG||PROG.raySkipped) return;
   PROG.raySkipped=true; progSave();
@@ -8768,9 +8940,26 @@ function floorCost(){
    and would have quietly become a lie the first time a trim was rebalanced.
    Beat 1 had the same fault with "Seven and a half thousand dollars", which was
    already wrong: CFG.startCash is 800. */
+/* {NAME} is capitalised on the way in (Pavel's screenshot, 2026-07-31: Paolo
+   greeting a signed-in player as "You're john, I'm told."). PROFILE.name is a
+   USERNAME — lowercase is the normal, correct thing for a player to type
+   there, and it is right in every other place it appears (the Saves list, the
+   leaderboard, the report's driver line, where it identifies an account).
+   It is only wrong in the one place it is used as a form of ADDRESS, which is
+   here: a person saying your name out loud does not say it in lowercase.
+
+   Fixed at the token rather than in PROFILE.name, deliberately — rewriting the
+   stored name would change the identity the cloud save and the board are keyed
+   on, to fix a display problem. Only the first letter is touched; "mcCloud"
+   stays "McCloud"-untouched rather than being title-cased into something the
+   player did not type. */
+function sayName(n){
+  n=String(n||'');
+  return n ? n.charAt(0).toUpperCase()+n.slice(1) : n;
+}
 function rayFill(t){
   return t
-    .replace('{NAME}',escapeHtml(playerName()))
+    .replace('{NAME}',escapeHtml(sayName(playerName())))
     .replace(/\{FLOOR\}/g,money(floorCost()))
     .replace(/\{CASH\}/g,money(S.cash));
 }
@@ -13017,6 +13206,39 @@ $('app-apply-btn').addEventListener('click',function(){
 $('dh-cp-close').addEventListener('click',closeConsolePanel);
 document.querySelectorAll('.t-apps .t-app').forEach(function(b){
   b.addEventListener('click',function(){
+    /* CLICKING THE LIT ICON CLOSES IT AGAIN (Pavel, 2026-07-31: "clicking
+       active trophies icon should toggle the modal view as well as close
+       button in the middle").
+       ------------------------------------------------------------------
+       These icons have carried aria-pressed since they stopped being
+       decoration, so they already LOOK like toggles — the ring fills, the
+       label goes white. They just never toggled back: a second click on an
+       open panel fell through to showInConsole()/openTrophies(), both of
+       which early-returned with a bringIntoView() and nothing else. The
+       control promised a state it would not give back, which is the same
+       complaint the control-strip audit was about
+       (deadhead_control_audit_2026_07).
+
+       Handled here, once, ahead of every per-button branch, rather than in
+       each of showInConsole()/openTrophies()/openDodge() — one rule in one
+       place (see rayShow()'s seen-guard, storyplan.md §4, for the same
+       argument).
+
+       ORDER MATTERS: the mark-seen side effects of "opening what is already
+       open" must still run. A trophy can land while Trophies is on screen
+       and awardAchv() repaints the grid without marking it seen, so a
+       closing click has to clear the badge on the way out or it keeps
+       claiming unread about something the player was looking straight at.
+       Same for the application panel's own badge. */
+    const openId=CP?CP.panelId:null;
+    const isOpen=b.id==='app-trophy' ? openId==='trophy'
+               : (b.dataset.panel ? openId===b.dataset.panel : false);
+    if(isOpen){
+      if(b.id==='app-trophy'){ achvMarkSeen(); paintAchvBadge() }
+      if(b.dataset.panel==='panel-application') appMarkSeen();
+      closeConsolePanel();     /* re-syncs aria-pressed back to Map itself */
+      return;
+    }
     document.querySelectorAll('.t-apps .t-app').forEach(function(o){o.setAttribute('aria-pressed','false')});
     b.setAttribute('aria-pressed','true');
     if(b.id==='app-map'){
@@ -13135,7 +13357,7 @@ const SLOTS=['slot1','slot2','slot3'];
    SAVE_V above is the STATE SHAPE version and moves only when the
    snapshot format changes — the two are deliberately independent, so
    shipping 0.9.0 does not invalidate 0.8.0 saves. */
-const VERSION='0.102.0';
+const VERSION='0.104.0';
 
 function snapshot(){
   return {
@@ -13844,6 +14066,12 @@ let PROG={unlocked:{austin:true}, results:{}, last:'austin', eggs:{}, achv:{},
      defensively. Keyed by beat number as a STRING (it round-trips through
      JSON as an object, so raySeen() must not assume numeric keys). */
   raySeen:{}, raySkipped:false,
+  /* THE PROLOGUE (storyplan.md §3) — once per run, and it must survive a city
+     switch for the same reason PROG.raySeen must: S.ray.seen is wiped by
+     newFleet() on every city, so a flag stored there would replay the whole
+     opening — the lost job, the father, the poster — on arrival in Dallas.
+     Additive, no PROG_V bump, read back defensively. */
+  prologueSeen:false,
   /* storyplan.md §4.1 — the Gear switch that turns Paolo off wholesale.
      Offered only once the player is past Austin (see the settings row): the
      scripted first day is not optional, and a brand-new player cannot make an
@@ -13872,7 +14100,7 @@ function progSave(){
        garageWelcomed) are the cautionary tale directly above; a one-shot
        latch that isn't in BOTH halves of this round trip is not a latch. */
     raySeen:PROG.raySeen, raySkipped:PROG.raySkipped,
-    rayMuted:PROG.rayMuted})
+    rayMuted:PROG.rayMuted, prologueSeen:PROG.prologueSeen})
     .catch(function(){});
 }
 /* ---- EASTER EGGS ------------------------------------------------------
@@ -14629,6 +14857,7 @@ function progApply(r){
     if(r.raySeen&&typeof r.raySeen==='object') PROG.raySeen=r.raySeen;
     if(typeof r.raySkipped==='boolean') PROG.raySkipped=r.raySkipped;
     if(typeof r.rayMuted==='boolean') PROG.rayMuted=r.rayMuted;
+    if(typeof r.prologueSeen==='boolean') PROG.prologueSeen=r.prologueSeen;
     /* The thread (v0.94.0). Absent on every pre-existing save, which reads
        correctly as "no history yet" — the conversation starts from the next
        thing Paolo says, rather than being fabricated retroactively. */
@@ -17077,6 +17306,175 @@ $('rp-go').addEventListener('click',function(){ autosave('day-end') });
    default, and the only way to get real (non-muted) audio in a browser is
    a genuine user gesture, so the player presses the native play button
    themselves and the poster frame is what they see until they do. */
+/* ============================================================
+   THE PROLOGUE — storyplan.md §3
+
+   Paolo texts you before you have a car, because at that point in the story a
+   text is all he has. Everything the game needed the player to know and never
+   told them: the job is gone, the father made the introduction, the car in the
+   garage is already yours, and there is a poster on a pole in Austin.
+
+   RUN-SCOPED, banked on PROG.prologueSeen — the same home and the same
+   reasoning as PROG.raySeen (§4): S.ray.seen is wiped on every city switch, so
+   anything stored there would replay the whole opening on arrival in Dallas.
+   Additive field, no PROG_V bump, defensive read-back.
+
+   THE FORK IS NOT BUILT YET (§3.2). This ships the prologue only — the last
+   card is a single "Let's go" and the run continues exactly as today. The two
+   answers, the financed car and the take-rate split are step 3 of §8's order,
+   and the button markup below is deliberately shaped so the second option
+   drops in beside the first without a layout change.
+   ============================================================ */
+
+/* Which of the two wide office photographs to show.
+
+   They are the SAME ROOM at two different hours — Pavel noticed
+   (northstar-ad-wide.jpg at dusk, northstar-hired-wide.jpg at golden hour) —
+   and asked for the player's own wall clock to choose. 06:00–17:59 local gets
+   the daylight frame, everything else the dusk one.
+
+   THE PLAYER'S clock, not the city's. cityLocalSeconds() exists and is right
+   for anything happening in the sim, but this is a message arriving on the
+   player's own phone while they sit at their own desk at their own hour. That
+   is the whole point of the staging.
+
+   WHAT THIS COSTS, stated because it was a real trade: northstar-hired-wide.jpg
+   was drawn as the HIRED payoff image (the same seat, sunlit, once you have
+   earned it) and spending it here means the finale cannot debut it. Accepted —
+   neither wide frame was used anywhere in the game yet, the finale already has
+   finale-contract.jpg, and a room that looks like whatever hour you happen to
+   be playing at is worth more on the way in than a reveal nobody was waiting
+   for. */
+function prologueOfficeArt(now){
+  const h=(now||new Date()).getHours();
+  const day=h>=6&&h<18;
+  return {
+    src:day?'northstar-hired-wide.jpg':'northstar-ad-wide.jpg',
+    cap:day
+      ? 'Robotaxi Operations Center, San Francisco. That is the seat.'
+      : 'Robotaxi Operations Center, San Francisco. Night shift is quieter.'
+  };
+}
+
+/* The phone's own beep. Two quick rising notes — deliberately NOT sndOffer()'s
+   pair, which the player is about to hear several hundred times and which means
+   "a ride is waiting". This one only ever means "Paolo said something".
+   Rides on the existing WebAudio synth (no mp3s) and so respects the sound
+   toggle for free; beep() no-ops when S.soundOn is false or the AudioContext
+   was never unlocked by a gesture. */
+function sndMsg(){
+  beep(720,0.05,'sine',0.045);
+  setTimeout(function(){ beep(980,0.07,'sine',0.04) },95);
+}
+
+/* The script. Each entry is one tap of the button.
+   `pic` sends a photograph instead of words; `art` defers to
+   prologueOfficeArt() so the hour is read at the moment it is shown rather
+   than baked in at parse time. */
+function prologueBeats(){
+  return [
+    {t:"Is this {NAME}? Paolo Cortez. Your father gave me your number — he "+
+       "said you would not mind."},
+    {t:"He told me about the job. The whole department, and a model doing it "+
+       "cheaper by the Monday. I am sorry. It is happening everywhere and "+
+       "that does not make it smaller."},
+    {t:"Forty-one years I drove a cab. I got out while getting out was still "+
+       "my idea, which is more than most of us managed."},
+    {t:"Here is why I am writing. I co-own the Garage dealership now, and I "+
+       "put these on poles all over town."},
+    {pic:'northstar-ad-poster.jpg', ar:'4/3',
+     cap:'NOW HIRING — Supervising Driver. Robotaxi Operations Center, San Francisco.'},
+    {t:"Nine requirements. You meet none of them today, and neither did I. "+
+       "They are not asking whether you are clever. They are asking whether "+
+       "you are still there in a year."},
+    {art:true},
+    {t:"I am already on that crew. What I want is a good one — people who "+
+       "stay, paid properly, everybody happy. Your father is a good "+
+       "reference, so you are the first call I made."},
+    {t:"And you have the car sitting there. Electric, drives itself, already "+
+       "yours. That is the whole starting position: a car, and no boss."},
+    {t:"So. Austin, tonight. Get one shift finished and see a real check with "+
+       "your name on it, and then we will talk about the list."}
+  ];
+}
+
+function showPrologue(next){
+  const el=$('prologue'), thread=$('pro-thread'), btn=$('pro-next'),
+        skip=$('pro-skip'), sub=$('pro-sub'), clock=$('pro-clock');
+  const beats=prologueBeats();
+  let i=0, typingT=null, clockT=null, done=false;
+
+  function paintClock(){
+    const d=new Date();
+    clock.textContent=String(d.getHours()).padStart(2,'0')+':'+
+                      String(d.getMinutes()).padStart(2,'0');
+  }
+  function atBottom(){ thread.scrollTop=thread.scrollHeight }
+
+  function finish(){
+    if(done) return;                 /* Skip and the last card must not both run */
+    done=true;
+    clearTimeout(typingT); clearInterval(clockT);
+    /* Banked BEFORE the handover, so a player who closes the tab on the very
+       last card is not shown the whole thing again. */
+    markPrologueSeen();
+    el.hidden=true;
+    btn.removeEventListener('click',advance);
+    skip.removeEventListener('click',finish);
+    /* Same reason showIntro()'s closeIntro() calls it: the splash was only
+       still on screen to be this overlay's backdrop. No-op if it already went. */
+    splashHide();
+    next();
+  }
+
+  /* One tap = one message. He "types" for a beat first, because a wall of text
+     appearing instantly is a UI and a message arriving is a person. */
+  function advance(){
+    if(done) return;
+    if(i>=beats.length){ finish(); return }
+    const b=beats[i++];
+    btn.disabled=true;
+    sub.textContent='typing…';
+    const bubble=document.createElement('div');
+    typingT=setTimeout(function(){
+      if(done) return;
+      sub.textContent='online';
+      if(b.pic||b.art){
+        const art=b.art?prologueOfficeArt():{src:b.pic,cap:b.cap};
+        bubble.className='pro-shot'+(b.art||b.ar==='16/9'?' wide':'');
+        /* escapeHtml on the caption even though every string here is authored:
+           the art caption is chosen by a function and a future edit should not
+           be able to inject markup by accident. */
+        bubble.innerHTML='<img alt="" src="'+art.src+'"><small>'+
+          escapeHtml(art.cap||b.cap||'')+'</small>';
+      } else {
+        bubble.className='pro-msg';
+        bubble.innerHTML=rayFill(b.t);      /* {NAME}/{CASH}/{FLOOR}, already escaped */
+      }
+      thread.appendChild(bubble);
+      atBottom();
+      sndMsg();
+      btn.disabled=false;
+      btn.textContent=(i>=beats.length)?"Let's go":'Read';
+      /* §3.2's fork lands here: when it ships, the last beat renders two
+         buttons instead of relabelling this one. */
+    }, i===1?260:520);
+  }
+
+  el.hidden=false;
+  thread.innerHTML='';
+  btn.textContent='Read';
+  btn.disabled=false;
+  paintClock(); clockT=setInterval(paintClock,20000);
+  /* Land on the splash artwork, both orderings — identical to showIntro()'s
+     handover, including the late-open case where the splash timer already
+     fired and splashBackdrop() has to bring it back. */
+  if(splashLoading) el.classList.add('intro-onsplash'); else splashBackdrop();
+  btn.addEventListener('click',advance);
+  skip.addEventListener('click',finish);
+  advance();                          /* the first message arrives unprompted */
+}
+
 function showIntro(next){
   const el=$('intro'), v=$('intro-video'), skip=$('intro-skip'), playBtn=$('intro-video-play');
   function stopVideo(){ v.pause() }
@@ -17289,8 +17687,17 @@ function newFleet(cityId,opts){
   /* The garage opens either way — you still cannot run a city without buying
      a car. Only the video is conditional. */
   const start=function(){ openGarage(); rayCheck() };
+  /* storyplan.md §3 — the prologue goes between the account card and the
+     garage, and ONLY on a fresh tutorial run that has not seen it.
+     `tutorial` alone is not enough: it is true for any brand-new fleet, so a
+     player who resets Austin mid-career would sit through the lost job and the
+     poster again. prologueSeen() is the run-scoped half (PROG), exactly as
+     raySeen() is for the beats.
+     Chained rather than nested into showIntro() so the ordering is readable
+     here, at the one place that owns the opening sequence. */
+  const afterIntro=prologueSeen()?start:function(){ showPrologue(start) };
   if(tutorial){
-    showIntro(start);
+    showIntro(afterIntro);
   } else {
     /* Assert it closed rather than assume. The overlay is full-screen and the
        markup carries `hidden`, so in practice it is already down by the time a
@@ -17300,6 +17707,11 @@ function newFleet(cityId,opts){
     el.hidden=true;
     el.classList.remove('intro-onsplash');
     if(v&&typeof v.pause==='function') v.pause();
+    /* The prologue gets the same assertion for the same reason — it is another
+       full-screen overlay on the same handover, and a second city arriving
+       while it is up would put a phone over the console. */
+    const pel=$('prologue');
+    if(pel){ pel.hidden=true; pel.classList.remove('intro-onsplash') }
     /* Same reason the assert above exists: a second city must never inherit
        the first run's splash backdrop still sitting over the console. */
     splashHide();
@@ -17576,6 +17988,10 @@ window.DH_ACT1={
      wipe of S.ray.seen. */
   raySkippedEver:raySkippedEver,rayMuted:rayMuted,markRaySeen:markRaySeen,
   markRaySkipped:markRaySkipped,syncRayBtn:syncRayBtn,
+  /* prologue.test.js — storyplan.md §3. */
+  showPrologue:showPrologue,prologueBeats:prologueBeats,
+  prologueOfficeArt:prologueOfficeArt,prologueSeen:prologueSeen,
+  markPrologueSeen:markPrologueSeen,
   /* rayPause/rayResume's own state is plain module `let`, not on S (see their
      comment) — exposed as getters, same pattern as ROADS/ZONES/DODGE above,
      so a test can assert on it without it going stale as a captured value. */
@@ -17666,7 +18082,11 @@ window.DH_ACT1={
   rayAdvise:rayAdvise,ADVISE_AFTER:ADVISE_AFTER,
   noFeedTick:noFeedTick,NOFEED_AFTER:NOFEED_AFTER,noFeed:noFeed,mmss:mmss,
   NOFEED_REPEAT:NOFEED_REPEAT,NOFEED_MAX_SAID:NOFEED_MAX_SAID,
-  rayFill:rayFill,floorCost:floorCost,money:money,money2:money2,
+  rayFill:rayFill,sayName:sayName,floorCost:floorCost,money:money,money2:money2,
+  /* nav-toggle.test.js asserts the SPOKEN name is capitalised while the STORED
+     one (what the cloud save and the leaderboard are keyed on) is not. */
+  PROFILE:function(){ return PROFILE },playerName:playerName,
+  closeConsolePanel:closeConsolePanel,CP:function(){ return CP },
   rayCoffee:rayCoffee,rayFoot:rayFoot,rayAtCoffee:rayAtCoffee,
   rayDodgeBrief:rayDodgeBrief,closeDodge:closeDodge,dodgeEnd:dodgeEnd,
   KOFI_URL:KOFI_URL,KOFI_QR:KOFI_QR,
