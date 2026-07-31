@@ -1160,7 +1160,7 @@ html[data-theme="night"] .console{background:rgba(39,44,51,.4);
 .mv-wx.wx-off{color:rgba(255,255,255,.4)}
 
 .t-cardbody{flex:1;min-height:0;min-width:0;display:flex;flex-direction:column}
-.t-side{flex:0 0 auto;min-width:0;display:flex;flex-direction:column}
+.t-side{flex:0 0 auto;min-width:0;min-height:0;display:flex;flex-direction:column}
 /* #map used to carry the flex sizing itself; that moved to .map-wrap so
    #dodge-incar (the in-car camera view) can sit absolutely on top of it
    without Leaflet ever being resized, torn down, or rebuilt. */
@@ -1388,7 +1388,23 @@ html[data-theme="night"] .console{background:rgba(39,44,51,.4);
 .t-now .txt{display:block;font-size:12.5px;line-height:1.4;color:var(--card-txt)}
 
 /* rail-only live feed — hidden while the card is portrait, where there is no room */
-.t-live{display:none;flex-direction:column;flex:1;min-height:0;overflow-y:auto;
+/* LIVE ACTIVITY HAS A DEFINED CEILING (Pavel, 2026-07-31: "define and limit
+   live activity height").
+   It is the LAST child of .t-side and carries flex:1, so it absorbs whatever
+   the block above it leaves — which is correct while its parent has a
+   definite height, and unbounded the moment the parent does not. That is
+   exactly what happened: at widths where .console is height:auto, flex:1 with
+   min-height:0 has nothing to resolve against, so instead of scrolling the
+   list simply grew, one row per event, and dragged the whole in-car display
+   past the bottom of the screen.
+   max-height makes the bound explicit rather than inherited: the list can
+   still take all the room the layout offers it, and can never take more than
+   this much of the viewport no matter what the parent chain does. It keeps
+   flex:1 so a bounded parent still fills normally — the cap only bites when
+   something above it has gone unbounded, which is precisely when it should.
+   The phone tier tightens this further (34vh); see that block. */
+.t-live{display:none;flex-direction:column;flex:1;min-height:0;max-height:52vh;
+  overflow-y:auto;
   padding:11px 14px;border-top:1px solid var(--card-div);scrollbar-width:thin}
 .t-live .lbl{color:var(--card-sub);margin-bottom:7px}
 .t-ev{display:flex;align-items:baseline;gap:8px;padding:6px 0;border-top:1px solid var(--card-div-2);font-size:12px}
@@ -1922,6 +1938,44 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border:0;border-radiu
       smallest viewport, so the card never outgrows the screen.
    3. The map stops swallowing the page scroll — see #map-lock below.
    ============================================================ */
+/* ============================================================
+   T4b: SMALL TABLETS IN PORTRAIT  <=900px  —  THE 440px WING PROBLEM
+
+   `--wing` is a FIXED 440px at every width below 1699px, and the
+   single-column stack only began at 760px. iPad Mini portrait is 768px
+   wide — eight pixels above that line — so it got the two-column tablet
+   layout and the arithmetic came out absurd:
+
+       768 - 440 (wing) - 8 (gap) - 14 (.app padding) = 306px of console
+
+   A 440px sidebar beside a 306px game. The sidebar was wider than the
+   thing it is a sidebar for. Nothing overflowed and nothing errored, so
+   nothing complained — it was simply unplayable on that device, and had
+   been since the wing became a fixed width.
+
+   The fix is a breakpoint, not a number: below ~900px there is no width
+   at which a fixed 440px column and a usable console both fit, so the
+   layout has to stack. This block carries ONLY the stacking — placement,
+   scrolling, and the height:auto console that goes with it. The phone
+   tier below keeps its own typography, compact topbar and 38vh map,
+   which a tablet does not want.
+
+   Kept in step with the phone tier deliberately: both stack, so both
+   need .ops to scroll and .t-live capped (see the notes on each there).
+   ============================================================ */
+@media (max-width:900px){
+  .ops{gap:8px;grid-template-columns:1fr;grid-template-rows:none;
+    overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+  .console{grid-column:1;grid-row:auto;order:-1;height:auto}
+  .wing:first-of-type,.wing:last-of-type{grid-column:1;grid-row:auto;
+    overflow-y:visible}
+  /* .console is height:auto here, so .t-live has no definite parent height
+     to resolve flex:1 against — same reason the phone tier caps it. */
+  .t-live{flex:0 0 auto;max-height:36vh;max-height:36svh}
+  .wing>.panel:not(#panel-offers),.stack>.panel:not(#panel-offers){height:auto;flex:0 0 auto}
+  #panel-offers{height:340px;flex:0 0 auto;min-height:0}
+}
+
 @media (max-width:760px){
   html,body{overflow-x:hidden;overscroll-behavior-x:none}
   .app{padding:7px;gap:7px;max-width:100%}
@@ -2020,8 +2074,25 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border:0;border-radiu
      the other six still do; only the two-column GRID placement needs
      undoing, since a grid column half the width of the phone would be
      useless. */
-  .ops{gap:7px;grid-template-columns:1fr;grid-template-rows:none}
+  /* THE STACK IS TALLER THAN THE SCREEN HERE BY DESIGN — so it has to
+     SCROLL (Pavel, 2026-07-31: "there are still some width where it
+     breaks"). html,body carry overflow:hidden and .app is height:100%, so
+     without this the console plus eight stacked panels were simply CLIPPED
+     at the viewport edge: not merely below the fold, but unreachable —
+     no scrollbar, no gesture, nothing. Everything under the map was gone.
+     .ops is the one element that should scroll: the topbar stays put, and
+     scrolling .app would take the topbar with it. */
+  .ops{gap:7px;grid-template-columns:1fr;grid-template-rows:none;
+    overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
   .console{grid-column:1;grid-row:auto}
+  /* .console is height:auto at this tier (see above), which means .t-live's
+     own `flex:1;min-height:0;overflow-y:auto` has NO definite height to
+     resolve against — so instead of scrolling it grew to fit every entry,
+     and a fifteen-line Live activity made the in-car display a thousand
+     pixels tall on a phone. A max-height gives that flex child something to
+     scroll inside. svh alongside vh for the same reason #map already uses
+     both: mobile browser chrome. */
+  .t-live{flex:0 0 auto;max-height:34vh;max-height:34svh}
   .wing:first-of-type,.wing:last-of-type{grid-column:1;grid-row:auto}
   .wing:last-of-type{overflow-y:visible}
   /* Same shape the phone tier always had, just re-stated for panels that
@@ -2886,6 +2957,23 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
 /* A secret nobody has found shows its name as a row of dashes and keeps its
    hint back — the hint is the spoiler, not the title. */
 .tr-a.secret b{letter-spacing:.18em}
+/* Paolo's line about an earned trophy (see ACHV[].paolo). Only ever rendered
+   on a .got tile — an unearned one would be a spoiler, and a muted Paolo
+   hides it entirely. Quoted and gold-ruled so it reads as somebody speaking
+   rather than as a third line of hint text; --gold is already contrast-checked
+   against --sheet in both themes (see the :root note). */
+.tr-a .tr-paolo{display:block;font-size:11px;line-height:1.4;margin-top:6px;
+  padding-left:8px;border-left:2px solid var(--gold-brd);
+  color:var(--text-2);font-style:italic}
+/* THE COUNT WAS UNREADABLE (Pavel, 2026-07-31). It inherited .gar-cash's
+   --text-2, a deliberately muted secondary, and unlike every other .gar-cash
+   in the app it had no <b> inside it to carry --text — so the whole "3 / 21"
+   sat at secondary weight in a heading. Held count now gets --gold (the
+   panel's own earned colour, so the number matches the tiles it counts) and
+   the total stays muted, which also makes the two halves readable as
+   "mine / all". */
+#tr-count{color:var(--text-3);font-variant-numeric:tabular-nums}
+#tr-count b{color:var(--gold);font-weight:600}
 .tr-board-city{margin:0 0 8px}
 .tr-board-city h5{font-size:11px;font-weight:500;letter-spacing:.09em;text-transform:uppercase;
   color:var(--text-3);margin-bottom:3px}
@@ -3918,6 +4006,16 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
          they match the mapStyle default (satellite) so the markup never reads
          as a third opinion about what the map is showing. -->
     <button class="ghost units" id="mapstyle" aria-label="Map style: satellite. Click to switch to standard."><span id="mapstyle-tag">Satellite</span></button>
+  </div>
+  <!-- storyplan.md §4.1 — Paolo on/off. The ROW is hidden until the player has
+       unlocked a second city (paintRay() below): Austin's scripted first day is
+       not optional, and a switch offering to silence a narrator the player has
+       not met yet is an invitation to turn off the tutorial by accident.
+       Labelled with his name rather than "Tutorial" or "Hints" because that is
+       what it silences — a person, not a help system. -->
+  <div class="set-row" id="set-row-ray" hidden>
+    <span class="set-lbl">Paolo</span>
+    <button class="ghost" id="raytoggle" aria-label="Paolo's messages" aria-pressed="true" title="Paolo: on"><svg class="ms"><use href="#i-agent"/></svg><span id="raytoggle-tag">On</span></button>
   </div>
   <!-- Coffee joined the menu in 0.53.0 (Pavel: "I should not be that greedy").
        It was pinned top-right in the topbar, with a whole layout mechanism
@@ -6387,7 +6485,7 @@ function declineOffer(id,silent){
     /* First time the PLAYER actually presses Decline (not an offer timing
        out unattended — see rayFirstDecline() for why that distinction
        matters), Paolo says something about it. */
-    if(!S.ray.declineSeen&&!S.ray.skipped&&!S.ray.cur&&$('garage').hidden&&$('report').hidden) rayFirstDecline();
+    if(!S.ray.declineSeen&&!raySkippedEver()&&!S.ray.cur&&$('garage').hidden&&$('report').hidden) rayFirstDecline();
   }
   else { S.d.unserved++; log(p.n,'offer expired — '+o.from,1) }
   render();
@@ -7414,7 +7512,44 @@ const RAY=[
      "You'll probably decide I'm wrong. I usually am, about this one."}
 ];
 
-function raySeen(n){ return S.ray.seen.indexOf(n)>=0 }
+/* Seen WITHIN this city (S.ray.seen, wiped by newFleet() on every city switch)
+   or seen EVER in this career (PROG.raySeen, which is not) — see storyplan.md
+   §4 and the long note on PROG.raySeen. Either one is enough; that is the whole
+   fix for Paolo re-teaching the take rate and incidents in Dallas.
+   PROG.raySeen round-trips through JSON, so its keys are strings — indexed
+   with n as-is and coerced by the property lookup, never compared to n. */
+function raySeen(n){
+  if(S.ray.seen.indexOf(n)>=0) return true;
+  return !!(PROG&&PROG.raySeen&&PROG.raySeen[n]);
+}
+/* Skipped in THIS city, or skipped at any point in this career. Same shape,
+   same reason: raySkip() used to set a flag on S.ray that a city switch threw
+   away, so a player who dismissed the tutorial in Austin met it again in
+   Dallas. */
+function raySkippedEver(){
+  return !!(S.ray.skipped||(PROG&&PROG.raySkipped));
+}
+/* Has the player switched Paolo off entirely? (storyplan.md §4.1)
+   Gates the fifteen TEACHING beats and his unprompted nudges only. It must
+   never gate the story-critical cards — the interview at 9/9, the rejection
+   letter, the city-unlock announcement, the finale — because those carry
+   progression the player cannot reach any other way. "Turn the tutor off" is
+   not "opt out of the plot". */
+function rayMuted(){ return !!(PROG&&PROG.rayMuted) }
+
+/* Bank a lesson for the whole career. Called from rayDismiss() only. */
+function markRaySeen(n){
+  if(typeof n!=='number'||!PROG) return;
+  PROG.raySeen=PROG.raySeen||{};
+  if(PROG.raySeen[n]) return;      /* already banked — don't spend a D1 write */
+  PROG.raySeen[n]=true; progSave();
+}
+/* Same, for the skip. raySkip() still sets S.ray.skipped for this city; this
+   is what makes the decision outlive the city switch. */
+function markRaySkipped(){
+  if(!PROG||PROG.raySkipped) return;
+  PROG.raySkipped=true; progSave();
+}
 
 /* Trigger predicates, in beat order. First unseen beat whose predicate is
    true gets shown. Beat 1 is fired explicitly by clockOn(). */
@@ -7662,7 +7797,9 @@ function nextTask(){
 const ADVISE_AFTER=75;      /* REAL seconds of nothing happening — see the P1-12
                                 fix on S.ray.advIdle's accumulation, below */
 function rayAdvise(){
-  if(S.ray.skipped||S.ray.cur) return;
+  /* Muted covers the unprompted advice too — this is the single thing a player
+     who says "turn Paolo off" most wants gone (storyplan.md §4.1). */
+  if(raySkippedEver()||rayMuted()||S.ray.cur) return;
   /* Only garage-triggered lines (beat 1, fired directly by openGarage()) may
      speak while the garage is open (Pavel's ask, 2026-07-30) — everything
      else waits for the player to leave it. Same guard on rayCheck() (every
@@ -7788,7 +7925,7 @@ function noFeedTick(realSec){
      First telling is prompt; the repeats are spaced. */
   const since=S.noFeedSec-(S.noFeedSaidAt||0);
   if(since<(said?NOFEED_REPEAT:NOFEED_AFTER)) return;
-  if(S.ray.skipped||S.ray.cur) return;
+  if(raySkippedEver()||S.ray.cur) return;
   /* Silent while the garage or the shift report covers the screen — see the
      NOTE above rayAdvise()'s identical guard. */
   if(!$('garage').hidden||!$('report').hidden) return;
@@ -7844,7 +7981,7 @@ function noFeedTick(realSec){
 }
 
 function rayCheck(){
-  if(S.ray.skipped||S.ray.cur) return;
+  if(raySkippedEver()||S.ray.cur) return;
   /* Garage messages only (beat 1, fired directly by openGarage()) — every
      other scripted beat and guideCheck()'s forced day-1 ones wait for the
      player to leave. Beat 3's own predicate already checked this one
@@ -7934,6 +8071,48 @@ function rayRecord(){
 /* Ends the current message, so the next rayRecord() starts a new one rather
    than overwriting. Called wherever a card closes. */
 function rayRecordEnd(){ rayMsgLive=null }
+
+/* ---- A MESSAGE WITH NO CARD ------------------------------------------------
+   rayRecord() above reads the LIVE DOM on purpose, so it can only record
+   something the player actually saw on a card. Paolo's trophy lines have no
+   card: a modal that pauses the sim twenty-one times is exactly the
+   chattiness v0.100.0 spent a release removing, and a trophy is a pat on the
+   back, not a lesson that needs the player's full attention.
+
+   So this is the other channel — straight into the thread, where the unread
+   badge does the work and the player reads it when they feel like it. Same
+   record shape, so renderThread() and the THREAD_MAX cap need no changes.
+
+   `cur` is tagged 'achv:<id>' rather than 'beatN'/'advice', which keeps these
+   distinguishable in the thread and lets a test assert exactly which ones
+   were sent. Text is stored ALREADY FILLED via rayFill(), matching what
+   rayRecord() stores, so nothing downstream has to know the difference —
+   that was the {NAME}/{CASH} drift bug (2026-07-30) and this must not
+   reintroduce it. */
+function paoloSay(text,tag){
+  if(!text) return false;
+  if(rayMuted()) return false;      /* the switch silences him here too */
+  if(!PROG.thread) PROG.thread=[];
+  const rec={id:(++rayMsgId), t:Date.now(), cur:tag||'note',
+    html:rayFill(text), img:'', cap:''};
+  PROG.thread.push(rec);
+  /* Deliberately does NOT set rayMsgLive: this message is complete the moment
+     it is sent, and leaving it "live" would let the next real card overwrite
+     it (see the id check in rayRecord()). */
+  while(PROG.thread.length>THREAD_MAX) PROG.thread.shift();
+  progSave();
+  renderThread();
+  /* The Messages panel already carries a live count in #msg-tag, painted from
+     PROG.thread.length by render() — so the number updates itself and needs
+     nothing here. What it can't do is tell the player to look, so pulse the
+     panel: flashSection() is the established idiom for "something landed
+     here", and below 1499px it also expands a collapsed panel. Deliberately
+     NOT flashNav(): the Comms nav button has no id (it is addressed by
+     data-panel), so flashNav would silently find nothing — the exact class of
+     dead-affordance bug the control-strip audit was about. */
+  flashSection('panel-comms');
+  return true;
+}
 
 /* ---- THE THREAD, RENDERED --------------------------------------------------
    The Messages panel used to reconstruct a fake history from S.ray.seen —
@@ -8532,7 +8711,7 @@ function checkFinale(){
   if(!finaleReady()) return false;
   /* Same overlap guard every other self-firing card uses: never on top of
      another card, the dodge camera, the garage, or a shift report. Note it
-     does NOT check S.ray.skipped — skipping the tutorial silences Paolo's
+     does NOT check raySkippedEver() — skipping the tutorial silences Paolo's
      ADVICE, and this is the ending of the game, not a hint. */
   if(S.ray.cur||!$('dodge-incar').hidden||!$('garage').hidden||!$('report').hidden) return false;
   PROG.finale={t:Date.now(), cash:Math.round(S.cash), name:playerName()};
@@ -8597,7 +8776,19 @@ function rayFill(t){
 }
 function rayShow(n){
   const b=RAY.filter(function(x){return x.n===n})[0];
-  if(!b||S.ray.skipped) return;
+  /* rayMuted() (storyplan.md §4.1) sits here, at the one door every scripted
+     beat comes through, rather than at each of the fifteen call sites. The
+     story cards — rayShowInterview/rayShowRejection/rayCityUnlocked/the finale
+     — do not route through RAY[] and so are deliberately unaffected. */
+  if(!b||raySkippedEver()||rayMuted()) return;
+  /* AND the seen check, which lived only at the CALL SITES until ray-scope.test.js
+     went looking for it (2026-07-31): rayCheck() picks the first UNSEEN ready
+     beat, guideCheck() and openGarage() each test raySeen() themselves — three
+     copies of one rule, and any fourth caller got no guarantee at all. Beat 15's
+     own comment has claimed "nothing in this file re-fires a seen beat" since
+     v0.87.0; this is the line that finally makes that true. Same class of
+     duplication as the three copies of the dispatch rule in cameraplan.md. */
+  if(raySeen(n)) return;
   S.ray.cur=n;
   $('ray-text').innerHTML=rayFill(b.t);
   rayFoot('Got it','Skip',n+' of '+RAY.length);
@@ -8734,7 +8925,17 @@ function rayDismiss(){
      advance the guided day — pushing 'advice' into S.ray.seen would poison
      raySeen() and save it forever. */
   if(typeof n==='number'){
-    if(!raySeen(n)) S.ray.seen.push(n);
+    if(S.ray.seen.indexOf(n)<0) S.ray.seen.push(n);
+    /* storyplan.md §4 — and the ONLY place a lesson is banked for the whole
+       career. Written here rather than in rayShow() on purpose: a beat the
+       player never actually dismissed (they switched city mid-card, or the
+       card was closed by something else) has not been read, and should still
+       be owed to them.
+       Note the push above no longer goes through raySeen(): once PROG
+       remembers the beat, raySeen() is true forever, and the within-city list
+       would then never be populated at all — harmless today, but it would
+       quietly break anything that reads S.ray.seen directly. */
+    markRaySeen(n);
     if(S.ray.guided&&!S.ray.day1Done&&DAY1_ORDER[S.ray.dayIdx]===n){
       S.ray.dayIdx++;
       if(S.ray.dayIdx>=DAY1_ORDER.length){ S.ray.guided=false; S.ray.day1Done=true }
@@ -8758,6 +8959,7 @@ function raySkip(){
      incidents, or low-charge cars once the player has said they don't want
      the tutorial at all. */
   S.ray.skipped=true; S.ray.cur=null; S.ray.guided=false; S.ray.day1Done=true;
+  markRaySkipped();   /* storyplan.md §4 — so Dallas doesn't start it over */
   rayRecordEnd();
   rayResume();
   $('ray').hidden=true; raySpotClear();
@@ -8851,7 +9053,7 @@ function clockOff(quiet){
 
    'clockoff', a string like 'advice'/'coffee'/'dodge', not a scripted beat
    number — see rayDismiss()'s typeof guard. Skips entirely if the player has
-   turned Paolo off (S.ray.skipped) or a scripted beat is already on screen;
+   turned Paolo off (raySkippedEver()) or a scripted beat is already on screen;
    in both cases Clock off just proceeds instead of interrupting something
    that isn't this feature's to interrupt. */
 function rayClockOffWarn(){
@@ -9267,7 +9469,7 @@ function shiftReport(){
   const day1OK=function(n){
     return !S.ray.guided||S.ray.day1Done||DAY1_ORDER[S.ray.dayIdx]===n;
   };
-  if(!S.ray.skipped){
+  if(!raySkippedEver()){
     if(!raySeen(12)&&rayReady(12)&&day1OK(12)) rayShow(12);
     else if(!raySeen(14)&&rayReady(14)&&day1OK(14)) rayShow(14);
   }
@@ -9553,6 +9755,44 @@ $('sound').addEventListener('click',function(){
   syncSoundBtn();
   if(S.soundOn) sndClick();
   log('Policy','sound '+(S.soundOn?'on':'off'),0);
+});
+/* ---- Paolo on/off (storyplan.md §4.1) ----
+   Mirrors syncSoundBtn() exactly, including the aria-pressed/label/title trio.
+   Worth saying why that matters here: the control-strip audit
+   (deadhead_control_audit_2026_07) found decorative aria-pressed flippers that
+   fought render() and settings that were never written to the save. This one
+   reads its state from PROG (the single source of truth), writes through
+   progSave(), and owns no state of its own.
+
+   The ROW is hidden until a second city is unlocked. Counting PROG.unlocked
+   rather than testing S.city!=='austin' on purpose: the question is "has this
+   player been anywhere else", not "where are they standing" — a player who has
+   reached Dallas and switched back to Austin has still met Paolo, and should
+   keep the switch. */
+function syncRayBtn(){
+  const b=$('raytoggle'); if(!b) return;
+  const row=$('set-row-ray');
+  if(row){
+    const cities=PROG&&PROG.unlocked?Object.keys(PROG.unlocked).length:1;
+    row.hidden=cities<2;
+  }
+  const on=!rayMuted();
+  b.setAttribute('aria-pressed',on?'true':'false');
+  b.setAttribute('aria-label','Paolo: '+(on?'on':'off')+'. Click to toggle.');
+  b.setAttribute('title','Paolo: '+(on?'on':'off'));
+  const t=$('raytoggle-tag'); if(t) t.textContent=on?'On':'Off';
+}
+$('raytoggle').addEventListener('click',function(){
+  if(!PROG) return;
+  PROG.rayMuted=!PROG.rayMuted;
+  progSave();
+  syncRayBtn();
+  /* Muting mid-card closes the one on screen too — leaving it up while the
+     switch reads "Off" is exactly the kind of control/state disagreement the
+     audit was about. rayDismiss() (not raySkip()) so the beat still counts as
+     read and the guided day still advances. */
+  if(PROG.rayMuted&&S.ray.cur!=null) rayDismiss();
+  log('Policy','Paolo '+(PROG.rayMuted?'off':'on'),0);
 });
 /* ---- Dispatch policy strip ----
    Three of the four do something now. Auto dispatch is disabled above and is
@@ -11864,7 +12104,7 @@ function render(){
      a class added externally would be wiped the next tick along with the
      rest of this innerHTML. arrowPlaced latches so only one row ever gets
      it, even though every disconnected row shares the same condition. */
-  const showConnectArrow=S.ray.guided&&!S.ray.day1Done&&!S.ray.skipped&&!livePlatforms().length;
+  const showConnectArrow=S.ray.guided&&!S.ray.day1Done&&!raySkippedEver()&&!livePlatforms().length;
   /* Dirty-check (2026-07-30, see lastPlatSig's own comment above): only the
      fields that actually reach the template below belong in the signature —
      p.offered/p.accepted feed the rounded accept-rate string, not their own
@@ -11923,7 +12163,7 @@ function render(){
      latches for the rest of this run same as declineSeen does for Decline.
      Same rebuild-every-tick reasoning as the platforms arrow above: baked
      into the template, not added afterwards. */
-  const showAcceptArrow=S.ray.guided&&!S.ray.day1Done&&!S.ray.skipped&&!S.ray.firstAcceptDone;
+  const showAcceptArrow=S.ray.guided&&!S.ray.day1Done&&!raySkippedEver()&&!S.ray.firstAcceptDone;
   /* Dirty-check (2026-07-30, see lastPlatSig's own comment above). Ceil(o.left)
      rather than the raw float — that is the only form of the countdown that
      ever reaches the screen ("Xs"), so the sig must not change every tick
@@ -12589,7 +12829,7 @@ $('cta-dec').addEventListener('click',function(){
    clocking off rather than doing it inside clockOff() itself. */
 $('clock').addEventListener('click',function(){
   if(S.onClock){
-    if(!S.ray.skipped&&typeof S.ray.cur!=='number'&&livePlatforms().length&&
+    if(!raySkippedEver()&&typeof S.ray.cur!=='number'&&livePlatforms().length&&
        $('garage').hidden&&$('report').hidden){
       rayClockOffWarn(); return;
     }
@@ -12800,7 +13040,7 @@ document.querySelectorAll('.t-apps .t-app').forEach(function(b){
          modals already block this click, but the guard is here rather than
          assumed. */
       if(blocked.length&&$('garage').hidden&&$('report').hidden){
-        if(!S.ray.dodgeSeen&&!S.ray.skipped) rayDodgeBrief(blocked[0].id);
+        if(!S.ray.dodgeSeen&&!raySkippedEver()) rayDodgeBrief(blocked[0].id);
         else openDodge(blocked[0].id);
       }
       else if(blocked.length){ /* garage open: do nothing, wait for it to close */ }
@@ -12895,7 +13135,7 @@ const SLOTS=['slot1','slot2','slot3'];
    SAVE_V above is the STATE SHAPE version and moves only when the
    snapshot format changes — the two are deliberately independent, so
    shipping 0.9.0 does not invalidate 0.8.0 saves. */
-const VERSION='0.98.2';
+const VERSION='0.102.0';
 
 function snapshot(){
   return {
@@ -13569,7 +13809,50 @@ let PROG={unlocked:{austin:true}, results:{}, last:'austin', eggs:{}, achv:{},
      opens the ending, it does not take the game away. S.over is untouched
      here, the sim keeps running, and the player can carry on driving SF
      afterwards for as long as they like. */
-  finale:null
+  finale:null,
+  /* ---- WHICH LESSONS PAOLO HAS ALREADY TAUGHT (storyplan.md §4) ----------
+     Pavel, 2026-07-31: "I really do not need to see message about Book,
+     Incidents in advanced cities."
+
+     He was describing a real bug, not a preference. S.ray.seen is rebuilt to
+     [] by newFleet() on EVERY city switch — deliberately, see the thread
+     note above and deadhead_garage_welcome_2026_07 — and S.ray.guided is
+     false once day one is done. So on arriving in Dallas the seen-list was
+     empty and rayCheck() happily re-fired every beat whose predicate still
+     held: the first completed ride re-taught the take-rate (beat 6), the
+     first wedged car re-taught incidents (beat 11), and so on. Beat 15's own
+     comment claimed "nothing in this file re-fires a seen beat", which was
+     true within a city and false across one.
+
+     ALL FIFTEEN RAY BEATS ARE RUN-SCOPED. Every one of them teaches a
+     mechanic that does not vary by city — the take rate, deadheading, surge,
+     the speed control, charging, incidents, the report, the thesis, his one
+     opinion. None of them carries per-city information. The things that DO
+     vary per city already live elsewhere in PROG and are untouched by this:
+     garageWelcomed (the welcome + this city's exp-<city> requirement),
+     compPromoUsed and promoUsed (the manufacturer doors).
+
+     So the fix is not a per-beat table, it is a home: this map, on PROG,
+     which is career-scoped and survives a city switch. S.ray.seen stays
+     exactly as it is and keeps doing its within-city job — raySeen() below
+     simply consults both, and a beat is re-shown only if NEITHER remembers
+     it. `skipped` is here for the same reason: skipping the tutorial in
+     Austin and then having it restart in Dallas was the same bug wearing a
+     different hat.
+
+     Additive, like promoUsed/app/thread above: no PROG_V bump, read back
+     defensively. Keyed by beat number as a STRING (it round-trips through
+     JSON as an object, so raySeen() must not assume numeric keys). */
+  raySeen:{}, raySkipped:false,
+  /* storyplan.md §4.1 — the Gear switch that turns Paolo off wholesale.
+     Offered only once the player is past Austin (see the settings row): the
+     scripted first day is not optional, and a brand-new player cannot make an
+     informed choice about a narrator they have not met.
+     This is the ESCAPE HATCH, not the fix — if raySeen above does its job
+     nobody should need it. Kept anyway because Pavel asked for it and because
+     a returning player mid-career has already sat through the lessons this
+     map cannot know about. */
+  rayMuted:false
   };
 const THREAD_MAX=60;
 function progSave(){
@@ -13583,7 +13866,13 @@ function progSave(){
        v4->v5 companyCash migration just above. */
     promoUsed:PROG.promoUsed, promoNudged:PROG.promoNudged,
     app:PROG.app, thread:PROG.thread, finale:PROG.finale,
-    compPromoUsed:PROG.compPromoUsed, garageWelcomed:PROG.garageWelcomed})
+    compPromoUsed:PROG.compPromoUsed, garageWelcomed:PROG.garageWelcomed,
+    /* storyplan.md §4. Listed here AND read back in progLoad() below — the
+       two v0.94.0 fields that shipped written-but-never-read (compPromoUsed,
+       garageWelcomed) are the cautionary tale directly above; a one-shot
+       latch that isn't in BOTH halves of this round trip is not a latch. */
+    raySeen:PROG.raySeen, raySkipped:PROG.raySkipped,
+    rayMuted:PROG.rayMuted})
     .catch(function(){});
 }
 /* ---- EASTER EGGS ------------------------------------------------------
@@ -13650,27 +13939,62 @@ function findEgg(id){
    (the admin label map). Drift costs an unlabelled admin row, nothing
    worse — the game is the authority and never asks the server what an
    achievement is. */
+/* PAOLO'S LINES (`paolo:`) — optional, on 12 of the 21.
+   ------------------------------------------------------------------------
+   Pavel, 2026-07-31: "Trophy section is underrated. Maybe Paolo should send
+   some message when Trophy is achieved."
+
+   Deliberately NOT on all 21, and deliberately NOT a card. Reasoning:
+
+   - NO MODAL. A card pauses the sim (rayPause()); twenty-one of them is the
+     chattiness v0.100.0 spent a whole release removing. A trophy is a pat on
+     the back, not a lesson that needs the player's attention. These go into
+     the Messages thread via paoloSay(), which interrupts nothing.
+   - NOT ALL OF THEM. He remarks where he'd actually have something to say. On
+     'first-car', 'net-500', 'fleet-3' and the rest he'd just be narrating a
+     number the tile already states, which is how a character becomes wallpaper.
+   - THE FAILURES MATTER MOST. 'under-review' and 'repossessed' are the moments
+     a player feels worst and were previously acknowledged by a toast and
+     nothing else. A forty-one-year cabbie who lost a car himself is the whole
+     reason he is in this game.
+   - THE LINE STAYS ON THE TILE, forever (renderAchvList()). This is the half
+     that actually answers "underrated": 21 tiles with nothing to come back for
+     is a checklist, and the same 21 carrying somebody's voice is a scrapbook.
+
+   ONCE-EVER FOR FREE: awardAchv() early-returns if PROG.achv[id] is already
+   set, so anything hooked there fires exactly once per career. PROG.achv IS
+   the latch — no new flag, unlike the RAY beats which needed PROG.raySeen
+   (storyplan.md §4).
+
+   Written in his voice, and none of them names a cash figure — see §2.2's
+   money rule (deadhead_paolo_numbers_2026_07). The hints already carry the
+   numbers; he reacts to what the number MEANT. */
 const ACHV=[
   {id:'first-car',   name:'Keys',            hint:'Put your first car in service.',
    live:function(){ return S.cars.length>0 }},
   {id:'first-ride',  name:'Fare One',        hint:'Complete your first ride.',
    live:function(){ return !!(S.d&&S.d.done>0) }},
   {id:'first-shift', name:'Clocked Off',     hint:'Finish a shift.',
-   shift:function(){ return true }},
+   shift:function(){ return true },
+   paolo:"First one's done. You'll remember it longer than the next four hundred."},
 
   {id:'black',       name:'In the Black',    hint:'Finish a shift with a profit.',
-   shift:function(r){ return r.net>0 }},
+   shift:function(r){ return r.net>0 },
+   paolo:"You made money. Not much — but the sign is right, and the sign is the hard part."},
   {id:'net-500',     name:'Good Day',        hint:'Net $500 in a single shift.',
    shift:function(r){ return r.net>=500 }},
   {id:'net-1500',    name:'Printing',        hint:'Net $1,500 in a single shift.',
-   shift:function(r){ return r.net>=1500 }},
+   shift:function(r){ return r.net>=1500 },
+   paolo:"That's a good day. Don't go building a life on a good day — I did, twice."},
   {id:'cash-10k',    name:'Five Figures',    hint:'Reach $10,000 in the bank.',
    live:function(){ return S.cash>=10000 }},
 
   {id:'clean-sheet', name:'Clean Sheet',     hint:'Ten rides in a shift, no cancellations.',
-   shift:function(r){ return r.cancels===0&&r.rides>=10 }},
+   shift:function(r){ return r.cancels===0&&r.rides>=10 },
+   paolo:"Ten in a row and you turned none of them down. That's not luck. That's sitting there when it would be easier not to."},
   {id:'safety-95',   name:'Spotless',        hint:'End a working shift with safety at 95 or better.',
-   shift:function(r){ return r.safety>=95&&r.rides>=5 }},
+   shift:function(r){ return r.safety>=95&&r.rides>=5 },
+   paolo:"Nobody thanks you for that except the people who score you for everything. Still. Nice work."},
   {id:'meter-runner',name:'Meter Runner',    hint:'Average $120 an hour over a shift of two hours or more.',
    shift:function(r){ return r.workedH>=2&&(r.net/r.workedH)>=120 }},
 
@@ -13681,21 +14005,25 @@ const ACHV=[
   {id:'purpose-built',name:'Purpose Built',  hint:'Put a Cab in service.',
    live:function(){ return hasModel('cab') }},
   {id:'why-a-truck', name:'Why a Truck',     hint:'Put a Truck in service. Nobody will stop you.',
-   live:function(){ return hasModel('truck') }},
+   live:function(){ return hasModel('truck') },
+   paolo:"A truck. In a robotaxi fleet. I'm not going to talk you out of it — I want to see it."},
 
   /* Not a consolation prize — a record of the thing this game is actually
      about. Sitting in the panel next to "Printing" is the point. */
   {id:'under-review',name:'Under Review',    hint:'Let your safety score fall below 65.',
-   live:function(){ return S.safety<65 }},
+   live:function(){ return S.safety<65 },
+   paolo:"They've throttled you. It isn't a punishment, it's arithmetic: half the rides, same rent. Climb back out."},
   {id:'repossessed', name:'Repossessed',     hint:'Run out of money.',
-   live:function(){ return !!S.over }},
+   live:function(){ return !!S.over },
+   paolo:"They took one off me in '09. Off the street, while I was upstairs eating. You keep going or you don't — there's no third thing."},
   {id:'comeback',    name:'Comeback',        hint:'Follow a losing shift with a winning one.',
    shift:function(r){
      /* HISTORY already contains r itself — appendHistoryRow() pushes before
         it calls in here — so the shift before this one is at length-2. */
      const prev=HISTORY[HISTORY.length-2];
      return !!(prev&&prev.net<0&&r.net>0);
-   }},
+   },
+   paolo:"A bad day and then a good one. That's the whole job. Anybody can do the good one."},
 
   {id:'out-of-austin',name:'Out of Austin',  hint:'Unlock a second city.',
    live:function(){ return cityList().filter(cityUnlocked).length>=2 }},
@@ -13705,13 +14033,16 @@ const ACHV=[
        const r=PROG.results&&PROG.results[id];
        return !!(r&&r.shiftDone);
      });
-   }},
+   },
+   paolo:"Every city on the board. Whatever else that list of theirs says, you have done the thing it is measuring."},
 
   {id:'found-the-switch',name:'Found the Switch',secret:true,
    hint:'Discover automatic top-up.',
-   live:function(){ return eggFound('autocharge') }},
+   live:function(){ return eggFound('autocharge') },
+   paolo:"You found the switch. Took me eleven years to stop doing that by hand."},
   {id:'hands-on',    name:'Hands On',        secret:true,
-   hint:'Clear a blocked car yourself.'}
+   hint:'Clear a blocked car yourself.',
+   paolo:"You went and got it yourself. In a big outfit there's a room full of people for that. Right now the room is still you."}
 ];
 function hasModel(m){
   /* Through modelId() on BOTH sides: a save written before the rebrand holds
@@ -13795,6 +14126,11 @@ function awardAchv(id){
   }
   progSave();
   log('Console','achievement — '+a.name,0);
+  /* Paolo's reaction, if this trophy has one. AFTER progSave()/the log line so
+     the thread message is never the first the player hears of the award, and
+     after the PROG.achv[id] guard above, which makes it once-per-career with
+     no extra flag. paoloSay() is a no-op when he's muted. */
+  if(a.paolo) paoloSay(a.paolo,'achv:'+id);
   sndAchv();
   paintAchvBadge();
   /* Point at the nav icon, not the modal — the modal is closed, and the
@@ -13898,19 +14234,62 @@ function anyCityRec(pred){
    it) or 'low' (deadhead — smaller is closer). Returns null on no data yet,
    which every caller below turns into its own honest string rather than a
    bare 0 that would misread as "measured and bad" instead of "unmeasured". */
+/* THE "your best" LINE MUST NEVER CONTRADICT THE ✗ BESIDE IT.
+   ------------------------------------------------------------------------
+   Pavel's screenshot, 2026-07-31:
+
+     ✗ Safety held at or above 80, from a city's first shift to its last
+       your best: 80
+
+   80 is at-or-above 80, so the panel appeared to reject a passing score.
+   Both halves were actually telling the truth, and there were TWO
+   independent ways to get there:
+
+   1. shiftDone. compSafetyMet/compAcceptMet/compDeadheadMet all require
+      `r.shiftDone` — a city you haven't finished a shift in cannot count.
+      This function never checked it. Safety starts every city at exactly 80
+      (S.safety=80 in newFleet()), so a brand-new city record already carries
+      safetyFloor:80, and it was being printed as an achievement.
+   2. Rounding TOWARD the bar. The miss displays round (Math.round on a
+      floor, on an accept percentage, on a deadhead ratio), the predicates do
+      not. A safety floor of 79.6 printed as "80" and failed.
+
+   Fixed at the source for (1) — one filter here rather than four call sites,
+   which is the same reasoning that put the seen-guard inside rayShow()
+   (storyplan.md §4). compProfitMet is the one predicate that does NOT
+   require shiftDone, and it is unaffected: profitStreak only ever increments
+   from a shift report, so a record without a completed shift contributes 0
+   either way.
+
+   For (2) see the roundAway* helpers below.
+
+   Why this mattered enough to fix before tuning anything: a hiring panel
+   that appears to refuse a score it just called sufficient teaches the
+   player not to read it, and the whole application thread depends on that
+   list being believed. */
 function bestAppStat(field,better){
   let best=null;
   Object.keys(PROG.results).forEach(function(id){
     const r=PROG.results[id]; if(!r) return;
+    /* Only records a competency predicate could actually match. */
+    if(!r.shiftDone) return;
     const v=field(r);
     if(typeof v!=='number'||isNaN(v)) return;
     if(best===null||(better==='high'?v>best:v<best)) best=v;
   });
   return best;
 }
+/* Round AWAY from passing, always — so a displayed figure can never claim a
+   bar the predicate refuses. For a "must be at or above" stat that means
+   rounding DOWN (79.6 shows as 79, not 80); for a "must be at or below" one
+   it means rounding UP (35.4 shows as 36, not 35). One pixel of pessimism
+   is much cheaper than a panel the player stops trusting. */
+function roundAwayHigh(v){ return Math.floor(v) }
+function roundAwayLow(v){ return Math.ceil(v) }
 function bestAcceptPct(){
   const v=bestAppStat(function(r){return r.acceptFloor},'high');
-  return v===null?null:Math.round(v*100);
+  /* Bar is acceptFloor>=0.85, so round down: 0.8496 must not print as 85%. */
+  return v===null?null:roundAwayHigh(v*100);
 }
 function bestSafetyFloorStat(){
   return bestAppStat(function(r){return r.safetyFloor},'high');
@@ -13923,7 +14302,8 @@ function bestDeadheadStat(){
   const v=bestAppStat(function(r){
     return (r.milesSum>1)?(r.emptySum||0)/r.milesSum*100:null;
   },'low');
-  return v===null?null:Math.round(v);
+  /* Bar is <=REQ_DEADHEAD_MAX, so round UP: 35.4% must not print as 35%. */
+  return v===null?null:roundAwayLow(v);
 }
 /* One predicate per competency, over a SINGLE city record — shared by
    REQS[].met() below (via anyCityRec(), "ever, in any one city") AND
@@ -13982,7 +14362,9 @@ const REQS=[
    met:function(){ return anyCityRec(compSafetyMet) },
    miss:function(){
      const b=bestSafetyFloorStat();
-     return b===null?'no shift long enough to measure yet':Math.round(b);
+     /* Round DOWN, not to nearest — the bar is ">=80" and this line sits
+        directly beside a ✗. See bestAppStat()'s note. */
+     return b===null?'no shift long enough to measure yet':roundAwayHigh(b);
    }},
   {id:'comp-profit', kind:'comp',
    name:'Three consecutive profitable shifts, in one city',
@@ -14183,7 +14565,7 @@ function checkApp(){
      the job is actually taken; !PROG.app.invited keeps it from repeating
      if the player already saw and dismissed it once — from there the only
      way back in is a deliberate click (locked SF tab, or "Apply now"). */
-  if(appAllMet()&&!PROG.app.hired&&!PROG.app.invited&&!S.ray.skipped&&
+  if(appAllMet()&&!PROG.app.hired&&!PROG.app.invited&&!raySkippedEver()&&
      !S.ray.cur&&$('dodge-incar').hidden&&$('garage').hidden&&$('report').hidden){
     rayShowInterview();
   }
@@ -14235,6 +14617,18 @@ function progApply(r){
        call site and died silently one layer down. */
     if(r.compPromoUsed&&typeof r.compPromoUsed==='object') PROG.compPromoUsed=r.compPromoUsed;
     if(r.garageWelcomed&&typeof r.garageWelcomed==='object') PROG.garageWelcomed=r.garageWelcomed;
+    /* storyplan.md §4 — absent on every save written before this, which reads
+       correctly as "Paolo has taught nothing yet". A returning mid-career
+       player therefore gets each lesson at most once MORE, and then never
+       again; there is no way to know retroactively which ones they already
+       sat through, and re-teaching once is the safe direction to be wrong in.
+       rayMuted rides along here: it is a player SETTING rather than a latch,
+       but it belongs to the career for the same reason (see the Gear toggle),
+       and a setting that isn't written to the save is decorative
+       (deadhead_control_audit_2026_07). */
+    if(r.raySeen&&typeof r.raySeen==='object') PROG.raySeen=r.raySeen;
+    if(typeof r.raySkipped==='boolean') PROG.raySkipped=r.raySkipped;
+    if(typeof r.rayMuted==='boolean') PROG.rayMuted=r.rayMuted;
     /* The thread (v0.94.0). Absent on every pre-existing save, which reads
        correctly as "no history yet" — the conversation starts from the next
        thing Paolo says, rather than being fabricated retroactively. */
@@ -14332,6 +14726,12 @@ function progApply(r){
        resolves. render() cannot do it: render() is driven by S. */
     paintAchvBadge();
     paintAppBadge();
+    /* Same reason, storyplan.md §4.1: both halves of the Paolo switch — whether
+       the row shows at all (PROG.unlocked's size) and which way it reads
+       (PROG.rayMuted) — come from the record that has only just landed. The
+       boot-path call at the bottom of the file runs before this resolves and
+       would paint a default-off row for a player who muted him last session. */
+    syncRayBtn();
 }
 function progLoad(){
   return Store.get('progress').then(progApply).catch(function(){});
@@ -14651,6 +15051,10 @@ function progGates(){
   if(gained){
     renderCityTabs();
     buildCityPinLayer();
+    /* storyplan.md §4.1 — the second unlock is what reveals the Paolo switch,
+       so it has to be repainted the moment the count changes rather than
+       waiting for the next boot. */
+    syncRayBtn();
     /* SF is the one city this ladder is not allowed to announce, northstarplan.md
        §8 step 9 — gateMet('shift1@orlando') going true here is real (it's what
        lets the tab exist at all, still padlocked — see cityUnlocked('sf')'s own
@@ -14672,7 +15076,7 @@ function progGates(){
      likely moment for it, since clocking off is what satisfies the gate —
      meant the player was simply never told. The ad chained onto this card
      (northstarplan.md §2.1) went with it. */
-  if(pendingUnlock&&!S.ray.skipped&&!S.ray.cur&&
+  if(pendingUnlock&&!raySkippedEver()&&!S.ray.cur&&
      $('dodge-incar').hidden&&$('garage').hidden&&$('report').hidden){
     const id=pendingUnlock; pendingUnlock=null;
     rayCityUnlocked(id);
@@ -15910,8 +16314,8 @@ function openGarage(){
      with no such option). guided is only ever true in the one city running
      the scripted tutorial. See THE GARAGE WELCOME, above rayCityUnlocked(),
      for the real per-city replacement below. */
-  if(!raySeen(1)&&!S.ray.skipped&&S.ray.guided&&!S.cars.length) rayShow(1);
-  else if(S.city!=='austin'&&S.city!=='sf'&&!S.cars.length&&!S.ray.skipped&&
+  if(!raySeen(1)&&!raySkippedEver()&&S.ray.guided&&!S.cars.length) rayShow(1);
+  else if(S.city!=='austin'&&S.city!=='sf'&&!S.cars.length&&!raySkippedEver()&&
           !garageWelcomed(S.city)){
     markGarageWelcomed(S.city);
     rayGarageWelcome();
@@ -16098,17 +16502,27 @@ function loadBoard(force){
 function renderAchvList(){
   const held=PROG.achv||{};
   const n=ACHV.filter(function(a){ return !!held[a.id] }).length;
-  $('tr-count').textContent=n+' / '+ACHV.length;
+  /* The held count in its own <b> — .gar-cash only colours a <b> child, and
+     without one the whole "3 / 21" sat at muted --text-2 in a heading and was
+     effectively invisible (Pavel, 2026-07-31). See the #tr-count CSS. */
+  $('tr-count').innerHTML='<b>'+n+'</b> / '+ACHV.length;
   $('tr-list').innerHTML=ACHV.map(function(a){
     const got=!!held[a.id];
     /* A secret keeps BOTH its name and its hint back until earned — naming
        it is most of the spoiler ("Found the Switch" tells you there is a
        switch to find). Once earned it reads normally. */
     const hidden=a.secret&&!got;
+    /* Paolo's line, on EARNED tiles only, and only if he isn't muted. On an
+       unearned tile it would be a spoiler (and on a secret one, doubly so).
+       This is the half that gives the panel re-read value — see the ACHV
+       header note. */
+    const say=(got&&a.paolo&&!rayMuted())
+      ? '<span class="tr-paolo">“'+escapeHtml(a.paolo)+'” — Paolo</span>' : '';
     return '<div class="tr-a'+(got?' got':'')+(hidden?' secret':'')+'">'+
       '<svg class="ms"><use href="#i-trophy"/></svg><div>'+
       '<b>'+(hidden?'? ? ?':escapeHtml(a.name))+'</b>'+
       '<span>'+(hidden?'Not yet found.':escapeHtml(a.hint))+'</span>'+
+      say+
       '</div></div>';
   }).join('');
 }
@@ -16297,7 +16711,7 @@ $('inc-list').addEventListener('click',function(e){
      assumed. */
   if($('garage').hidden&&$('report').hidden){
     /* First time only: explain it, then start on dismissal. */
-    if(!S.ray.dodgeSeen&&!S.ray.skipped) rayDodgeBrief(a.dataset.car);
+    if(!S.ray.dodgeSeen&&!raySkippedEver()) rayDodgeBrief(a.dataset.car);
     else openDodge(a.dataset.car);
   }
 });
@@ -16406,7 +16820,7 @@ $('savemgr').addEventListener('click',function(e){
          bring back THAT save's cash, not silently keep whatever the company
          ledger currently reads. */
       restore(sv,{sharedCash:false}); $('savemgr').hidden=true; $('report').hidden=true;
-      log('System','fleet restored — day '+S.day,0); render(); paintUnits(); syncSoundBtn();
+      log('System','fleet restored — day '+S.day,0); render(); paintUnits(); syncSoundBtn(); syncRayBtn();
     }).catch(function(err){ toast('Load failed — '+err.message,true) });
   } else {
     Store.del(b.dataset.svDel)
@@ -16435,7 +16849,7 @@ $('sv-file').addEventListener('change',function(){
          an imported file's own cash must win, not the live company ledger. */
       restore(JSON.parse(rd.result),{sharedCash:false});
       $('savemgr').hidden=true; $('report').hidden=true;
-      log('System','fleet imported — day '+S.day,0); render(); paintUnits(); syncSoundBtn();
+      log('System','fleet imported — day '+S.day,0); render(); paintUnits(); syncSoundBtn(); syncRayBtn();
     }catch(err){ toast('Import failed — '+err.message,true) }
   };
   rd.readAsText(f); this.value='';
@@ -16978,6 +17392,7 @@ applyCityTone();
 renderCityTabs();
 paintUnits();
 syncSoundBtn();
+syncRayBtn();
 /* The markup carries `hidden`, but assert it here too so a refactor that
    drops the attribute cannot ship a card stuck on screen. */
 $('ray').hidden=true; raySpotClear();
@@ -17126,7 +17541,7 @@ setInterval(function(){
         toast('Your save could not be loaded — started a fresh fleet instead.',true);
         newFleet(S.city,{keepCompanyCash:true});
       }
-      $('resume').hidden=true; setSpeed(CFG.defaultSpeed); render(); paintUnits(); syncSoundBtn();
+      $('resume').hidden=true; setSpeed(CFG.defaultSpeed); render(); paintUnits(); syncSoundBtn(); syncRayBtn();
     });
     $('rs-new').addEventListener('click',function(){
       $('resume').hidden=true; Store.del('auto'); newFleet(S.city);
@@ -17156,6 +17571,11 @@ window.DH_ACT1={
   raySpot:raySpot,raySpotEl:raySpotEl,raySpotClear:raySpotClear,
   spotEl:function(){ return spotEl },
   rayDismiss:rayDismiss,raySkip:raySkip,raySeen:raySeen,updateSurge:updateSurge,
+  /* storyplan.md §4 — the beat-scope split. Exposed so ray-scope.test.js can
+     assert the thing that actually broke: that a beat survives newFleet()'s
+     wipe of S.ray.seen. */
+  raySkippedEver:raySkippedEver,rayMuted:rayMuted,markRaySeen:markRaySeen,
+  markRaySkipped:markRaySkipped,syncRayBtn:syncRayBtn,
   /* rayPause/rayResume's own state is plain module `let`, not on S (see their
      comment) — exposed as getters, same pattern as ROADS/ZONES/DODGE above,
      so a test can assert on it without it going stale as a captured value. */
@@ -17169,6 +17589,8 @@ window.DH_ACT1={
   OPENING_CAP:OPENING_CAP,effCap:effCap,openingCapped:openingCapped,cityCap:cityCap,
   STAGES:STAGES,unlocked:unlocked,checkUnlocks:checkUnlocks,newFleet:newFleet,
   ACHV:ACHV,achvHeld:achvHeld,achvList:achvList,awardAchv:awardAchv,
+  /* trophy-voice.test.js — paoloSay() is the card-less thread channel. */
+  paoloSay:paoloSay,renderAchvList:renderAchvList,
   achvUnread:achvUnread,achvMarkSeen:achvMarkSeen,paintAchvBadge:paintAchvBadge,
   checkAchievements:checkAchievements,renderTrophies:renderTrophies,
   REQS:REQS,reqById:reqById,appMet:appMet,appMetList:appMetList,
@@ -17177,6 +17599,12 @@ window.DH_ACT1={
   REQ_DEADHEAD_MAX:REQ_DEADHEAD_MAX,anyCityRec:anyCityRec,
   bestAcceptPct:bestAcceptPct,bestSafetyFloorStat:bestSafetyFloorStat,
   bestProfitStreakStat:bestProfitStreakStat,bestDeadheadStat:bestDeadheadStat,
+  /* app-miss-honesty.test.js drives the four predicates against the four
+     display helpers directly — the invariant it protects is that no printed
+     figure can ever satisfy its own row's bar. */
+  compAcceptMet:compAcceptMet,compSafetyMet:compSafetyMet,
+  compProfitMet:compProfitMet,compDeadheadMet:compDeadheadMet,
+  bestAppStat:bestAppStat,roundAwayHigh:roundAwayHigh,roundAwayLow:roundAwayLow,
   rayAppOffer1:rayAppOffer1,rayAppOffer2:rayAppOffer2,
   rejectionLetterHtml:rejectionLetterHtml,rayShowRejection:rayShowRejection,
   rayRecord:rayRecord,rayRecordEnd:rayRecordEnd,renderThread:renderThread,
