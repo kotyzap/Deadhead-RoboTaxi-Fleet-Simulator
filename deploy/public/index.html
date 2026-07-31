@@ -722,13 +722,18 @@ body{
 .wing{display:grid;grid-template-columns:1fr;
   /* minmax(0,...) not a bare fr: `1fr` means minmax(auto,1fr), and that
      auto minimum is what lets a track grow past its share. */
-  /* .72/2.28 rather than 1/2 (Pavel, 2026-07-31: "maybe collapsing Books to
-     smaller, and making space for Offers"). Books is four metric tiles and a
-     cost breakdown — it reads fine at its natural height and gains nothing
-     from slack, whereas the stack below it holds the offer feed, which is
-     the one panel where an extra row is an extra decision you can actually
-     act on. */
-  grid-template-rows:minmax(0,.72fr) minmax(0,2.28fr);gap:10px;min-height:0}
+  grid-template-rows:minmax(0,1fr) minmax(0,2fr);gap:10px;min-height:0}
+/* THE TWO WINGS ARE NOT THE SAME SHAPE, and .wing styles BOTH of them.
+   v0.97.0 shrank the top row here to give Offers more room — correct for the
+   RIGHT wing, where the top panel is Books, and a regression on the LEFT,
+   where it is the Fleet roster. Pavel caught it immediately: the roster's
+   own table was clipped to a single half-visible row while Rapid Network
+   below sat on empty space.
+   Books is four metric tiles and a cost breakdown; it reads fine at its
+   natural height and gains nothing from slack. The Fleet roster is a LIST
+   that grows with the fleet, and is the one panel on that side that wants
+   every row it can get. So the tightening applies to the right wing alone. */
+#wing-right{grid-template-rows:minmax(0,.72fr) minmax(0,2.28fr)}
 .stack{display:grid;
   /* No fixed track count. The right stack holds THREE panels; with two
      explicit tracks the third was auto-placed into an implicit `auto` row
@@ -1769,8 +1774,23 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border:0;border-radiu
      of whichever the taller side turns out to be — no fixed px height to
      keep in step with content any more (the old order:-1;height:920px
      approach assumed a single column and does not apply here). */
+  /* minmax(0,auto), NOT a bare `auto` (Pavel, 2026-07-31: "on smaller width
+     there is a long high display below the fold — bring the bottom of the
+     in-car display above the fold").
+     A bare `auto` track cannot be shrunk below its content. .console spans
+     BOTH rows, so the console's height was whatever the two wings' content
+     added up to, with no ceiling — expand Platforms, Rapid network and Books
+     at once (each capped at 260px, but three of them plus headers is ~850px)
+     and .ops grew past the viewport, taking the console's own control strip
+     — the speed/fare/dispatch row, .t-ctl, its bottom 104px — below the
+     fold with it. The in-car display is the thing you play the game in; its
+     bottom edge is not optional.
+     The 0 floor lets the row give way when the column is over-constrained,
+     and the wings scroll instead (both of them, below). Exactly the same
+     "1fr means minmax(auto,1fr) and that auto minimum is the problem" trap
+     documented on .wing itself. */
   .ops{grid-template-columns:minmax(0,1fr) var(--wing);
-    grid-template-rows:auto minmax(0,1fr);gap:8px}
+    grid-template-rows:minmax(0,auto) minmax(0,1fr);gap:8px}
   .console{grid-column:1;grid-row:1/3}
   .wing:first-of-type{grid-column:2;grid-row:1}
   .wing:last-of-type{grid-column:2;grid-row:2;min-height:0}
@@ -1815,7 +1835,14 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border:0;border-radiu
      .wing:last-of-type handles that case by scrolling the column, not by
      starving Offers below its floor). */
   #panel-offers{flex:1 1 auto;min-height:200px}
-  .wing:last-of-type{overflow-y:auto}
+  /* BOTH wings scroll, not just the lower one. The lower wing has had its
+     own overflow since this tier shipped; the upper one was left to grow
+     because its row was `auto` and therefore always big enough — which is
+     precisely what pushed the console past the viewport. Now that the row
+     can be squeezed, the column it holds has to be able to scroll, or the
+     panels inside would be clipped instead. overscroll-behavior:contain so
+     reaching the end of a wing does not start scrolling the page behind it. */
+  .wing:first-of-type,.wing:last-of-type{overflow-y:auto;overscroll-behavior:contain}
   .panel{min-height:0}
   /* Touch targets. Nothing in this sidebar column was ever sized for a
      finger — every control here was built mouse-first (see the touch-target
@@ -3459,7 +3486,7 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
   <div class="ops">
 
     <!-- ---------- LEFT WING ---------- -->
-    <div class="wing">
+    <div class="wing" id="wing-left">
 
       <section class="panel" data-tone="blue" id="panel-fleet">
         <div class="p-head"><svg class="ms"><use href="#i-car"/></svg><h2>Fleet roster</h2><span class="tag" id="fleet-count">&mdash;</span><button class="ihelp" data-help="panel-fleet" tabindex="0" aria-label="What is this section?">i</button></div>
@@ -3791,7 +3818,7 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
     </div></section>
 
     <!-- ---------- RIGHT WING ---------- -->
-    <div class="wing">
+    <div class="wing" id="wing-right">
       <section class="panel" id="panel-books">
         <div class="p-head"><svg class="ms"><use href="#i-receipt"/></svg><h2>Books</h2><span class="tag">today</span><button class="ihelp" data-help="panel-books" tabindex="0" aria-label="What is this section?">i</button></div>
         <div class="p-body" id="pb-books">
@@ -12868,7 +12895,7 @@ const SLOTS=['slot1','slot2','slot3'];
    SAVE_V above is the STATE SHAPE version and moves only when the
    snapshot format changes — the two are deliberately independent, so
    shipping 0.9.0 does not invalidate 0.8.0 saves. */
-const VERSION='0.98.0';
+const VERSION='0.98.2';
 
 function snapshot(){
   return {
