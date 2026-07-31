@@ -1972,6 +1972,17 @@ tr[data-car].on td{background:var(--inset)}
 .rp-row span:first-child{color:var(--text-3)}
 .rp-sep{height:1px;background:var(--brd);margin:9px 0}
 .pos{color:var(--s-charge)} .neg{color:var(--s-crit)}
+
+/* The application re-dress — northstarplan.md §5. The header is a single
+   line, letterhead not ledger, so it sits ABOVE the radar block rather than
+   inside .rp-row's two-column shape. */
+.rp-app-head{font-size:11px;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--accent);font-weight:600;margin-bottom:10px}
+/* The wide block — a city's first shift-off only. Bordered off from the
+   ledger above it: this is a different document (the résumé), not one more
+   line item, and the border says so without needing a sentence to. */
+.rp-app-wide{margin-top:16px;padding-top:14px;border-top:1px solid var(--brd)}
+.rp-app-wide-head{font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text-1)}
 /* ---- shift hexagraph ----
    Pavel's ask (2026-07-30): bring admin/Cars' radar into the shift report, in
    the same presentation — one fixed colour PER AXIS, tinted spokes, a neutral
@@ -2660,6 +2671,24 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
 .msg b{display:block;font-size:10px;letter-spacing:.09em;text-transform:uppercase;
   color:var(--text-4);font-weight:500;margin-bottom:3px}
 
+/* Application panel — northstarplan.md §3.2. Modelled on .msg's own layout
+   (border-bottom rows, no card chrome) rather than inventing a new list
+   shape for a 10-row panel that will be looked at rarely. */
+.app-row{display:flex;align-items:flex-start;gap:9px;border-bottom:1px solid var(--brd);
+  padding:9px 0;font-size:12.5px;color:var(--text-2)}
+.app-row:last-child{border-bottom:0}
+.app-row .mk{flex:none;width:16px;text-align:center;font-weight:700;color:var(--text-4)}
+.app-row.ok .mk{color:var(--s-ok,#2E9E5B)}
+.app-row.miss .mk{color:var(--s-crit)}
+.app-row.ok{color:var(--text-1)}
+.app-row .sub{font-size:10.5px;color:var(--text-3);margin-top:2px}
+.app-row.app-tenth{opacity:.65;font-style:italic}
+.app-apply-btn{display:block;width:100%;margin-top:10px;height:30px;border:none;
+  border-radius:var(--r-ctl);background:var(--accent);color:#fff;font:inherit;
+  font-size:12px;font-weight:600;cursor:pointer}
+.app-apply-btn:hover{filter:brightness(1.08)}
+.app-apply-btn[hidden]{display:none}
+
  /* ---------------- garage: vehicle cards ---------------- */
 #garage .rep{width:900px;max-width:94vw}
 /* Sticky header: title, cash and Close used to scroll away with the cards,
@@ -2713,11 +2742,14 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
 .tr-row.me .who{color:var(--accent);font-weight:500}
 .tr-row.first .rk{color:var(--gold)}
 
-/* The unread badge on the Trophies nav icon. The ring is position:static by
-   default, so it gets position:relative here rather than the button — the
-   badge should hang off the circle, not off the label below it. */
-#app-trophy .ring{position:relative;overflow:visible}
-#app-trophy .badge{position:absolute;top:-3px;right:-5px;min-width:16px;height:16px;
+/* The unread badge on the Trophies nav icon — and, since northstarplan.md,
+   the Application one too (id="app-application"). The ring is position:
+   static by default, so it gets position:relative here rather than the
+   button — the badge should hang off the circle, not off the label below
+   it. Same declarations, shared by selector rather than duplicated, so the
+   two badges can never drift in appearance. */
+#app-trophy .ring,#app-application .ring{position:relative;overflow:visible}
+#app-trophy .badge,#app-application .badge{position:absolute;top:-3px;right:-5px;min-width:16px;height:16px;
   padding:0 4px;border-radius:8px;background:var(--gold);color:#1A1206;
   font-size:10px;font-weight:600;line-height:16px;text-align:center;
   box-shadow:0 1px 4px rgba(0,0,0,.45)}
@@ -2725,10 +2757,10 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
    that made "Take control" look dead. .badge is not display:block by
    default, but it IS absolutely positioned, so spell the guard out anyway
    rather than rely on the default staying inline. */
-#app-trophy .badge[hidden]{display:none}
+#app-trophy .badge[hidden],#app-application .badge[hidden]{display:none}
 /* A held-back pulse the first time something lands, so the icon changes on
    its own rather than waiting to be noticed. One cycle, then still. */
-#app-trophy.has-new .ring{animation:trophy-pop 1.2s var(--ease) 1}
+#app-trophy.has-new .ring,#app-application.has-new .ring{animation:trophy-pop 1.2s var(--ease) 1}
 @keyframes trophy-pop{
   0%,100%{transform:scale(1)}
   30%{transform:scale(1.12)}
@@ -3125,7 +3157,7 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
 </style>
 </head>
 <body>
-<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><symbol id="i-car" viewBox="0 0 24 24"><path d="M4 14l1.9-5.4A2 2 0 017.8 7.2h8.4a2 2 0 011.9 1.4L20 14v4h-2.2M6.2 18H4v-4m0 0h16"/><circle cx="7.6" cy="18" r="1.5"/><circle cx="16.4" cy="18" r="1.5"/></symbol><symbol id="i-groups" viewBox="0 0 24 24"><circle cx="9" cy="9" r="2.6"/><path d="M3.5 19v-1.2A3.8 3.8 0 017.3 14h3.4a3.8 3.8 0 013.8 3.8V19"/><circle cx="17" cy="10" r="2"/><path d="M16 14h1.2A2.8 2.8 0 0120 16.8V18"/></symbol><symbol id="i-station" viewBox="0 0 24 24"><rect x="5" y="3.5" width="11" height="17" rx="2"/><path d="M11 7.5l-2.2 4h2.6L10.8 16l3.2-4.8h-2.6z"/><path d="M18.5 8.5v6a2 2 0 01-2 2"/></symbol><symbol id="i-receipt" viewBox="0 0 24 24"><path d="M6 3.5h12v16l-2-1.4-2 1.4-2-1.4-2 1.4-2-1.4z"/><path d="M9 8h6M9 12h5"/></symbol><symbol id="i-warning" viewBox="0 0 24 24"><path d="M12 4.5L21 19.5H3z"/><path d="M12 10v4.2M12 17h.01"/></symbol><symbol id="i-route" viewBox="0 0 24 24"><path d="M7 20.5V10a4 4 0 014-4h2.5"/><path d="M12 3.5L15 6l-3 2.5"/><path d="M17 20.5v-5.5a4 4 0 00-4-4"/></symbol><symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></symbol><symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.4 14.3A8.6 8.6 0 0110.2 3.7a7.6 7.6 0 1010.2 10.6z"/></symbol><symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 3v2m0 14v2M3 12h2m14 0h2M5.6 5.6L7 7m10 10l1.4 1.4m0-12.8L17 7M7 17l-1.4 1.4"/></symbol><symbol id="i-battery" viewBox="0 0 24 24"><rect x="3" y="8" width="15" height="8" rx="1.7"/><path d="M20.5 11v2"/><path d="M5.2 10.2h8.6v3.6H5.2z" class="f"/></symbol><symbol id="i-bt" viewBox="0 0 24 24"><path d="M12 3v18l5.4-5.4L7 8.6M12 3l5.4 5.4L7 15.4"/></symbol><symbol id="i-signal" viewBox="0 0 24 24"><path d="M4 20v-3M9 20v-6M14 20V9.5M19 20V5"/></symbol><symbol id="i-list" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2.2"/><path d="M8 9h8M8 13h8M8 17h5"/></symbol><symbol id="i-nav" viewBox="0 0 24 24"><path d="M20.5 3.5L3.5 10.8l7.6 2.1 2.1 7.6z"/></symbol><symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13.2 3L6 13.2h4.6L9.8 21l7.4-10.4h-4.6z"/></symbol><symbol id="i-agent" viewBox="0 0 24 24"><path d="M4 14v-2a8 8 0 0116 0v2"/><rect x="2.4" y="13" width="4.2" height="6.2" rx="1.7"/><rect x="17.4" y="13" width="4.2" height="6.2" rx="1.7"/><path d="M12.5 21.2H15a2 2 0 002-2"/></symbol><symbol id="i-cam" viewBox="0 0 24 24"><rect x="3" y="7" width="12" height="10" rx="2.2"/><path d="M15 11l6-3.2v8.4L15 13z"/></symbol><symbol id="i-call" viewBox="0 0 24 24"><path d="M6.4 3.6h3.1l1.5 3.9-2 1.5a11.2 11.2 0 006 6l1.5-2 3.9 1.5v3.1a1.5 1.5 0 01-1.7 1.5A16.6 16.6 0 015 5.3 1.5 1.5 0 016.4 3.6z"/></symbol><symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol><symbol id="i-expand" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-6.5 6.5M10 20H4v-6M4 20l6.5-6.5"/></symbol><symbol id="i-tune" viewBox="0 0 24 24"><path d="M4 7.5h9M19 7.5h1M4 16.5h4M14 16.5h6"/><circle cx="16" cy="7.5" r="2.2"/><circle cx="11" cy="16.5" r="2.2"/></symbol><symbol id="i-renew" viewBox="0 0 24 24"><path d="M4.8 12A7.2 7.2 0 0116.4 6.3"/><path d="M19.2 12a7.2 7.2 0 01-11.6 5.7"/><path d="M13.6 3.4l3 2.9-3.4 1.5M10.4 20.6l-3-2.9 3.4-1.5"/></symbol><symbol id="i-charging" viewBox="0 0 24 24"><rect x="3" y="8" width="15" height="8" rx="1.7"/><path d="M20.5 11v2"/><path d="M11.4 9.4L8.6 12.6h2.6L10.4 15.6l3-3.4h-2.4z"/></symbol><symbol id="i-fence" viewBox="0 0 24 24"><path d="M5 20.5V8l2-2 2 2v12.5M15 20.5V8l2-2 2 2v12.5M3 11h18M3 15.5h18"/></symbol><symbol id="i-plane" viewBox="0 0 24 24"><path d="M3 20h18"/><path d="M4.2 14.6L20 10l-2.4-3-3 1L9.4 5.2 7.2 5.8l3.9 4.6-5.1 1z"/></symbol><symbol id="i-speed" viewBox="0 0 24 24"><path d="M4.5 17.5a8.5 8.5 0 1115 0"/><path d="M12.4 13.6L16.5 10"/><circle cx="12" cy="14.4" r="1.4"/></symbol><symbol id="i-report" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.8v4.6M12 16h.01"/></symbol><symbol id="i-gavel" viewBox="0 0 24 24"><path d="M4 20.5h9"/><path d="M7.5 16.5l6.5-6.5"/><path d="M11.2 5.2l6.4 6.4-2.4 2.4-6.4-6.4z"/><path d="M15.4 3l5.6 5.6"/></symbol><symbol id="i-coffee" viewBox="0 0 24 24"><path d="M4 8h13v6a5 5 0 01-5 5H9a5 5 0 01-5-5z"/><path d="M17 9.5h1.8a2.2 2.2 0 010 4.4H17"/><path d="M7 4.6c0 .8.9.9.9 1.8M11 4.2c0 .9 1 1 1 2"/></symbol><symbol id="i-sound" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16.3 9.2a4 4 0 010 5.6M19 6.5a7.8 7.8 0 010 11"/></symbol><symbol id="i-mute" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9l5 6M21 9l-5 6"/></symbol><symbol id="i-trophy" viewBox="0 0 24 24"><path d="M8 4h8v5a4 4 0 01-8 0z"/><path d="M8 5.5H5.5v1.2A3.3 3.3 0 008.4 10M16 5.5h2.5v1.2A3.3 3.3 0 0115.6 10"/><path d="M12 13v3.5M9 20h6M10 16.5h4l.6 3.5H9.4z"/></symbol><symbol id="i-recenter" viewBox="0 0 24 24"><path d="M4 9V5.5A1.5 1.5 0 015.5 4H9M15 4h3.5A1.5 1.5 0 0120 5.5V9M20 15v3.5a1.5 1.5 0 01-1.5 1.5H15M9 20H5.5A1.5 1.5 0 014 18.5V15"/><circle cx="12" cy="12" r="2.4"/></symbol><symbol id="i-gear" viewBox="0 0 24 24"><path d="M9.54 2.82A9.5 9.5 0 0 1 14.46 2.82L13.85 5.09A7.15 7.15 0 0 1 17.06 6.94L18.72 5.28A9.5 9.5 0 0 1 21.18 9.54L18.91 10.15A7.15 7.15 0 0 1 18.91 13.85L21.18 14.46A9.5 9.5 0 0 1 18.72 18.72L17.06 17.06A7.15 7.15 0 0 1 13.85 18.91L14.46 21.18A9.5 9.5 0 0 1 9.54 21.18L10.15 18.91A7.15 7.15 0 0 1 6.94 17.06L5.28 18.72A9.5 9.5 0 0 1 2.82 14.46L5.09 13.85A7.15 7.15 0 0 1 5.09 10.15L2.82 9.54A9.5 9.5 0 0 1 5.28 5.28L6.94 6.94A7.15 7.15 0 0 1 10.15 5.09L9.54 2.82Z"/><circle cx="12" cy="12" r="3.05"/></symbol></defs></svg>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><symbol id="i-car" viewBox="0 0 24 24"><path d="M4 14l1.9-5.4A2 2 0 017.8 7.2h8.4a2 2 0 011.9 1.4L20 14v4h-2.2M6.2 18H4v-4m0 0h16"/><circle cx="7.6" cy="18" r="1.5"/><circle cx="16.4" cy="18" r="1.5"/></symbol><symbol id="i-groups" viewBox="0 0 24 24"><circle cx="9" cy="9" r="2.6"/><path d="M3.5 19v-1.2A3.8 3.8 0 017.3 14h3.4a3.8 3.8 0 013.8 3.8V19"/><circle cx="17" cy="10" r="2"/><path d="M16 14h1.2A2.8 2.8 0 0120 16.8V18"/></symbol><symbol id="i-station" viewBox="0 0 24 24"><rect x="5" y="3.5" width="11" height="17" rx="2"/><path d="M11 7.5l-2.2 4h2.6L10.8 16l3.2-4.8h-2.6z"/><path d="M18.5 8.5v6a2 2 0 01-2 2"/></symbol><symbol id="i-receipt" viewBox="0 0 24 24"><path d="M6 3.5h12v16l-2-1.4-2 1.4-2-1.4-2 1.4-2-1.4z"/><path d="M9 8h6M9 12h5"/></symbol><symbol id="i-warning" viewBox="0 0 24 24"><path d="M12 4.5L21 19.5H3z"/><path d="M12 10v4.2M12 17h.01"/></symbol><symbol id="i-route" viewBox="0 0 24 24"><path d="M7 20.5V10a4 4 0 014-4h2.5"/><path d="M12 3.5L15 6l-3 2.5"/><path d="M17 20.5v-5.5a4 4 0 00-4-4"/></symbol><symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></symbol><symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.4 14.3A8.6 8.6 0 0110.2 3.7a7.6 7.6 0 1010.2 10.6z"/></symbol><symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 3v2m0 14v2M3 12h2m14 0h2M5.6 5.6L7 7m10 10l1.4 1.4m0-12.8L17 7M7 17l-1.4 1.4"/></symbol><symbol id="i-battery" viewBox="0 0 24 24"><rect x="3" y="8" width="15" height="8" rx="1.7"/><path d="M20.5 11v2"/><path d="M5.2 10.2h8.6v3.6H5.2z" class="f"/></symbol><symbol id="i-bt" viewBox="0 0 24 24"><path d="M12 3v18l5.4-5.4L7 8.6M12 3l5.4 5.4L7 15.4"/></symbol><symbol id="i-signal" viewBox="0 0 24 24"><path d="M4 20v-3M9 20v-6M14 20V9.5M19 20V5"/></symbol><symbol id="i-list" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2.2"/><path d="M8 9h8M8 13h8M8 17h5"/></symbol><symbol id="i-nav" viewBox="0 0 24 24"><path d="M20.5 3.5L3.5 10.8l7.6 2.1 2.1 7.6z"/></symbol><symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13.2 3L6 13.2h4.6L9.8 21l7.4-10.4h-4.6z"/></symbol><symbol id="i-agent" viewBox="0 0 24 24"><path d="M4 14v-2a8 8 0 0116 0v2"/><rect x="2.4" y="13" width="4.2" height="6.2" rx="1.7"/><rect x="17.4" y="13" width="4.2" height="6.2" rx="1.7"/><path d="M12.5 21.2H15a2 2 0 002-2"/></symbol><symbol id="i-cam" viewBox="0 0 24 24"><rect x="3" y="7" width="12" height="10" rx="2.2"/><path d="M15 11l6-3.2v8.4L15 13z"/></symbol><symbol id="i-call" viewBox="0 0 24 24"><path d="M6.4 3.6h3.1l1.5 3.9-2 1.5a11.2 11.2 0 006 6l1.5-2 3.9 1.5v3.1a1.5 1.5 0 01-1.7 1.5A16.6 16.6 0 015 5.3 1.5 1.5 0 016.4 3.6z"/></symbol><symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol><symbol id="i-expand" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-6.5 6.5M10 20H4v-6M4 20l6.5-6.5"/></symbol><symbol id="i-tune" viewBox="0 0 24 24"><path d="M4 7.5h9M19 7.5h1M4 16.5h4M14 16.5h6"/><circle cx="16" cy="7.5" r="2.2"/><circle cx="11" cy="16.5" r="2.2"/></symbol><symbol id="i-renew" viewBox="0 0 24 24"><path d="M4.8 12A7.2 7.2 0 0116.4 6.3"/><path d="M19.2 12a7.2 7.2 0 01-11.6 5.7"/><path d="M13.6 3.4l3 2.9-3.4 1.5M10.4 20.6l-3-2.9 3.4-1.5"/></symbol><symbol id="i-charging" viewBox="0 0 24 24"><rect x="3" y="8" width="15" height="8" rx="1.7"/><path d="M20.5 11v2"/><path d="M11.4 9.4L8.6 12.6h2.6L10.4 15.6l3-3.4h-2.4z"/></symbol><symbol id="i-fence" viewBox="0 0 24 24"><path d="M5 20.5V8l2-2 2 2v12.5M15 20.5V8l2-2 2 2v12.5M3 11h18M3 15.5h18"/></symbol><symbol id="i-plane" viewBox="0 0 24 24"><path d="M3 20h18"/><path d="M4.2 14.6L20 10l-2.4-3-3 1L9.4 5.2 7.2 5.8l3.9 4.6-5.1 1z"/></symbol><symbol id="i-speed" viewBox="0 0 24 24"><path d="M4.5 17.5a8.5 8.5 0 1115 0"/><path d="M12.4 13.6L16.5 10"/><circle cx="12" cy="14.4" r="1.4"/></symbol><symbol id="i-report" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.8v4.6M12 16h.01"/></symbol><symbol id="i-gavel" viewBox="0 0 24 24"><path d="M4 20.5h9"/><path d="M7.5 16.5l6.5-6.5"/><path d="M11.2 5.2l6.4 6.4-2.4 2.4-6.4-6.4z"/><path d="M15.4 3l5.6 5.6"/></symbol><symbol id="i-briefcase" viewBox="0 0 24 24"><rect x="3.5" y="8" width="17" height="11" rx="2"/><path d="M9 8V6a2 2 0 012-2h2a2 2 0 012 2v2"/><path d="M3.5 13h17"/></symbol><symbol id="i-coffee" viewBox="0 0 24 24"><path d="M4 8h13v6a5 5 0 01-5 5H9a5 5 0 01-5-5z"/><path d="M17 9.5h1.8a2.2 2.2 0 010 4.4H17"/><path d="M7 4.6c0 .8.9.9.9 1.8M11 4.2c0 .9 1 1 1 2"/></symbol><symbol id="i-sound" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16.3 9.2a4 4 0 010 5.6M19 6.5a7.8 7.8 0 010 11"/></symbol><symbol id="i-mute" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 9l5 6M21 9l-5 6"/></symbol><symbol id="i-trophy" viewBox="0 0 24 24"><path d="M8 4h8v5a4 4 0 01-8 0z"/><path d="M8 5.5H5.5v1.2A3.3 3.3 0 008.4 10M16 5.5h2.5v1.2A3.3 3.3 0 0115.6 10"/><path d="M12 13v3.5M9 20h6M10 16.5h4l.6 3.5H9.4z"/></symbol><symbol id="i-recenter" viewBox="0 0 24 24"><path d="M4 9V5.5A1.5 1.5 0 015.5 4H9M15 4h3.5A1.5 1.5 0 0120 5.5V9M20 15v3.5a1.5 1.5 0 01-1.5 1.5H15M9 20H5.5A1.5 1.5 0 014 18.5V15"/><circle cx="12" cy="12" r="2.4"/></symbol><symbol id="i-gear" viewBox="0 0 24 24"><path d="M9.54 2.82A9.5 9.5 0 0 1 14.46 2.82L13.85 5.09A7.15 7.15 0 0 1 17.06 6.94L18.72 5.28A9.5 9.5 0 0 1 21.18 9.54L18.91 10.15A7.15 7.15 0 0 1 18.91 13.85L21.18 14.46A9.5 9.5 0 0 1 18.72 18.72L17.06 17.06A7.15 7.15 0 0 1 13.85 18.91L14.46 21.18A9.5 9.5 0 0 1 9.54 21.18L10.15 18.91A7.15 7.15 0 0 1 6.94 17.06L5.28 18.72A9.5 9.5 0 0 1 2.82 14.46L5.09 13.85A7.15 7.15 0 0 1 5.09 10.15L2.82 9.54A9.5 9.5 0 0 1 5.28 5.28L6.94 6.94A7.15 7.15 0 0 1 10.15 5.09L9.54 2.82Z"/><circle cx="12" cy="12" r="3.05"/></symbol></defs></svg>
 
 <!-- SPLASH SCREEN (v0.56.0). Pavel's ask (2026-07-30): show a title-card
      image before anything else — before the resume-save dialog, before
@@ -3369,6 +3401,12 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
         <button class="t-app" data-c="red"   aria-pressed="false" data-gate="ops"    data-panel="panel-platforms"><span class="ring"><svg class="ms"><use href="#i-agent"/></svg></span><label>Ops</label></button>
         <button class="t-app" id="app-camera" data-c="green" aria-pressed="false" data-gate="fleet"><span class="ring"><svg class="ms"><use href="#i-cam"/></svg></span><label>Camera</label></button>
         <button class="t-app" data-c="blue"  aria-pressed="false" data-gate="fleet"  data-panel="panel-comms"><span class="ring"><svg class="ms"><use href="#i-call"/></svg></span><label>Comms</label></button>
+        <!-- 7th console section, northstarplan.md §3.2 — same data-panel
+             mechanism as Fleet/Energy/Books/Ops/Comms above (not the modal
+             pattern Trophies uses below), so no branch needed in the nav
+             click handler. id="app-application" carries the badge, same
+             pattern as id="app-trophy" below it. -->
+        <button class="t-app" id="app-application" data-c="green" aria-pressed="false" data-gate="fleet" data-panel="panel-application"><span class="ring"><svg class="ms"><use href="#i-briefcase"/></svg></span><label>Application</label></button>
         <!-- Opens a modal rather than flashing a panel, so it needs its own
              id and a branch in the nav handler alongside app-map/app-camera
              — the generic `data-panel` path would have nothing to flash. -->
@@ -3607,10 +3645,14 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
       <section class="panel" id="panel-books">
         <div class="p-head"><svg class="ms"><use href="#i-receipt"/></svg><h2>Books</h2><span class="tag">today</span><button class="ihelp" data-help="panel-books" tabindex="0" aria-label="What is this section?">i</button></div>
         <div class="p-body" id="pb-books">
-          <div class="metrics c3">
+          <!-- c2, not c3: this is four metrics now (deadhead % joined them),
+               and 4-in-a-3-track grid strands one alone on a second row. Two
+               tidy rows of two, and the cells get wider in the wing. -->
+          <div class="metrics c2">
             <div class="metric"><span class="lbl">Gross today</span><b id="bk-gross">$0</b></div>
             <div class="metric"><span class="lbl">Net today</span><b id="bk-net">$0</b></div>
             <div class="metric"><span class="lbl" id="bk-cpm-l">Cost / mile</span><b id="bk-cpm">&mdash;</b></div>
+            <div class="metric"><span class="lbl">Deadhead</span><b id="bk-empty">&mdash;</b></div>
           </div>
           <span class="lbl" style="margin:4px 0 8px">Cost per mile breakdown</span>
           <div id="bk-lines"></div>
@@ -3627,6 +3669,25 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
         <section class="panel" id="panel-comms">
           <div class="p-head"><svg class="ms"><use href="#i-call"/></svg><h2>Messages</h2><span class="tag" id="msg-tag">0</span><button class="ihelp" data-help="panel-comms" tabindex="0" aria-label="What is this section?">i</button></div>
           <div class="p-body" id="pb-msg"><div id="msg-list"></div></div>
+        </section>
+
+        <!-- northstarplan.md §3.2 — the quiet reader. Openable any time
+             between shifts; the shift report (northstarplan.md §5) is the
+             loud one and is not built yet. Same showInConsole() mechanism as
+             Fleet/Energy/Books/Ops/Comms — this is its natural "home" slot
+             while not reparented into the console. -->
+        <section class="panel" id="panel-application">
+          <div class="p-head"><svg class="ms"><use href="#i-briefcase"/></svg><h2>Application</h2><span class="tag" id="app-tag">0/9</span><button class="ihelp" data-help="panel-application" tabindex="0" aria-label="What is this section?">i</button></div>
+          <div class="p-body" id="pb-app">
+            <div id="app-list"></div>
+            <!-- The player who clicked "I'll think about it" on Paolo's ad
+                 (northstarplan.md §5) needs a real way back in — this is it,
+                 not a second ad card. Hidden until the ad has actually been
+                 offered once (see render()'s own gate on this button): it
+                 would make no sense before the player has ever heard of the
+                 job. -->
+            <button class="app-apply-btn" id="app-apply-btn" hidden>Apply now</button>
+          </div>
         </section>
 
         <section class="panel" data-tone="blue" id="panel-offers">
@@ -5802,7 +5863,7 @@ const S={
    every addCar() so a car bought mid-shift starts at zero rather than
    undefined. */
 function zeroCarD(){ return {gross:0,cost:0,dep:0,maint:0,ins:0,soft:0,fixed:0,
-  energy:0,miles:0,rides:0,cancels:0} }
+  energy:0,miles:0,empty:0,rides:0,cancels:0} }
 /* The zeroed shape of S.d — pulled out of newDay() so restore() (below) can
    zero-fill a save missing this entirely, or missing individual keys added
    after that save was written, rather than trusting s.d verbatim. Every
@@ -5811,7 +5872,7 @@ function zeroCarD(){ return {gross:0,cost:0,dep:0,maint:0,ins:0,soft:0,fixed:0,
    corrupted import) made render() throw on literally every tick with
    nothing on screen to explain why — see improvements.md P1-6. */
 function defaultDayLedger(){
-  return {gross:0,cost:0,energy:0,payroll:0,miles:0,done:0,lost:0,unserved:0,blocked:0,
+  return {gross:0,cost:0,energy:0,payroll:0,miles:0,empty:0,done:0,lost:0,unserved:0,blocked:0,
        cancels:0,dep:0,maint:0,ins:0,soft:0,commission:0,fixed:0,
        /* The soloSeat wage — see billMidnight(). Zero in every city that
           isn't soloSeat; never read as a cost, only ever added to S.cash. */
@@ -6518,13 +6579,43 @@ function drive(c,km){
   c.soc=clamp(c.soc-kwh/sp.kwh*100,0,100);
   const mi=km*MI_PER_KM;   /* the exact constant, shared with the units layer */
   S.d.miles+=mi;
+  /* DEADHEAD MILES — the metric the game is named after, and the one thing
+     it never measured. Every mile in the sim goes through this function, so
+     this is the only place it needs counting.
+
+     "Empty" is defined as NOT 'onTrip': a car with a passenger aboard is
+     earning, everything else is not. That deliberately includes 'toCharge'.
+     Charger runs are unavoidable, but *when* you send a car to charge is a
+     real decision with a real cost, and excluding them would remove the
+     interesting half of the metric — a player who never thinks about charge
+     timing should see a worse ratio than one who does. 'blocked' and
+     'recovery' cars aren't driving at all, so they never reach here.
+
+     Ratio is empty/miles, computed at the reader. Never stored as a ratio:
+     two shifts' ratios can't be averaged, but their mile counts can. */
+  if(c.state!=='onTrip') S.d.empty+=mi;
   const depK=cityK('depK');
   S.d.dep+=mi*sp.cpm.dep*depK; S.d.maint+=mi*sp.cpm.maint;
   S.d.ins+=mi*insPerMile(); S.d.soft+=mi*sp.cpm.soft;
   const c4=mi*(sp.cpm.dep*depK+sp.cpm.maint+insPerMile()+sp.cpm.soft);
   S.d.cost+=c4; S.cash-=c4;
-  if(c.d){ c.d.miles+=mi; c.d.dep+=mi*sp.cpm.dep*depK; c.d.maint+=mi*sp.cpm.maint;
+  if(c.d){ c.d.miles+=mi; if(c.state!=='onTrip') c.d.empty+=mi;
+    c.d.dep+=mi*sp.cpm.dep*depK; c.d.maint+=mi*sp.cpm.maint;
     c.d.ins+=mi*insPerMile(); c.d.soft+=mi*sp.cpm.soft; c.d.cost+=c4 }
+}
+/* The deadhead ratio as a whole-number percent, from anything carrying
+   {miles, empty} — S.d, a car's c.d, a HISTORY row, or a perModel bucket.
+   ONE definition, because the Books panel, the shift report and (next) the
+   application requirement all have to mean the same thing by "deadhead", and
+   three copies of `empty/miles` is exactly how they stop meaning it — see the
+   three-copies-of-the-dispatch-rule note in cameraplan.md.
+
+   Returns 0, not '—', for a ledger that hasn't moved; callers decide how to
+   present an empty shift, since Books wants a dash and a test wants a
+   number. */
+function deadheadPct(d){
+  if(!d||!(d.miles>0)) return 0;
+  return Math.round((d.empty||0)/d.miles*100);
 }
 function log(who,what,kind){
   S.log.unshift({t:S.t,who:who,what:what,kind:kind||0});
@@ -6988,8 +7079,11 @@ function checkUnlocks(){
      threshold been crossed since last time" scans over a short table of
      cheap predicates, and both must stay cheap. checkAchievements() with no
      argument evaluates only the `live` entries — the shift-end ones are
-     driven from appendHistoryRow(). */
+     driven from appendHistoryRow(). checkApp() joins them for the same
+     reason (northstarplan.md) — a third short table of cheap predicates,
+     already throttled to its own ~1/sec by wall clock. */
   checkAchievements();
+  checkApp();
   return gained;
 }
 
@@ -7772,6 +7866,90 @@ function rayCityUnlocked(id){
     });
   }
 }
+/* ============================================================
+   THE JOB AD — northstarplan.md §2.1/§5.
+
+   Fires exactly once, chained onto the very FIRST city-unlock card a
+   player ever sees (Dallas opening after Austin's first shift) — not at
+   boot, and not as a separate trigger of its own. See northstarplan.md
+   §2.1 for the reasoning: a new player already has an hour of tutorial
+   motivation, and the north star goes missing at the exact moment Austin
+   ends and a next city appears with no reason attached. Riding
+   rayCityUnlocked()'s own one-shot moment (guarded by PROG.app.offered,
+   checked in the ray-go/ray-skip handlers where these actually get called)
+   means this needs no sequencing of its own and cannot double-fire.
+
+   Two cards, not one: a wide "found on a pole" shot, then close enough to
+   read — mirroring how someone would actually forward a photo of a flyer,
+   two messages, not one message with two attachments. Reuses #ray-pic
+   (built for the ko-fi QR in rayCoffee() below) rather than adding a
+   second image slot; one photo on screen at a time, like every other ray
+   card. */
+function rayAppOffer1(){
+  raySpotClear();
+  S.ray.cur='appoffer1';
+  $('ray-text').innerHTML=
+    "Saw this on a pole on South Congress.<br><br>Didn't think much of it "+
+    "at first.";
+  rayFoot('Look closer','Later','');
+  $('ray-pic-img').src='northstar-ad-poster.jpg';
+  $('ray-pic-img').alt='A job posting stapled to a utility pole';
+  $('ray-pic-cap').textContent='Supervising Driver — San Francisco';
+  $('ray-pic').hidden=false;
+  $('ray').hidden=false;
+  rayPause();
+}
+function rayAppOffer2(){
+  raySpotClear();
+  S.ray.cur='appoffer2';
+  $('ray-text').innerHTML="You just ran a whole city for a week.<br><br>Apply.";
+  rayFoot("I'll apply","I'll think about it",'');
+  $('ray-pic-img').src='northstar-ad-closeup.jpg';
+  $('ray-pic-img').alt='Supervising Driver — Robotaxi Operations Center, San Francisco';
+  /* Read live, not baked into the copy — the poster photo itself (card 1)
+     is allowed a baked "you currently meet 0" because it is true exactly
+     once, at exactly the moment it's shown (northstar-ad-prompts.md); this
+     caption re-renders every time the card opens and must never go stale
+     the way a hand-typed number would the first time REQS changes. */
+  $('ray-pic-cap').textContent='9 requirements. You currently meet '+appMetList().length+'.';
+  $('ray-pic').hidden=false;
+  $('ray').hidden=false;
+  rayPause();
+}
+/* The rejection letter, northstarplan.md §5 — shown the moment the player
+   actually applies. Names the count and up to two outstanding requirements
+   by name, with the competencies' own live miss() figure attached (the
+   experience ones have nothing to show but their name — "clock off a
+   shift in Dallas" doesn't have a partial-credit number). REQS order is
+   display order (§6.2), so the two picked here are always the two nearest
+   the top of the player's own résumé, not a ranked "worst" across
+   incompatible units (percent vs. a streak count vs. a floor). */
+function rejectionLetterHtml(){
+  const held=appMetList().length;
+  const misses=REQS.filter(function(r){ return !appMet(r.id) }).slice(0,2);
+  const lines=misses.map(function(r){
+    let detail='';
+    try{ detail=(r.kind==='comp')?(' (your best: '+r.miss()+')'):'' }catch(e){}
+    return '&mdash; '+escapeHtml(r.name)+detail;
+  }).join('<br>');
+  return 'Thank you for your interest in the Supervising Driver position.'+
+    '<br><br>Your application has been reviewed against our operational '+
+    'requirements. At this time you meet '+held+' of '+REQS.length+
+    (misses.length?('. We were unable to verify:<br><br>'+lines):'.')+
+    '<br><br>Applications may be resubmitted at any time.'+
+    '<br><br><i>This message was generated automatically.</i>';
+}
+function rayShowRejection(){
+  raySpotClear();
+  S.ray.cur='rejection';
+  PROG.app.applied=(PROG.app.applied||0)+1;
+  progSave();
+  $('ray-text').innerHTML=rejectionLetterHtml();
+  rayFoot('Got it','Close','');
+  $('ray-pic').hidden=true;
+  $('ray').hidden=false;
+  rayPause();
+}
 function rayCoffee(){
   raySpotClear();
   S.ray.cur='coffee';          /* a string, like 'advice' — never a beat number */
@@ -8407,6 +8585,10 @@ function shiftReport(){
   };
   const aside=
     mini('Distance driven',uMi(d.miles))+
+    /* Deadhead sits FIRST among the derived three because it is the one the
+       game is named after and the only one of them the player can change by
+       playing differently tomorrow. Unitless — see the Books readout. */
+    mini('Deadhead',d.miles>1?deadheadPct(d)+'%':'—')+
     /* Cost per mile counts OPERATING lines only. Commission is a share of
        revenue, not a cost of driving a mile, and summing them would flatter
        or damn the wrong decision. */
@@ -8414,6 +8596,11 @@ function shiftReport(){
       ?uPerDist((d.energy+d.dep+d.maint+d.ins+d.soft)/d.miles):'—')+
     mini('Platform take rate',d.gross>0?Math.round(d.commission/d.gross*100)+'%':'—');
   $('rp-body').innerHTML=
+    /* northstarplan.md §5 — the shift report IS the application form. Both
+       return '' before the ad has ever fired (see their own guards), so
+       Austin's own first report is untouched: nothing here mentions an
+       application the player doesn't know exists yet. */
+    appReportHeaderHtml()+
     /* Above the numbers, as on admin's Cars cards: the shape is the summary
        and the rows are the detail behind it. */
     rpRadarBlock(aside)+
@@ -8440,7 +8627,11 @@ function shiftReport(){
        survives intact in Paolo's beat 13, where there is room for it. */
     row('Hours worked',workedH.toFixed(1)+' h')+
     row('Hours billed',billedH.toFixed(1)+' h — '+
-        money2(fixedPerCar(S.cars[0]||{}))+'/day regardless');
+        money2(fixedPerCar(S.cars[0]||{}))+'/day regardless')+
+    /* The BIG version — this city's first shift-off only (see the guard
+       inside appReportWideHtml()). Last, not first: the player reads their
+       own numbers before being told what they mean for the résumé. */
+    appReportWideHtml();
   /* The second door into Trophies. Only shown when there is something to
      see — a player who has earned nothing does not need a button to be told
      so, and an always-present one would just be another thing to ignore.
@@ -8505,6 +8696,27 @@ $('ray-go').addEventListener('click',function(){
     rayDismiss();
     return;
   }
+  /* northstarplan.md §2.1/§5 — the job ad, chained onto the FIRST city-
+     unlock card only (PROG.app.offered latches the instant it fires, same
+     tick, so a second city unlocking later falls straight through to the
+     plain rayDismiss() below instead of re-triggering this). "Got it" and
+     "Later" (the skip handler, below) both lead here identically — Pavel's
+     point about a real, unaffordable job ad: however the player dismisses
+     "Dallas is open", they still see it, and the choice about IT belongs
+     on card 2, not on whether they clicked Got it or Later here. */
+  if(S.ray.cur==='cityunlock'&&!PROG.app.offered){
+    PROG.app.offered=true; progSave();
+    rayAppOffer1();
+    return;
+  }
+  if(S.ray.cur==='appoffer1'){ rayAppOffer2(); return; }
+  /* "I'll apply" — the rejection letter, northstarplan.md §5. Whatever the
+     player has actually met by now (almost certainly still 1/9, fresh out
+     of Austin) is read live off REQS/PROG.app, not written into this card's
+     copy — the same rayFill()-style discipline paolo-numbers established
+     for {CASH}/{FLOOR}, applied to a number that changes even faster. */
+  if(S.ray.cur==='appoffer2'){ rayShowRejection(); return; }
+  if(S.ray.cur==='rejection'){ rayDismiss(); return; }
   rayDismiss();
 });
 $('ray-skip').addEventListener('click',function(){
@@ -8517,7 +8729,21 @@ $('ray-skip').addEventListener('click',function(){
      the price of declining one of them. 'cityunlock' joins 'coffee'/'dodge'
      here for exactly that reason — dismissing "Dallas is open" is not the
      same gesture as "stop teaching me the game." */
-  if(S.ray.cur==='coffee'||S.ray.cur==='dodge'||S.ray.cur==='cityunlock'){
+  /* Same ad hand-off as the go handler above, checked first: "Later" on the
+     unlock card must reach the ad exactly as often as "Got it" does. */
+  if(S.ray.cur==='cityunlock'&&!PROG.app.offered){
+    PROG.app.offered=true; progSave();
+    rayAppOffer1();
+    return;
+  }
+  /* "I'll think about it" — genuinely defers, not a refusal. Neither this
+     nor "Later" on card 1 counts against the player: PROG.app.offered is
+     already true either way (set above, once, on the FIRST city unlock),
+     so the ad itself never comes back, but no rejection letter is shown
+     and nothing is marked applied. The console panel (§3.2) badge is where
+     "you still haven't applied" lives from here on, not a nagging card. */
+  if(S.ray.cur==='coffee'||S.ray.cur==='dodge'||S.ray.cur==='cityunlock'||
+     S.ray.cur==='appoffer1'||S.ray.cur==='appoffer2'||S.ray.cur==='rejection'){
     dodgePending=null; rayDismiss(); return;
   }
   /* "Clock off anyway" is a real action, not a dismissal — the player has
@@ -10667,6 +10893,11 @@ function render(){
      two different numbers depending on which panel you read it in. */
   $('bk-cpm').textContent=d.miles>1
     ?uPerDist((d.energy+d.dep+d.maint+d.ins+d.soft)/d.miles):'—';
+  /* Deliberately unitless — a ratio of two distances is the same number in
+     miles or km, so this is the one Books figure that needs no uSys() pass.
+     Same >1 guard as cost/mile: a shift that has barely moved would show a
+     wild percentage off a few feet of travel. */
+  $('bk-empty').textContent=d.miles>1?deadheadPct(d)+'%':'—';
   const mi=Math.max(1,d.miles);
   const lines=[['Depreciation',d.dep/mi,0],['Energy',d.energy/mi,0],
     ['Maintenance',d.maint/mi,0],['Insurance',d.ins/mi,0],
@@ -11148,6 +11379,8 @@ function render(){
     }).join(''):'<div class="sub">No messages yet.</div>';
   }
 
+  renderApplication();
+
   /* S.ffwd reads true only for the instant startFastForward() is on the
      stack (see there) — no render() call ever actually happens while it's
      true any more, so this branch is vestigial rather than live UI. Left
@@ -11228,6 +11461,10 @@ const HELP={
   'panel-comms':
     'Everything Paolo has said, newest first. Nothing is lost — you can '+
     're-read any of it here.',
+  'panel-application':
+    'What San Francisco is actually asking for. Five come just from finishing '+
+    'a city; the other four have to be cleared, and can be missed — a missed '+
+    'one shows what you actually hit next to what it needed.',
   'panel-offers':
     'Rides waiting on your decision, and the zones you work. Switching a zone '+
     'off stops both pickups and drop-offs there, which is your geofence.',
@@ -11643,6 +11880,18 @@ function closeConsolePanel(){
   document.querySelectorAll('.t-apps .t-app').forEach(function(o){o.setAttribute('aria-pressed','false')});
   $('app-map').setAttribute('aria-pressed','true');
 }
+/* "Apply now" from the console panel — the way back in for anyone who
+   clicked "I'll think about it" on Paolo's ad (see rayAppOffer2()). Goes
+   straight to the letter, skipping the two photo cards: those are the
+   FIRST-time discovery beat specifically, not a reusable "apply" ritual.
+   Guarded the same way every ad-hoc ray card guards itself (never on top of
+   another card or a modal), because this button is reachable from inside
+   the console panel at any time, unlike the ad's own cards which only ever
+   fire from a controlled sequence. */
+$('app-apply-btn').addEventListener('click',function(){
+  if(!$('ray').hidden||!$('garage').hidden||!$('report').hidden) return;
+  rayShowRejection();
+});
 $('dh-cp-close').addEventListener('click',closeConsolePanel);
 document.querySelectorAll('.t-apps .t-app').forEach(function(b){
   b.addEventListener('click',function(){
@@ -11679,6 +11928,13 @@ document.querySelectorAll('.t-apps .t-app').forEach(function(b){
     if(b.id==='app-trophy'){ openTrophies(); return }
     if(b.dataset.panel){
       const label=b.querySelector('label'), use=b.querySelector('use');
+      /* "Already open" still marks-seen — northstarplan.md §3.2's own rule,
+         same reasoning as achvMarkSeen(): a player who opens this panel and
+         looks has seen whatever it holds, whether or not anything about the
+         REQS list actually changed on this particular click. Ahead of
+         showInConsole() so the badge clears in the SAME paint as the panel
+         opening, not one tick behind it. */
+      if(b.dataset.panel==='panel-application') appMarkSeen();
       showInConsole(b.dataset.panel,label?label.textContent:'',
         use?use.getAttribute('href'):null);
     }
@@ -11757,7 +12013,7 @@ const SLOTS=['slot1','slot2','slot3'];
    SAVE_V above is the STATE SHAPE version and moves only when the
    snapshot format changes — the two are deliberately independent, so
    shipping 0.9.0 does not invalidate 0.8.0 saves. */
-const VERSION='0.81.0';
+const VERSION='0.84.0';
 
 function snapshot(){
   return {
@@ -12076,7 +12332,8 @@ function restore(save,opts){
      looking at. Routed through setMapStyle() so the button label and the
      .map-sat class follow the save; a bare assignment left them stale. */
   setMapStyle(s.mapStyle==='satellite'?'satellite':'standard');
-  if(S.ray.cur==='advice'||S.ray.cur==='coffee'||S.ray.cur==='dodge'||S.ray.cur==='decline'||S.ray.cur==='clockoff') S.ray.cur=null;
+  if(S.ray.cur==='advice'||S.ray.cur==='coffee'||S.ray.cur==='dodge'||S.ray.cur==='decline'||S.ray.cur==='clockoff'||
+     S.ray.cur==='appoffer1'||S.ray.cur==='appoffer2'||S.ray.cur==='rejection') S.ray.cur=null;
   if(typeof S.ray.dodgeSeen!=='boolean') S.ray.dodgeSeen=false;
   if(typeof S.ray.declineSeen!=='boolean') S.ray.declineSeen=false;
   if(typeof S.ray.firstAcceptDone!=='boolean') S.ray.firstAcceptDone=false;
@@ -12379,10 +12636,20 @@ let PROG={unlocked:{austin:true}, results:{}, last:'austin', eggs:{}, achv:{},
      Additive on a v4 record: a returning player with achievements and no
      achvSeen map reads as "all unread", which is true, they have never seen
      the badge. `achvTold` is the one-time "the icon is over there" line. */
-  achvSeen:{}, achvTold:false, soloSeatTold:false
+  achvSeen:{}, achvTold:false, soloSeatTold:false,
   /* companyCash is deliberately absent from this default literal rather than
      set to CFG.startCash — its absence (typeof !== 'number') is the signal
      that no company exists yet, read by newFleet() and restore() below. */
+  /* northstarplan.md — the Supervising Driver application. Additive, like
+     promoUsed/promoNudged below: no PROG_V bump, read back defensively.
+     met[id] latches like PROG.achv (a competency that later slips does not
+     un-tick); seen[id] drives the console panel's badge, same pattern as
+     achvSeen; applied counts rejections so the letter can say "your Nth
+     application"; offered is the one-shot latch on Paolo's ad card itself
+     (northstarplan.md §2.1) — separate from met/seen because it gates a
+     STORY beat, not a requirement; hired is set once, at the SF hand-off
+     (not built yet — see northstarplan.md §8 step 9). */
+  app:{met:{}, seen:{}, applied:0, hired:false, offered:false}
   };
 function progSave(){
   return Store.put('progress',{v:PROG_V, unlocked:PROG.unlocked,
@@ -12393,7 +12660,8 @@ function progSave(){
        read back defensively (progLoad() below, and promoUsed()/promoNudged()
        at every call site) with typeof-object guards, same style as the
        v4->v5 companyCash migration just above. */
-    promoUsed:PROG.promoUsed, promoNudged:PROG.promoNudged})
+    promoUsed:PROG.promoUsed, promoNudged:PROG.promoNudged,
+    app:PROG.app})
     .catch(function(){});
 }
 /* ---- EASTER EGGS ------------------------------------------------------
@@ -12660,8 +12928,331 @@ function checkAchievements(row){
   return n;
 }
 
-function progLoad(){
-  return Store.get('progress').then(function(r){
+/* ============================================================
+   THE APPLICATION — northstarplan.md. The résumé the game has been quietly
+   building since the reward-structure discussion, made explicit: nine
+   requirements for the Supervising Driver job in San Francisco, five earned
+   just by finishing a city (unmissable) and four that have to be CLEARED
+   and can be missed on a given run (see northstarplan.md §3.3 for why that
+   split matters — an all-unmissable list is a level counter with extra
+   steps).
+
+   Modelled on ACHV directly, same discipline: `met()` is cheap and runs on
+   the throttled live scan (checkApp(), piggybacked on checkUnlocks() same
+   as checkAchievements() — see that function's own "must stay cheap" note),
+   `miss()` returns the player's ACTUAL figure for the rejection letter and
+   the console panel, which ACHV has no equivalent of because achievements
+   don't need to motivate a near-miss the way a hiring bar does.
+
+   ADDING ONE: append here, add the id to REQS_IDS in deploy/src/index.js if
+   it is ever reported to /api/stat (not currently — see northstarplan.md
+   task #2 finding: the 'progress' slot itself is already whitelisted
+   wholesale, so today nothing server-side needs touching at all), and to
+   any admin label map built for it later. Same drift cost ACHV's own note
+   describes: an unlabelled admin row, nothing worse. */
+/* Provisional — northstarplan.md §4 flags this as the one number with no
+   in-game precedent (comp-safety and comp-accept below are both reused from
+   values the game already treats as meaningful; this one is borrowed from
+   published real-world robotaxi deadhead figures, 30-40%, and will likely
+   need to sit higher once real HISTORY data exists, because this game's
+   ratio deliberately counts charger runs and most industry figures do not
+   — see drive()). Do not treat this constant as tuned. */
+const REQ_DEADHEAD_MAX=35;
+/* True if ANY city's permanent record satisfies pred — a competency only
+   ever needs to have been cleared once, in one city, not in every city (the
+   same reading `comp-profit`'s "three consecutive shifts in ONE city" and
+   `comp-safety`'s "a completed city" already implied singular). */
+function anyCityRec(pred){
+  return Object.keys(PROG.results).some(function(id){
+    const r=PROG.results[id];
+    return !!(r&&pred(r));
+  });
+}
+/* The "your best" figures the rejection letter and console panel print next
+   to a missed competency. Scans every city's record for the single best
+   value seen ANYWHERE, not just the current city — a player who nearly
+   cleared a bar in Dallas should see that, even after moving on to Miami.
+   `better` is 'high' (safety/accept/streak — bigger is closer to clearing
+   it) or 'low' (deadhead — smaller is closer). Returns null on no data yet,
+   which every caller below turns into its own honest string rather than a
+   bare 0 that would misread as "measured and bad" instead of "unmeasured". */
+function bestAppStat(field,better){
+  let best=null;
+  Object.keys(PROG.results).forEach(function(id){
+    const r=PROG.results[id]; if(!r) return;
+    const v=field(r);
+    if(typeof v!=='number'||isNaN(v)) return;
+    if(best===null||(better==='high'?v>best:v<best)) best=v;
+  });
+  return best;
+}
+function bestAcceptPct(){
+  const v=bestAppStat(function(r){return r.acceptFloor},'high');
+  return v===null?null:Math.round(v*100);
+}
+function bestSafetyFloorStat(){
+  return bestAppStat(function(r){return r.safetyFloor},'high');
+}
+function bestProfitStreakStat(){
+  const v=bestAppStat(function(r){return r.profitStreak||0},'high');
+  return v===null?0:v;
+}
+function bestDeadheadStat(){
+  const v=bestAppStat(function(r){
+    return (r.milesSum>1)?(r.emptySum||0)/r.milesSum*100:null;
+  },'low');
+  return v===null?null:Math.round(v);
+}
+const REQS=[
+  {id:'exp-austin', kind:'exp',
+   name:'Commercial dispatch experience — Austin',
+   met:function(){ return gateMet('shift1@austin') }},
+  {id:'exp-dallas', kind:'exp',
+   name:'High-volume corridor operations — Dallas',
+   met:function(){ return gateMet('shift1@dallas') }},
+  {id:'exp-miami', kind:'exp',
+   name:'Mixed-density coastal operations — Miami',
+   met:function(){ return gateMet('shift1@miami') }},
+  {id:'exp-tampa', kind:'exp',
+   name:'Adverse-weather dispatch — Tampa',
+   met:function(){ return gateMet('shift1@tampa') }},
+  {id:'exp-orlando', kind:'exp',
+   name:'Event-cycle demand management — Orlando',
+   met:function(){ return gateMet('shift1@orlando') }},
+  /* 0.85 is not picked for this requirement — it's REUSED from volumeMult()
+     (deadhead.html, PLATFORMS section), the exact tier the game already
+     pays bonus ride volume at. See northstarplan.md §4's tuning-pass note:
+     an earlier draft asked for a 5-star passenger rating that does not
+     exist anywhere in the sim; this reads acceptRate() instead, which
+     does. */
+  {id:'comp-accept', kind:'comp',
+   name:'Platform reliability of 85% or better, sustained across a city',
+   met:function(){
+     return anyCityRec(function(r){
+       return r.shiftDone&&typeof r.acceptFloor==='number'&&r.acceptFloor>=0.85;
+     });
+   },
+   miss:function(){
+     const b=bestAcceptPct();
+     return b===null?'no shift long enough to measure yet':b+'%';
+   }},
+  /* 80 is not picked either — it's the exact value every city starts you at
+     (S.safety=80 in newFleet()). "Never dip below it" reads as "never let a
+     city put you in debt to your own starting score," which the recovery
+     math (+3/clean shift, -2.5/cancel, -2.5/stranded car) makes a real bar
+     without it being a number invented for this requirement alone. */
+  {id:'comp-safety', kind:'comp',
+   name:'Safety held at or above 80, from a city’s first shift to its last',
+   met:function(){
+     return anyCityRec(function(r){
+       return r.shiftDone&&typeof r.safetyFloor==='number'&&r.safetyFloor>=80;
+     });
+   },
+   miss:function(){
+     const b=bestSafetyFloorStat();
+     return b===null?'no shift long enough to measure yet':Math.round(b);
+   }},
+  {id:'comp-profit', kind:'comp',
+   name:'Three consecutive profitable shifts, in one city',
+   met:function(){ return anyCityRec(function(r){ return (r.profitStreak||0)>=3 }) },
+   miss:function(){ return bestProfitStreakStat() }},
+  {id:'comp-deadhead', kind:'comp',
+   name:'Deadhead mileage under '+REQ_DEADHEAD_MAX+'%, across a completed city',
+   met:function(){
+     return anyCityRec(function(r){
+       return r.shiftDone&&(r.milesSum||0)>1&&
+         ((r.emptySum||0)/r.milesSum*100)<=REQ_DEADHEAD_MAX;
+     });
+   },
+   miss:function(){
+     const b=bestDeadheadStat();
+     return b===null?'not yet measurable':b+'%';
+   }}
+];
+function reqById(id){ return REQS.filter(function(r){return r.id===id})[0]||null }
+function appMet(id){ return !!(PROG.app&&PROG.app.met&&PROG.app.met[id]) }
+function appMetList(){ return Object.keys((PROG.app&&PROG.app.met)||{}) }
+/* Same "earned but never looked at" contract as achvUnread(). */
+function appUnread(){
+  const seen=(PROG.app&&PROG.app.seen)||{};
+  return appMetList().filter(function(id){ return !seen[id] });
+}
+/* Same contract as achvMarkSeen(): every currently-met id is marked seen,
+   called the moment the panel opens (see the nav click handler). */
+function appMarkSeen(){
+  if(!PROG.app) PROG.app={met:{},seen:{},applied:0,hired:false,offered:false};
+  if(!PROG.app.seen) PROG.app.seen={};
+  let changed=false;
+  appMetList().forEach(function(id){
+    if(!PROG.app.seen[id]){ PROG.app.seen[id]=true; changed=true }
+  });
+  if(changed){ progSave(); paintAppBadge() }
+  return changed;
+}
+function paintAppBadge(){
+  const btn=$('app-application');
+  if(!btn) return;
+  const ring=btn.querySelector('.ring');
+  if(!ring) return;
+  let b=ring.querySelector('.badge');
+  if(!b){
+    b=document.createElement('span');
+    b.className='badge';
+    ring.appendChild(b);
+  }
+  const n=appUnread().length;
+  b.textContent=n>9?'9+':String(n);
+  b.hidden=n===0;
+  btn.classList.toggle('has-new',n>0);
+  const t=$('tb-app');
+  if(t) t.textContent=appMetList().length+'/'+REQS.length;
+}
+/* Records the requirement as met and returns true only the FIRST time — same
+   contract as awardAchv()/findEgg(). No sound, no flashNav(): the console
+   panel's own badge does the pointing, and a fanfare for a bar the player
+   may not even know exists yet (they haven't necessarily opened the panel)
+   would be a strange first introduction to the whole system. The shift
+   report becoming the Apply Form (northstarplan.md §5) is where this
+   actually gets its moment, not here. */
+function awardApp(id){
+  const r=reqById(id); if(!r) return false;
+  if(!PROG.app) PROG.app={met:{},seen:{},applied:0,hired:false,offered:false};
+  if(!PROG.app.met) PROG.app.met={};
+  if(PROG.app.met[id]) return false;
+  PROG.app.met[id]=Date.now();
+  progSave();
+  log('Console','application requirement — '+r.name,0);
+  paintAppBadge();
+  return true;
+}
+/* The console panel — northstarplan.md §3.2's "quiet reader". Rebuilds
+   #app-list only when the signature actually changes (met/unmet per id, plus
+   every unmet competency's live miss() figure), same dirty-flag discipline
+   render()'s Messages block already uses just above this call site — with
+   only 9 rows and cheap reads this could run unconditionally, but the habit
+   costs nothing to keep. Called from render() every tick regardless of
+   whether the panel is the one currently reparented into the console,
+   exactly like Books' pb-books content — cheap DOM text, no reason to gate
+   it on visibility. */
+/* ONE definition of "what a requirement row looks like" — northstarplan.md
+   §5's re-dress needs the SAME nine rows the console panel already draws,
+   not a second copy that could drift from it the way deadheadKm() drifted
+   from assign() before 0.81.0's pickCar() fix. Console panel and shift
+   report both call this; only the caller decides whether the result gets a
+   dirty-flag cache (the panel, which redraws on every render() tick) or not
+   (the report, which builds it once per shift-off). */
+function appRowsHtml(){
+  const rows=REQS.map(function(r){
+    const ok=appMet(r.id);
+    if(r.kind==='comp'&&!ok){
+      let m='';
+      try{ m=String(r.miss()) }catch(e){ m='' }
+      return '<div class="app-row miss"><span class="mk">&#10007;</span>'+
+        '<span class="grow">'+escapeHtml(r.name)+
+        '<div class="sub">your best: '+escapeHtml(m)+'</div></span></div>';
+    }
+    return '<div class="app-row'+(ok?' ok':'')+'"><span class="mk">'+
+      (ok?'&#10003;':'&#10007;')+'</span><span class="grow">'+escapeHtml(r.name)+
+      '</span></div>';
+  }).join('');
+  /* The tenth line, northstarplan.md §4 — static, never in REQS itself (it
+     has no met() of its own; it IS the SF tab, which cityUnlocked() already
+     answers elsewhere). Included in the list purely so the player reads the
+     whole thing as one road, not nine bars plus an unrelated afterthought. */
+  const tenth='<div class="app-row app-tenth"><span class="mk">&#10007;</span>'+
+    '<span class="grow">Relocate to San Francisco'+
+    '<div class="sub">the final requirement — this is that tab.</div></span></div>';
+  return rows+tenth;
+}
+/* A signature over exactly what appRowsHtml() would produce differently —
+   met/unmet per id, plus every unmet competency's live miss() figure — so
+   the console panel's dirty-flag cache doesn't have to build the HTML twice
+   to know whether it changed. */
+function appRowsSig(){
+  const parts=[appMetList().length];
+  REQS.forEach(function(r){
+    const ok=appMet(r.id);
+    parts.push(r.id+':'+(ok?1:0));
+    if(r.kind==='comp'&&!ok){
+      let m=''; try{ m=String(r.miss()) }catch(e){ m='' }
+      parts.push(m);
+    }
+  });
+  return parts.join('|');
+}
+/* The shift report's re-dress — northstarplan.md §5. Both pieces are gated
+   on PROG.app.offered: Austin's OWN first shift-off happens BEFORE Paolo's
+   ad card can possibly have fired (rayCityUnlocked() — and therefore the ad
+   chained onto it — explicitly refuses to fire while #report is open, so
+   the ad is always seen strictly AFTER that first report closes). Showing
+   "filed to your application" on a report the player reads before they have
+   ever heard of the job would be the reveal running backwards. */
+function appReportHeaderHtml(){
+  if(!(PROG.app&&PROG.app.offered)) return '';
+  return '<div class="rp-app-head">Shift '+S.shiftNo+' &middot; filed to your '+
+    'application &middot; '+appMetList().length+' of '+REQS.length+'</div>';
+}
+/* The WIDE version — "every city's first shift-off", per Pavel's own words
+   in §5. S.shiftNo===1 at the moment a report shows is exactly "this city's
+   first shift just ended": shiftNo increments on clock-ON and a fresh city
+   always starts at 0, so there is no separate flag to track — same reason
+   gateMet('shift1@<city>') needed none. */
+function appReportWideHtml(){
+  if(!(PROG.app&&PROG.app.offered)) return '';
+  if(S.shiftNo!==1) return '';
+  return '<div class="rp-app-wide"><div class="rp-app-wide-head">'+
+    escapeHtml(currentCity().name)+' — application update</div>'+
+    appRowsHtml()+'</div>';
+}
+let lastAppSig='';
+function renderApplication(){
+  const tagEl=$('app-tag'); if(!tagEl) return;   /* markup not present yet (e.g. an old cached page mid-deploy) */
+  tagEl.textContent=appMetList().length+'/'+REQS.length;
+  const sig=appRowsSig();
+  if(sig!==lastAppSig){
+    lastAppSig=sig;
+    $('app-list').innerHTML=appRowsHtml();
+  }
+  /* Only once the ad has actually been shown — see the button's own markup
+     comment. A cheap boolean read every tick; no dirty-flag needed. */
+  const ab=$('app-apply-btn');
+  if(ab) ab.hidden=!(PROG.app&&PROG.app.offered);
+}
+/* Piggybacked on checkUnlocks() (see that function), same throttle-by-
+   wall-clock reasoning checkAchievements() already uses: every REQS entry
+   is `met`-only (the four competencies read fields that appendHistoryRow()/
+   progTrack() maintain elsewhere, not a `shift()` hook of their own), so
+   this needs only the live-scan half of the ACHV pattern, not both halves. */
+let lastAppLiveCheck=0;
+function checkApp(){
+  const now=Date.now();
+  if(now-lastAppLiveCheck<900) return 0;
+  lastAppLiveCheck=now;
+  if(!PROG.app) PROG.app={met:{},seen:{},applied:0,hired:false,offered:false};
+  if(!PROG.app.met) PROG.app.met={};
+  let n=0;
+  REQS.forEach(function(a){
+    if(PROG.app.met[a.id]) return;
+    let got=false;
+    try{ got=!!a.met() }catch(e){ got=false }
+    if(got&&awardApp(a.id)) n++;
+  });
+  return n;
+}
+
+/* The record-processing body of progLoad(), pulled out under its own name
+   for one reason: jsdom has no real indexedDB, so Store.get()/Store.put()
+   always reject in the test harness (see LocalStore's own rejection
+   message, and promo-transfer.test.js's identical note) — which means
+   progLoad()'s own .then() body can never actually run under test, only
+   its swallowed .catch(). Every other save/load test in this suite already
+   works around that by driving state directly rather than waiting on a
+   Store call that can never resolve here (promo-transfer.test.js's
+   setPromoSrc() is the same idea for a different piece of state); this is
+   that same fix applied to the migration logic below, which cannot be
+   exercised any other way. progLoad() itself is unchanged in behaviour —
+   it is now just "fetch, then hand the record to progApply()". */
+function progApply(r){
     if(!r||typeof r!=='object') return;
     if(r.unlocked&&typeof r.unlocked==='object') PROG.unlocked=r.unlocked;
     if(r.results&&typeof r.results==='object') PROG.results=r.results;
@@ -12681,6 +13272,16 @@ function progLoad(){
        yet", which is correct for every pre-existing save. */
     if(r.promoUsed&&typeof r.promoUsed==='object') PROG.promoUsed=r.promoUsed;
     if(r.promoNudged&&typeof r.promoNudged==='object') PROG.promoNudged=r.promoNudged;
+    /* The application record predates this record if r.app is entirely
+       absent — captured BEFORE the defensive merge below overwrites the
+       signal, same "absence IS the migration flag" style as promoUsed/
+       companyCash above. Used once, right after PROG.results is in place. */
+    const appIsNew=!(r.app&&typeof r.app==='object');
+    if(!appIsNew){
+      PROG.app=Object.assign({met:{},seen:{},applied:0,hired:false,offered:false},r.app);
+      if(!PROG.app.met||typeof PROG.app.met!=='object') PROG.app.met={};
+      if(!PROG.app.seen||typeof PROG.app.seen!=='object') PROG.app.seen={};
+    }
     PROG.achvTold=!!r.achvTold;
     PROG.soloSeatTold=!!r.soloSeatTold;
     PROG.unlocked.austin=true;      /* the tutorial city is never locked */
@@ -12720,12 +13321,52 @@ function progLoad(){
       if(ranAShift&&!PROG.achv['first-shift']) PROG.achv['first-shift']=Date.now();
       progSave();
     }
+    /* The application record arrived after these players did — same shape
+       of problem as the v3->v4 achievement migration just above, and the
+       same answer, chosen deliberately over the honest-but-punishing
+       alternative (Pavel, 2026-07-31): a returning player who has already
+       finished cities under the OLD game should not open a brand-new panel
+       to find themselves behind where a new player starts. The 5 experience
+       requirements need no migration at all — they read gateMet('shift1@
+       <city>'), which is already true or false from PROG.results alone, so
+       they are simply correct the instant REQS exists. The 4 competencies
+       are different: they read safetyFloor/acceptFloor/profitStreak/
+       milesSum/emptySum, fields that never existed before this feature, so
+       an old record has no history to check them against — there is no
+       honest per-shift answer to reconstruct (same reasoning as achv's
+       'black' etc. being unrecoverable), only a fair default. So: granted
+       outright, once, IF this player ever finished a single shift anywhere
+       — silent, no fanfare, exactly like the achv migration's own award. A
+       genuinely new player (no PROG.results at all yet) gets nothing here
+       and earns every competency for real, same as anyone starting today. */
+    if(appIsNew){
+      /* Belt and suspenders, same as checkApp()'s own guard: PROG.app is
+         always at least the default literal by the time this runs in real
+         play (nothing legitimate ever sets it to undefined), but this
+         migration block is exactly the kind of rarely-hit path where a
+         missing guard would go unnoticed for a long time if that ever
+         stopped being true. */
+      if(!PROG.app) PROG.app={met:{},seen:{},applied:0,hired:false,offered:false};
+      if(!PROG.app.met) PROG.app.met={};
+      const everFinished=Object.keys(PROG.results).some(function(id){
+        const rec=PROG.results[id]; return !!(rec&&rec.shiftDone);
+      });
+      if(everFinished){
+        ['comp-accept','comp-safety','comp-profit','comp-deadhead'].forEach(function(id){
+          if(!PROG.app.met[id]) PROG.app.met[id]=Date.now();
+        });
+      }
+      progSave();
+    }
     /* PROG loads async, and the badge is the only thing on screen derived
        from it — so it has to be painted here, once the record is actually
        in memory, rather than from the boot path that runs before this
        resolves. render() cannot do it: render() is driven by S. */
     paintAchvBadge();
-  }).catch(function(){});
+    paintAppBadge();
+}
+function progLoad(){
+  return Store.get('progress').then(progApply).catch(function(){});
 }
 
 /* ============================================================
@@ -12840,8 +13481,9 @@ function appendHistoryRow(){
   const perModel={};
   S.cars.forEach(function(c){
     if(!c.d) return;
-    const m=perModel[c.model]||(perModel[c.model]={gross:0,cost:0,miles:0,rides:0});
-    m.gross+=c.d.gross; m.cost+=c.d.cost; m.miles+=c.d.miles; m.rides+=c.d.rides;
+    const m=perModel[c.model]||(perModel[c.model]={gross:0,cost:0,miles:0,empty:0,rides:0});
+    m.gross+=c.d.gross; m.cost+=c.d.cost; m.miles+=c.d.miles;
+    m.empty+=(c.d.empty||0); m.rides+=c.d.rides;
   });
   const row={
     ts:Date.now(), playerId:PROFILE.id, city:S.city, day:S.day, shiftNo:S.shiftNo,
@@ -12849,7 +13491,13 @@ function appendHistoryRow(){
     workedH:+(S.workedSec/3600).toFixed(3), billedH:+(S.billedSec/3600).toFixed(3),
     gross:d.gross, commission:d.commission, cost:d.cost, net:d.gross-d.cost,
     energy:d.energy, dep:d.dep, maint:d.maint, ins:d.ins, soft:d.soft, fixed:d.fixed,
-    miles:d.miles, rides:d.done, cancels:d.cancels, safety:S.safety,
+    /* `empty` is miles, not a ratio — see drive(). A reader wanting the
+       deadhead ratio for a window of shifts sums both columns and divides
+       once; averaging per-shift ratios would weight a 20-mile shift the
+       same as a 200-mile one. `||0` because HISTORY is capped but not
+       migrated, so rows written before this field exists are still in the
+       array and must read as zero rather than NaN. */
+    miles:d.miles, empty:d.empty||0, rides:d.done, cancels:d.cancels, safety:S.safety,
     cash:S.cash, cars:S.cars.length,
     models:perModel
   };
@@ -12860,6 +13508,23 @@ function appendHistoryRow(){
      with this shift rather than trailing a report behind. 'comeback' reads
      HISTORY[length-2], which is why this has to come after the push. */
   checkAchievements(row);
+  /* northstarplan.md's comp-profit/comp-deadhead — the two competencies that
+     only change at a SHIFT BOUNDARY, unlike safety/accept which progTrack()
+     already tracks continuously every frame (see that function). Written
+     straight into PROG.results[row.city], not S.city — appendHistoryRow()
+     can in principle be called while S.city has already moved on (fast-
+     forward's overnight step, per deadhead_click_reliability's own worked
+     example), so the row's own city is the only honest key. progTrack()
+     carries these three fields forward on its next tick for S.city; a city
+     the player has left keeps whatever was written here until they return,
+     exactly like every other field in PROG.results. */
+  (function(){
+    const r=PROG.results[row.city]||(PROG.results[row.city]={});
+    r.profitStreak=(row.net>0)?((r.profitStreak||0)+1):0;
+    r.milesSum=(r.milesSum||0)+row.miles;
+    r.emptySum=(r.emptySum||0)+(row.empty||0);
+  })();
+  progSave();
   /* Never let a write, local or remote, throw into or block the shift-end
      path — same discipline as autosave/progSave. reportStat() (§4) is fire-
      and-forget for the same reason and is called from here so every append
@@ -14623,12 +15288,39 @@ function progTrack(){
   PROG.companyCash=S.cash;
   const g=currentCity().goal, r=PROG.results[S.city]||{};
   const best=Math.max(r.bestCash||0,S.cash);
+  /* safetyFloor/acceptFloor — the WORST value this city's own run has ever
+     shown, for northstarplan.md's comp-safety/comp-accept. Computed here,
+     not in checkApp()/progGates(), because THIS function already rebuilds
+     the whole record every render() frame and any field not carried forward
+     through that rebuild is silently destroyed (see the comment on the
+     object literal below) — a separate tracker writing into PROG.results
+     between two progTrack() calls would just get overwritten by the next
+     one. S.safety always starts a city at 80 (newFleet()), so the first
+     tick's Math.min(undefined-safe seed, 80) correctly seeds the floor at
+     80 rather than leaving it unset. acceptRate() itself defaults to a
+     meaningless 1 below 5 offers (see its own comment) — skipping platforms
+     under that floor here is the same guard, so an untested platform can
+     never masquerade as "perfectly reliable". */
+  const safetyFloor=(typeof r.safetyFloor==='number')?
+    Math.min(r.safetyFloor,S.safety):S.safety;
+  let acceptFloor=r.acceptFloor;
+  livePlatforms().forEach(function(p){
+    if(p.offered<5) return;
+    const a=acceptRate(p);
+    acceptFloor=(typeof acceptFloor==='number')?Math.min(acceptFloor,a):a;
+  });
   PROG.results[S.city]={bestCash:best, day:Math.max(r.day||0,S.day),
     goalMet:!!(r.goalMet||(g&&typeof g.cash==='number'&&S.cash>=g.cash)),
     /* Carried explicitly. This object REPLACES the old record rather than
        merging into it, so any field not named here is silently destroyed —
        and shiftDone is the next city's unlock condition. */
     shiftDone:!!(r.shiftDone||shiftFinished()),
+    safetyFloor:safetyFloor, acceptFloor:acceptFloor,
+    /* profitStreak/milesSum/emptySum are NOT computed here — they only
+       change at shift boundaries (appendHistoryRow(), once per finished
+       shift), not every frame. Carried forward unconditionally so this
+       per-frame rebuild never wipes out what that rarer event wrote. */
+    profitStreak:r.profitStreak||0, milesSum:r.milesSum||0, emptySum:r.emptySum||0,
     /* NOT carried from r — always now. This is what makes parkedAt a live
        "last confirmed billed up to" timestamp while the city is active: every
        autosave (30s interval, pagehide, beforeunload, tab-hidden, or an
@@ -15251,6 +15943,16 @@ window.DH_ACT1={
   ACHV:ACHV,achvHeld:achvHeld,achvList:achvList,awardAchv:awardAchv,
   achvUnread:achvUnread,achvMarkSeen:achvMarkSeen,paintAchvBadge:paintAchvBadge,
   checkAchievements:checkAchievements,renderTrophies:renderTrophies,
+  REQS:REQS,reqById:reqById,appMet:appMet,appMetList:appMetList,
+  appUnread:appUnread,appMarkSeen:appMarkSeen,awardApp:awardApp,checkApp:checkApp,
+  paintAppBadge:paintAppBadge,renderApplication:renderApplication,
+  REQ_DEADHEAD_MAX:REQ_DEADHEAD_MAX,anyCityRec:anyCityRec,
+  bestAcceptPct:bestAcceptPct,bestSafetyFloorStat:bestSafetyFloorStat,
+  bestProfitStreakStat:bestProfitStreakStat,bestDeadheadStat:bestDeadheadStat,
+  rayAppOffer1:rayAppOffer1,rayAppOffer2:rayAppOffer2,
+  rejectionLetterHtml:rejectionLetterHtml,rayShowRejection:rayShowRejection,
+  appRowsHtml:appRowsHtml,appRowsSig:appRowsSig,
+  appReportHeaderHtml:appReportHeaderHtml,appReportWideHtml:appReportWideHtml,
   openTrophies:openTrophies,loadBoard:loadBoard,
   board:function(){ return LB },   /* let-reassigned; see the ROADS note above */
   paoloBoardCall:paoloBoardCall,
@@ -15276,7 +15978,8 @@ window.DH_ACT1={
   volumeMult:volumeMult,nextTask:nextTask,
   zoneLayer:function(){ return zoneLayer },chLayer:function(){ return chLayer },
   physKey:physKey,PROG:function(){ return PROG },cityK:cityK,
-  progSave:progSave,progLoad:progLoad,PROG_V:PROG_V,
+  deadheadPct:deadheadPct,drive:drive,
+  progSave:progSave,progLoad:progLoad,progApply:progApply,PROG_V:PROG_V,
   reconcileParkedBilling:reconcileParkedBilling,realDaysElapsed:realDaysElapsed,
   EGGS:EGGS,eggFound:eggFound,findEgg:findEgg,
   renderCityTabs:renderCityTabs,cityLockMsg:cityLockMsg,cityLockHide:cityLockHide,
