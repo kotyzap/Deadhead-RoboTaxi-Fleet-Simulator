@@ -2069,14 +2069,21 @@ tr[data-car].on td{background:var(--inset)}
 .acct-status button{height:26px;padding:0 10px;font:inherit;font-size:11px;cursor:pointer;
   border:1px solid var(--brd-2);border-radius:var(--r-ctl);background:transparent;color:var(--text)}
 .acct-status button:hover{border-color:var(--accent);color:var(--accent)}
-/* Reset account — deliberately NOT styled like Sign out (a calm, reversible
-   action). This one erases every save, local and cloud, for good, so it
-   gets the same red the game already uses for a critical state (--s-crit,
-   see .clockbtn.off/.panel.alarm above) and sits behind a divider so a
-   click meant for "Sign out" can't land on it by proximity alone. */
-.acct-status .danger-sep{flex-basis:100%;height:1px;background:var(--brd);margin:2px 0 1px}
-.acct-status button.danger{border-color:var(--s-crit);color:var(--s-crit)}
-.acct-status button.danger:hover{background:var(--s-crit);color:#fff}
+/* "Reset everything" — always visible (unlike .acct-status, gated behind
+   signed-in), so it gets its own card rather than living inside one that
+   might be hidden. Deliberately NOT styled like a calm/reversible action:
+   the same red the game already uses for a critical state (--s-crit, see
+   .clockbtn.off/.panel.alarm above) — this one erases every save, local
+   and cloud, for good. */
+.sv-danger{display:flex;align-items:center;gap:9px;font-size:11.5px;
+  color:var(--text-3);margin:2px 0 12px;padding:8px 11px;border:1px solid var(--brd);
+  border-radius:8px;background:var(--c-card)}
+.sv-danger span{flex:1}
+.sv-danger button{height:26px;padding:0 10px;font:inherit;font-size:11px;cursor:pointer;
+  border:1px solid var(--s-crit);border-radius:var(--r-ctl);background:transparent;
+  color:var(--s-crit)}
+.sv-danger button:hover{background:var(--s-crit);color:#fff}
+.sv-danger button:disabled{opacity:.5;cursor:default}
 .sv-foot{display:flex;align-items:center;gap:10px;margin-top:16px;
   padding-top:13px;border-top:1px solid var(--brd)}
 .sv-foot .note{flex:1;font-size:10.5px;color:var(--text-3);line-height:1.45}
@@ -3979,15 +3986,29 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
     <div class="acct-status" id="acct-status" hidden>
       <span>Signed in as <b id="acct-status-who"></b></span>
       <button type="button" id="acct-status-out">Sign out</button>
-      <div class="danger-sep"></div>
-      <span>Erase every save, cloud and local, and sign out for good.</span>
-      <button type="button" id="acct-status-reset" class="danger">Reset account</button>
     </div>
     <h4>Autosave</h4>
     <div id="sv-auto"></div>
     <h4>Manual slots</h4>
     <div id="sv-slots"></div>
     <div id="sv-toast"></div>
+    <!-- Complete reset — Pavel, 2026-07-31: deleting one row here (e.g. the
+         Auto slot) only ever deletes THIS city's autosave key — physKey()
+         rewrites the logical 'auto' key to 'auto:<city>' per city, so
+         every OTHER city's autosave, plus progress/profile/history,
+         survive untouched. This is the "start completely over" escape
+         hatch: always visible (unlike #acct-status above, which only
+         exists once signed in), wired straight to cloud.js's
+         doAccountReset() — which already, correctly, skips the server
+         DELETE for a signed-out/guest player and just wipes every local
+         key via LocalStore.wipe(). No new reset mechanism, just a door to
+         the existing one that a guest could not reach before. -->
+    <div class="sv-danger" id="sv-danger">
+      <span>Erase every save in this browser — every city's autosave, all
+        manual slots, unlocked cities and achievements — and the cloud
+        copy too if you're signed in. This cannot be undone.</span>
+      <button type="button" id="sv-reset-all" class="danger">Reset everything</button>
+    </div>
     <div class="sv-foot">
       <span class="note">Stored in this browser. Clearing site data erases them.</span>
       <button id="sv-export">Export file</button>
@@ -7123,7 +7144,12 @@ function checkSafety(){
    ============================================================ */
 const RAY=[
   /* Beat 1 no longer says "I sold you that car" — you have no car yet. The
-     opening decision is which one, and how you hold it. */
+     opening decision is which one, and how you hold it.
+     2026-07-31 (v0.85.0, northstarplan.md §2.2): rewritten again — the
+     player now HAS a car, the one they already owned before the layoff. The
+     old line ("no car... you'll rent or put money down") went stale the
+     instant the own-car card shipped and would have sat directly above a
+     screen showing a free Saloon, contradicting itself in the same glance. */
   {n:1, spot:'gar-cards',
    /* {NAME} is the only beat that greets the player by name (open question in
       onboardingplan.md §2, resolved conservatively: once, not everywhere —
@@ -7131,9 +7157,10 @@ const RAY=[
       it, already escaped. */
    t:"Welcome to Deadhead Robotaxi Fleet Ops. My name is Paolo Cortez. Forty-one "+
      "years in a cab before I got out, while getting out was still my idea. "+
-     "You're {NAME}, I'm told.<br><br>{CASH} and no car. You can't buy "+
-     "one outright on that, so you'll rent or you'll put money down. Rent costs "+
-     "nothing today and the most every day after."},
+     "You're {NAME}, I'm told.<br><br>{CASH} and the car you already own. "+
+     "Register that one and it costs nothing — or rent or finance something "+
+     "else instead, if you'd rather. Either way, something needs to be "+
+     "earning by tonight."},
   {n:2, spot:'tb-cash-box',
    t:"Whatever you pick, {FLOOR} a day is the floor — before rent, before "+
      "finance, before a wheel turns.<br><br>Do the arithmetic before you sign, "+
@@ -7193,7 +7220,17 @@ const RAY=[
    t:"You worked six hours. The car was billed for twenty-four.<br><br>Your margin "+
      "was you, sitting there for free. And there's only one of you.<br><br>"+
      "A second car doesn't fix that. Now there's two of them billed for "+
-     "twenty-four, and still just one of you clocked on."}
+     "twenty-four, and still just one of you clocked on."},
+  /* Paolo's one opinion about the job — northstarplan.md §5. He sent the ad
+     (§2.1, rayAppOffer1/2); this is the reversal that only lands because he
+     did. Said once, and rarely again: rayReady(15) latches shut the moment
+     it's seen, same as every other beat, and nothing in this file re-fires
+     a seen beat. He is WRONG — the player deciding so is the whole point —
+     which is why the game never echoes his opinion back as its own. */
+  {n:15, spot:'panel-application',
+   t:"For what it's worth — I think that's a step down. Someone else's roster, "+
+     "someone else's ladder. I got clear of that once already.<br><br>"+
+     "You'll probably decide I'm wrong. I usually am, about this one."}
 ];
 
 function raySeen(n){ return S.ray.seen.indexOf(n)>=0 }
@@ -7232,6 +7269,11 @@ function rayReady(n){
        half fired on turn one and delivered the thesis before the player had
        worked a single hour. It has to be earned: three shifts logged. */
     case 14: return S.shiftNo>=3;
+    /* Paolo's one opinion about the job (northstarplan.md §5) — ready the
+       moment the player has actually applied at least once. Chained to
+       PROG.app.applied rather than PROG.app.offered: seeing the ad doesn't
+       earn his opinion, taking the job seriously enough to apply does. */
+    case 15: return !!(PROG.app&&PROG.app.applied>0);
     default: return false;
   }
 }
@@ -7330,6 +7372,18 @@ function nextTask(){
         "whole time it sits there. That's why you charge before you need to, "+
         "not when you need to.",
     spot:'panel-rapid'};
+  /* v0.85.0: showOwnCard() gets its own branch — this is the one moment (a
+     fresh Austin run, before the first car and the first shift) where a car
+     is sitting right there for free, and the old single "no car... rent or
+     put money down" line would flatly contradict a free Saloon on screen at
+     the same time. Every OTHER route into `!S.cars.length` (a mid-game
+     repossession in any city, or Austin after the first shift) keeps the
+     original wording — the own car genuinely is not on offer there. */
+  if(!S.cars.length&&showOwnCard()) return {key:'car',
+    now:'Register your car, or choose one.',
+    why:"You already own one — register it and it costs nothing. Or rent or "+
+        "finance something else instead, if you'd rather.",
+    spot:'gar-cards'};
   if(!S.cars.length) return {key:'car',
     now:'Choose a vehicle.',
     /* money(S.cash), not the old hardcoded "seven and a half thousand" —
@@ -12017,7 +12071,7 @@ const SLOTS=['slot1','slot2','slot3'];
    SAVE_V above is the STATE SHAPE version and moves only when the
    snapshot format changes — the two are deliberately independent, so
    shipping 0.9.0 does not invalidate 0.8.0 saves. */
-const VERSION='0.85.0';
+const VERSION='0.88.0';
 
 function snapshot(){
   return {
@@ -14161,9 +14215,19 @@ function renderGarage(){
      the identical reason given above it: only the player who has never left
      this garage before cannot be assumed to know the way out is this button. */
   $('gar-close').className=S.cars.length?(S.shiftNo===0?'go call ray-arrow':'go'):'';
+  /* v0.85.0: the no-car copy went stale the moment the own-car card shipped —
+     it used to flatly say "you have no car", one line above a free Saloon
+     card claiming the opposite. showOwnCard() gets its own branch rather
+     than folding into the S.cars.length checks below, since it is the ONLY
+     one of the three states where a car is sitting right there for free. */
   $('gar-sub').innerHTML=S.cars.length
     ? 'Every vehicle drives itself. What differs is the pack, the seats, and '+
       'what it costs you per day. Cheapest first.'
+    : showOwnCard()
+    ? '<b>You already have a car.</b> Register the one you own for free, or '+
+      'rent or finance something else instead. Buying outright costs the '+
+      'least per day and the most up front; renting costs nothing up front '+
+      'and the most per day. Neither is wrong.'
     : '<b>You have no car.</b> Nothing earns until one is in service. Buying '+
       'outright costs the least per day and the most up front; renting costs '+
       'nothing up front and the most per day. Neither is wrong.';

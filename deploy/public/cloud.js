@@ -949,7 +949,18 @@
     busy(false);
   }
 
-  /* "Reset account" — #acct-status-reset in the Saved-fleets dialog.
+  /* "Reset everything" — #sv-reset-all, always visible in the Saved-fleets
+     dialog (2026-07-31: Pavel noticed that deleting one save row, e.g. the
+     Auto slot, only ever clears THIS city's autosave key — physKey()
+     rewrites the logical 'auto' key to 'auto:<city>' per city, so every
+     OTHER city's autosave survives, along with progress/profile/history —
+     and asked for a genuine "delete everything, start over" door). This
+     function already did exactly that; it was just wired to a button
+     (#acct-status-reset) that only existed once signed in. #sv-reset-all
+     is the same door, open to a signed-out/guest player too — the
+     `if (signedIn)` branch below already skips the server DELETE
+     correctly when there is no account to erase.
+
      Irreversible, so it is gated on window.confirm() first, the same
      discipline deadhead.html already uses for sell/return-car/repossession
      (see the "This cannot be undone" confirms around #sel-sell/#sel-charge
@@ -965,15 +976,21 @@
      the #sv-toast readout — #dh-msg is not visible from here, since the
      account FORM it belongs to only lives on the intro screen) and the
      reload is delayed just long enough for that message to be readable. */
-  const RESET_BTN_IDS = ['acct-status-out', 'acct-status-reset'];
+  const RESET_BTN_IDS = ['acct-status-out', 'sv-reset-all'];
   async function doAccountReset() {
-    const who = signedIn || 'this account';
-    if (!window.confirm(
-      'Reset ' + who + '? This permanently deletes every saved fleet — ' +
-      'autosave, all manual slots, unlocked cities and achievements — ' +
-      'both in the cloud and in this browser, and signs you out. ' +
-      'This cannot be undone.'
-    )) return;
+    /* Two different truths, not one glossed-over message: a signed-in
+       player also loses the cloud copy and gets signed out; a guest never
+       had one, and "and signs you out" would be a lie told to someone who
+       was never signed in. */
+    const confirmMsg = signedIn
+      ? ('Reset ' + signedIn + '? This permanently deletes every saved fleet — ' +
+         'autosave, all manual slots, unlocked cities and achievements — ' +
+         'both in the cloud and in this browser, and signs you out. ' +
+         'This cannot be undone.')
+      : ('Reset everything? This permanently deletes every saved fleet in ' +
+         'this browser — autosave, all manual slots, unlocked cities and ' +
+         'achievements. This cannot be undone.');
+    if (!window.confirm(confirmMsg)) return;
 
     RESET_BTN_IDS.forEach((id) => { const b = document.getElementById(id); if (b) b.disabled = true });
 
@@ -1031,16 +1048,21 @@
   function paintSavemgrStatus() {
     const box = document.getElementById('acct-status');
     const who = document.getElementById('acct-status-who');
+    /* #sv-reset-all lives outside #acct-status now — always in the DOM,
+       never hidden — so it is wired unconditionally below, independent of
+       whether the signed-in status box itself exists on this page. */
+    if (!statusWired) {
+      const resetAllBtn = document.getElementById('sv-reset-all');
+      if (resetAllBtn) resetAllBtn.addEventListener('click', doAccountReset);
+      if (box && who) {
+        const btn = document.getElementById('acct-status-out');
+        if (btn) btn.addEventListener('click', doSignOut);
+      }
+      statusWired = true;
+    }
     if (!box || !who) return;
     box.hidden = !signedIn;
     if (signedIn) who.textContent = signedIn;
-    if (!statusWired) {
-      const btn = document.getElementById('acct-status-out');
-      if (btn) btn.addEventListener('click', doSignOut);
-      const resetBtn = document.getElementById('acct-status-reset');
-      if (resetBtn) resetBtn.addEventListener('click', doAccountReset);
-      statusWired = true;
-    }
   }
 
   /* ---------------- boot ---------------- */
