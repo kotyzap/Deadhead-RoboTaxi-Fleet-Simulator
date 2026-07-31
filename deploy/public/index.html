@@ -3009,6 +3009,10 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
   transition:transform var(--dur-base) var(--ease),box-shadow var(--dur-base) var(--ease)}
 .card:hover{transform:translateY(-2px);box-shadow:0 16px 32px -14px rgba(23,26,32,.4),var(--hi-1)}
 .card.owned{border-color:var(--s-charge)}
+/* "Your car" — northstarplan.md §2.2. Accent, not the "owned" green: this
+   card is a decision the player hasn't made yet (unlike .owned, which marks
+   a unit already in service), it just happens to cost nothing. */
+.card.owncar{border-color:var(--accent)}
 /* ---- Card art -------------------------------------------------------
    A drawn side profile on a dark ground, full bleed, with the vehicle's
    identity on a gradient scrim over it. This replaced nine full-bleed press
@@ -12013,7 +12017,7 @@ const SLOTS=['slot1','slot2','slot3'];
    SAVE_V above is the STATE SHAPE version and moves only when the
    snapshot format changes — the two are deliberately independent, so
    shipping 0.9.0 does not invalidate 0.8.0 saves. */
-const VERSION='0.84.0';
+const VERSION='0.85.0';
 
 function snapshot(){
   return {
@@ -13893,6 +13897,11 @@ function canAfford(v,how){
      first shift, effCap() narrows it to OPENING_CAP. */
   const cap=effCap();
   if(typeof cap==='number'&&S.cars.length>=cap) return false;
+  /* "Your car" — northstarplan.md §2.2. Free by definition (it was never
+     bought in-game), still subject to the cap check above like anything
+     else, but with no cash test at all — the whole point is that it costs
+     nothing. */
+  if(how==='own')      return true;
   if(how==='buy')     return S.cash>=v.price;
   if(how==='finance') return S.cash>=v.down+CFG.financeReserve;
   /* Pay the first day's rent now, then still have two days of runway left
@@ -14093,9 +14102,48 @@ function renderFleetPromo(){
     el.hidden=true; el.innerHTML='';
   }
 }
+/* "Your car" — northstarplan.md §2.2. Shown exactly once: a fresh Austin run
+   before the very first car has landed. Deliberately NOT pre-populated state
+   — S.cars must stay empty until the player actually clicks, or Day-1 beat 1's
+   `!S.cars.length` gate (see rayShow(1) below) would never fire again for any
+   new player. S.shiftNo===0 is the same "no shift has ever been clocked on in
+   this city" fact openingCapped() already relies on, so this can never come
+   back after a mid-game sell-off (that only happens once S.shiftNo>0). */
+function showOwnCard(){
+  return S.city==='austin'&&S.shiftNo===0&&!S.cars.length;
+}
+/* The base Saloon specifically — "the entry trim," the ordinary five-seat
+   sedan a laid-off knowledge worker plausibly already drove. Not the Cab:
+   the catalogue describes the Cab as purpose-built, no wheel, no pedals —
+   nobody personally owned one before a robotaxi company existed. Reuses
+   cardHtml()'s own spec rows so the numbers can never drift from the
+   catalogue card the player compares it against a moment later. */
+function ownCardHtml(){
+  const v=catalog('saloon');
+  const rangeTxt=uImp()?v.rangeMi+' mi':Math.round(v.rangeMi*KM_PER_MI)+' km';
+  const chargeMin=Math.round((0.57*v.kwh)/(Math.min(CFG.chargeKW,v.kw)*0.73)*60);
+  return '<div class="card owncar">'+
+    artHtml(v,0)+
+    '<div class="spec">'+
+      specRow('Battery',v.kwh+' kWh')+
+      specRow('Range',rangeTxt)+
+      specRow('Charge 28→85%',chargeMin+' min')+
+      specRow('Seats',String(v.seats))+
+      specRow('Efficiency',uEff(v.kwhPerKm))+
+      specRow('Energy',uPerDist(v.kwhPerKm*0.19*KM_PER_MI))+
+      specRow('Fixed cost',money2(v.fixed)+'/day')+
+    '</div>'+
+    '<div class="card-note">Your own car — already paid for, now working for a '+
+      'living.</div>'+
+    '<div class="card-acts">'+
+      '<button class="pri avail" data-get="saloon" data-how="own">'+
+        '<span>Register it</span><small>Yours — $0</small></button>'+
+      '<div class="ready">Available now</div>'+
+    '</div></div>';
+}
 function renderGarage(){
   $('gar-cash').textContent=money(S.cash);
-  $('gar-cards').innerHTML=CATALOG.map(cardHtml).join('');
+  $('gar-cards').innerHTML=(showOwnCard()?ownCardHtml():'')+CATALOG.map(cardHtml).join('');
   /* The title tracks the same distinction the Fleet button does (see $('buy')
      above): the first one is a choice, the next one is an addition. */
   $('garage-title').textContent=S.cars.length?'Add a vehicle':'Choose a vehicle';
@@ -14785,7 +14833,7 @@ function acquire(id,how){
   if(how==='rent')    S.cash-=v.rent;
   addCar(id,how==='buy'?'own':how);
   const c=S.cars[S.cars.length-1];
-  log('Fleet',(how==='buy'?'bought ':how==='rent'?'rented ':'financed ')+
+  log('Fleet',(how==='buy'?'bought ':how==='rent'?'rented ':how==='own'?'registered ':'financed ')+
     v.name+' — '+c.id,0);
   checkUnlocks();
   renderGarage(); render();
@@ -15957,6 +16005,7 @@ window.DH_ACT1={
   board:function(){ return LB },   /* let-reassigned; see the ROADS note above */
   paoloBoardCall:paoloBoardCall,
   openGarage:openGarage,renderGarage:renderGarage,fixedPerCar:fixedPerCar,
+  showOwnCard:showOwnCard,ownCardHtml:ownCardHtml,
   zones:function(){ return ZONES },
   ZONES_BY_CITY:ZONES_BY_CITY,zonesFor:zonesFor,airportZone:airportZone,
   ROADS_BY_CITY:ROADS_BY_CITY,roadsFor:roadsFor,
