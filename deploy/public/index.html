@@ -12071,7 +12071,7 @@ const SLOTS=['slot1','slot2','slot3'];
    SAVE_V above is the STATE SHAPE version and moves only when the
    snapshot format changes — the two are deliberately independent, so
    shipping 0.9.0 does not invalidate 0.8.0 saves. */
-const VERSION='0.88.0';
+const VERSION='0.89.0';
 
 function snapshot(){
   return {
@@ -15467,8 +15467,28 @@ function saveSig(){
     S.cars.reduce(function(a,c){ return a+Math.round(c.soc)+Math.round(c.odo) },0)
   ].join('|');
 }
+/* Set once, by wipeLocal() below, and never cleared — the page reloads
+   immediately after, so there is no "later" for it to matter again.
+   v0.88.0's "Reset everything" wiped storage correctly and then called
+   location.reload(), but a reload fires pagehide/beforeunload/
+   visibilitychange('hidden') as part of its OWN teardown, and every one of
+   those was still wired to write the live in-memory PROG/S state — still
+   showing every city unlocked, because wipeLocal() only clears STORAGE,
+   never the running page's variables — right back into the store that had
+   just been emptied. Pavel caught this live: Dallas stayed unlocked after
+   a "complete" reset, and the intro showed a "Resume" prompt instead of a
+   genuinely fresh boot, because a save had in fact just been resurrected a
+   few milliseconds after the wipe. This flag is the single choke point
+   that silences all three paths at once. */
+let RESETTING=false;
 let lastSavedSig='';
 function autosave(reason){
+  /* Every caller — the 30s interval, autosaveSoon(), pagehide, the
+     visibilitychange('hidden') handler — funnels through here, so guarding
+     this one function is sufficient for all of them. beforeunload's
+     localStorage write does not call autosave() and needs its own guard,
+     see below. */
+  if(RESETTING) return Promise.resolve();
   /* Queue behind whatever is already in flight rather than dropping this
      call — see the long comment above savingP. progTrack()/progSave()/
      saveSig()/snapshot() all run AT THE TIME THIS CALL ACTUALLY EXECUTES
@@ -15522,7 +15542,7 @@ window.addEventListener('pagehide',function(){ autosave('pagehide') });
    (see bootResume()'s EMERGENCY_KEY check) and only if it is actually newer
    than whatever IndexedDB already has. */
 const EMERGENCY_KEY='dh_emergency_snapshot';
-/* "Reset account" (cloud.js's doAccountReset(), wired to #acct-status-reset
+/* "Reset everything" (cloud.js's doAccountReset(), wired to #sv-reset-all
    in the Saved-fleets dialog). Every LITERAL of this game's local storage,
    erased in one call: the IndexedDB saves store (LocalStore.wipe(), every
    slot — auto, auto:<city>, slot1-3, progress, profile, history, all of it,
@@ -15535,12 +15555,23 @@ const EMERGENCY_KEY='dh_emergency_snapshot';
    form, not save data, and cloud.js clears what it needs to as part of its
    own sign-out flow. Exposed on DH_SAVE (not a bare global) for the same
    reason snapshot/restore/migrate/LocalStore already are: cloud.js knows
-   nothing about deadhead.html's internals beyond that one object. */
+   nothing about deadhead.html's internals beyond that one object.
+
+   RESETTING is set FIRST, before either storage clear even starts — the
+   reload doAccountReset() triggers right after this function returns is
+   what fires pagehide/beforeunload, so the flag has to already be in place
+   the instant the wipe finishes, not after some later step. */
 function wipeLocal(){
+  RESETTING=true;
   try{ localStorage.removeItem(EMERGENCY_KEY) }catch(e){ /* private mode */ }
   return LocalStore.wipe();
 }
 window.addEventListener('beforeunload',function(){
+  /* See RESETTING's own comment above autosave() — this direct localStorage
+     write doesn't go through autosave() at all, so it needs the same guard
+     applied separately or a reset's reload would resurrect the run from
+     THIS path even with autosave() itself silenced. */
+  if(RESETTING) return;
   try{ localStorage.setItem(EMERGENCY_KEY,JSON.stringify(snapshot())) }
   catch(e){ /* private mode, quota, or no localStorage — nothing more to do here */ }
 });
@@ -16193,6 +16224,7 @@ window.DH_ACT1={
 window.DH_SAVE={snapshot:snapshot,restore:restore,migrate:migrate,VERSION:VERSION,
   Store:Store,LocalStore:LocalStore,V:SAVE_V,SLOTS:SLOTS,wipeLocal:wipeLocal,
   refresh:renderSaves,toast:toast,autosave:autosave,open:openSaves,
+  resetting:function(){ return RESETTING },
   saveSig:saveSig,autosaveSoon:autosaveSoon,sig:function(){ return lastSavedSig },
   /* cloud.js prefills the (now username, not email) cloud-account field from
      this — see the "USERNAME, NOT EMAIL" comment there — so a returning
