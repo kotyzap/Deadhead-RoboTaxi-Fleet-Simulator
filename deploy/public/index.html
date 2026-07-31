@@ -4662,6 +4662,7 @@ function loadCityTables(){
   CHARGERS=chargersFor(S.city);
   ROADS=roadsFor(S.city);
   _roadPathCache.clear();   /* see roadPath() — stale Dallas geometry must never survive into a Miami run */
+  _zoneSpanCache=null;      /* see maxZoneSpan() — stale span must never survive into a new city's zones */
   applyCityTone();
   /* Both no-op before initMap() has run — loadCityTables() is called during
      boot, before the map exists — so initMap() calls them itself afterwards.
@@ -6212,6 +6213,75 @@ function assign(ride){
   if(!bq) return false;
   bq.queue.push(ride); ride.car=bq.id; ride.queued=true;
   return true;
+}
+/* There's no real ride.km for a hypothetical pickup — previewDeadhead()
+   below needs SOME trip length to feed socNeeded()'s feasibility check in
+   its busy-car pass, same role ride.km plays in assign()'s own. A short
+   flat constant (not e.g. maxZoneSpan(), which is deliberately about to be
+   used for the ratio, not the feasibility guard) is close enough: it only
+   ever rules a car out for being nearly flat, and a car that's nearly flat
+   is nearly flat regardless of whether the next ride turns out to be 2km or
+   8km. */
+const PREVIEW_TRIP_KM=4;
+/* Read-only mirror of assign()'s own two-pass car selection, for the
+   OFFERS zone chips' deadhead tint (see the render() hook that colors
+   #zone-chips). Must be kept in lockstep with assign()'s actual guards
+   (state/chQueue/soc/queueCap) or the tint would show a zone as green that
+   would really queue red the moment an offer landed there, which defeats
+   the entire point of showing it. Unlike assign(), this NEVER mutates
+   anything — no ride.car, no c.queue, no c.state — so it's safe to call
+   every render() tick purely to ask "if a ride appeared here right now,
+   how far would the car that would actually get it have to deadhead?".
+   Returns a km number, or Infinity if no car in the fleet could take it at
+   all (empty fleet, everyone full, nobody has the range). */
+function previewDeadhead(zoneLat,zoneLng){
+  let bd=1e9;
+  S.cars.forEach(function(c){
+    if(c.state!=='idle'||c.chQueue) return;
+    const toP=dist(c.lat,c.lng,zoneLat,zoneLng);
+    if(c.soc-socNeeded(toP+PREVIEW_TRIP_KM,c)<CFG.reserveSoc) return;
+    if(toP<bd) bd=toP;
+  });
+  if(bd<1e9) return bd;
+  /* No idle car qualifies — mirror assign()'s busy-car queue-end scoring.
+     Deliberately reads c.queue rather than assigning `c.queue=c.queue||[]`
+     the way assign() does; a preview must never leave a side effect behind
+     just because it happened to run before a car's first ride. */
+  let bs=1e9,bestDh=null;
+  S.cars.forEach(function(c){
+    if((c.state!=='dispatched'&&c.state!=='onTrip')||c.chQueue) return;
+    const q=c.queue||[];
+    if(q.length>=CFG.queueCap) return;
+    const toP=dist(c.lat,c.lng,zoneLat,zoneLng);
+    if(c.soc-socNeeded(remainKm(c)+toP+PREVIEW_TRIP_KM,c)<CFG.reserveSoc) return;
+    const endPt=queueEndPoint(c);
+    const dh=dist(endPt[0],endPt[1],zoneLat,zoneLng);
+    const score=q.length*1000+dh;
+    if(score<bs){bs=score; bestDh=dh}
+  });
+  return bestDh===null?Infinity:bestDh;
+}
+/* The farthest a real dispatch could plausibly deadhead in THIS city, used
+   to scale the zone-chip tint to the city's own geography instead of some
+   absolute km figure — Miami's zones sit much closer together than
+   Dallas's, so a fixed threshold would paint one city all green and
+   another all red regardless of how good the dispatching actually is.
+   Cached per city load (invalidated in loadCityTables(), same spot as
+   _roadPathCache) since ZONES is fixed for the run and there are at most a
+   handful of zones (n*(n-1)/2 pairs), so recomputing every render() tick
+   would be pointless busywork. */
+let _zoneSpanCache=null;
+function maxZoneSpan(){
+  if(_zoneSpanCache!=null) return _zoneSpanCache;
+  let m=0;
+  for(let i=0;i<ZONES.length;i++){
+    for(let j=i+1;j<ZONES.length;j++){
+      const d=dist(ZONES[i].lat,ZONES[i].lng,ZONES[j].lat,ZONES[j].lng);
+      if(d>m) m=d;
+    }
+  }
+  _zoneSpanCache=m||1;   /* guard: a hypothetical 1-zone city can't divide by 0 */
+  return _zoneSpanCache;
 }
 /* Only rides you already ACCEPTED get a car. Offers wait for your decision;
    nothing is dispatched behind your back. */
@@ -10764,6 +10834,44 @@ function render(){
       return '<button class="chip'+(z.on!==false?' on':'')+'" data-zone="'+i+'">'+z.n+'</button>';
     }).join('');
   }
+  /* Deadhead tint — deliberately its OWN step, not folded into the zoneSig
+     guard above. zoneSig only trips on a name/on-off change, but the tint
+     has to track live car positions/queues every tick, so rebuilding
+     innerHTML off it would either go stale for minutes or fight the cache
+     the zoneSig guard exists to provide in the first place. Setting
+     style.background/borderColor directly on the chip nodes that already
+     exist — never innerHTML here — keeps this from disturbing the click
+     handler at line ~11268 or the .on toggle class. Skipped while the
+     OFFERS panel isn't actually on screen (offsetParent — same check
+     raySpotEl() uses), since previewDeadhead() is an O(zones*cars) scan
+     nobody needs to pay for behind a collapsed/hidden panel. */
+  const zcEl=$('zone-chips');
+  if(zcEl&&zcEl.offsetParent){
+    const span=maxZoneSpan();
+    Array.prototype.forEach.call(zcEl.children,function(chip){
+      const z=ZONES[+chip.dataset.zone];
+      if(!z) return;
+      const dh=previewDeadhead(z.lat,z.lng);
+      const on=chip.classList.contains('on');
+      if(!isFinite(dh)){
+        /* No eligible car at all — a color would be a guess, not
+           information, so fall back to a neutral gray instead of implying
+           "green" (great) or "red" (bad) about a number that isn't real. */
+        chip.style.background=on?'hsl(0,0%,88%)':'none';
+        chip.style.borderColor='hsl(0,0%,72%)';
+        return;
+      }
+      const ratio=Math.max(0,Math.min(1,dh/span));
+      const hue=140-140*ratio;   /* 140=green (≈0 deadhead) .. 0=red (city-scale max) */
+      /* Soft/pastel wash, not a neon fill — this sits behind small chip
+         text that still has to stay readable. Off chips keep their
+         existing unfilled look (background:none) so the on/off toggle
+         state stays legible at a glance; they still pick up the hue on
+         the border so turning a red zone back on isn't a total surprise. */
+      chip.style.background=on?'hsl('+hue+',55%,88%)':'none';
+      chip.style.borderColor='hsl('+hue+',45%,'+(on?70:60)+'%)';
+    });
+  }
 
   /* console rail */
   const sel=S.cars.filter(function(c){return c.id===S.sel})[0]||S.cars[0];
@@ -11577,7 +11685,7 @@ const SLOTS=['slot1','slot2','slot3'];
    SAVE_V above is the STATE SHAPE version and moves only when the
    snapshot format changes — the two are deliberately independent, so
    shipping 0.9.0 does not invalidate 0.8.0 saves. */
-const VERSION='0.79.0';
+const VERSION='0.80.0';
 
 function snapshot(){
   return {
@@ -15152,6 +15260,9 @@ window.DH_ACT1={
      needed to produce a real offer (with leftInit) rather than a hand-built
      stub, and offersPerHour/PLATFORMS let the test drive one deterministically. */
   queueEndPoint:queueEndPoint,spawnRides:spawnRides,
+  /* Exposed for test/zone-chip-tint.test.js: previewDeadhead/maxZoneSpan
+     back the OFFERS zone-chips' green→red deadhead tint. */
+  previewDeadhead:previewDeadhead,maxZoneSpan:maxZoneSpan,
   /* Exposed for the shift-report/beat-12-14 spotlight-timing regression test. */
   DAY1_ORDER:DAY1_ORDER,guideCheck:guideCheck,
   /* Exposed for test/promo-transfer.test.js and test/clock-on-gate.test.js —
