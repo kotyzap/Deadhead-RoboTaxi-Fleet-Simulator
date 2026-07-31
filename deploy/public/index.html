@@ -3676,7 +3676,10 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
   </div>
   <div class="set-row">
     <span class="set-lbl">Map style</span>
-    <button class="ghost units" id="mapstyle" aria-label="Map style: standard. Click to switch to satellite."><span id="mapstyle-tag">Standard</span></button>
+    <!-- Both the label and the tag are overwritten by paintMapStyle() at boot;
+         they match the mapStyle default (satellite) so the markup never reads
+         as a third opinion about what the map is showing. -->
+    <button class="ghost units" id="mapstyle" aria-label="Map style: satellite. Click to switch to standard."><span id="mapstyle-tag">Satellite</span></button>
   </div>
   <!-- Coffee joined the menu in 0.53.0 (Pavel: "I should not be that greedy").
        It was pinned top-right in the topbar, with a whole layout mechanism
@@ -5737,8 +5740,18 @@ const S={
   /* 'imperial' | 'metric'. Display only — see UNITS. */
   units:null,          /* null until defaultUnits() runs at boot */
   /* 'standard' | 'satellite'. Which Leaflet tile provider is on screen —
-     see TILE_STYLES and setMapStyle(). */
-  mapStyle:'standard',
+     see TILE_STYLES and setMapStyle().
+
+     SATELLITE IS THE DEFAULT (Pavel, 2026-07-31: "make photos as default in
+     the map, it looks cool when zoomed"), which is also what the focus/follow
+     camera in cameraplan.md is built for — a car centred over real imagery
+     reads as a chase cam in a way a road diagram never does.
+
+     Note for anyone testing this: an EXISTING save carries its own
+     mapStyle:'standard' and keeps it (see the load path), which is correct —
+     a default must not overwrite a choice already made. A fresh run is the
+     only honest test of this line. */
+  mapStyle:'satellite',
   /* Act 1 shift model. Cars earn only while you are clocked on, because you
      are the remote operator. Clock off and the car parks — and still owes
      $42 that midnight. A four-hour shift owns a car idle for twenty hours
@@ -6061,14 +6074,20 @@ function offerDecideSecFor(speed){
    free in the moment and expensive over a window, which is what stops
    "cherry-pick the good fares" from being a free lunch. */
 function offerNet(o){ return o.fare*(1-platform(o.plat).cut) }
+/* The offer row's deadhead figure, and now also WHICH car it belongs to.
+   Delegates to pickCar() rather than re-deriving it: this function used to
+   scan for the nearest idle car while ignoring chQueue and the SOC reserve,
+   so it could report a deadhead from a car assign() would have refused, and
+   it said "no car free" whenever every car was busy even though assign()
+   would happily have queued the ride on one. Both are fixed by asking the
+   real selector. Returns null only when nobody could take it at all. */
+function offerTarget(o){
+  const p=pickCar(o);
+  return p?{id:p.car.id,mode:p.mode,dh:p.dh,queue:(p.car.queue||[]).length}:null;
+}
 function deadheadKm(o){
-  let best=1e9;
-  S.cars.forEach(function(c){
-    if(c.state!=='idle') return;
-    const d=dist(c.lat,c.lng,o.p[0],o.p[1]);
-    if(d<best) best=d;
-  });
-  return best===1e9?null:best;
+  const t=offerTarget(o);
+  return t?t.dh:null;
 }
 function acceptOffer(id){
   const o=S.offers.filter(function(x){return x.id===id})[0];
@@ -6158,7 +6177,35 @@ function socNeeded(km,c){
   const sp=c?spec(c):{kwhPerKm:CFG.kwhPerKm,kwh:CFG.battery};
   return (km*sp.kwhPerKm*CFG.heatPenalty)/sp.kwh*100;
 }
-function assign(ride){
+/* WHO WOULD GET THIS RIDE — the single answer, for everyone who asks.
+ *
+ * This is the one place the dispatch rule lives. It used to live in three:
+ * assign() (the real one), previewDeadhead() (an explicit mirror for the zone
+ * chips, whose own comment conceded it "must be kept in lockstep with
+ * assign()") and deadheadKm() (the offer row's deadhead figure) — and by
+ * 0.80.0 deadheadKm() had already drifted out of lockstep, checking only
+ * state==='idle' and ignoring the chQueue and reserveSoc guards the other two
+ * enforce. It could therefore quote a deadhead measured from a car assign()
+ * would refuse. Naming the target car on the offer row (0.81.0) would have
+ * needed a FOURTH copy, and a label that disagrees with what the click
+ * actually does is worse than no label, so the rule came out here instead.
+ *
+ * PURE. Mutates nothing — not ride.car, not c.queue, not c.state. That is
+ * what makes it safe to call every render() tick purely to ask the question,
+ * which the zone chips and the offer rows both do. Note the `c.queue||[]`
+ * reads: assign() used to `c.queue=c.queue||[]` mid-scan, and a preview must
+ * not leave that behind just because it happened to run before a car's first
+ * ride.
+ *
+ * Needs only ride.p (pickup [lat,lng]) and ride.km, so callers can pass a
+ * hypothetical — see previewDeadhead()'s synthetic PREVIEW_TRIP_KM ride.
+ *
+ * Returns null if nobody in the fleet could take it, else:
+ *   { car, mode:'idle'|'queue', dh }
+ * where dh is the deadhead this dispatch would really cost: live distance to
+ * the pickup for an idle car, and distance from where the car's queue ENDS
+ * for a busy one. */
+function pickCar(ride){
   let best=null,bd=1e9;
   S.cars.forEach(function(c){
     /* c.chQueue means the operator has already ordered this car to a
@@ -6169,12 +6216,7 @@ function assign(ride){
     if(c.soc-socNeeded(toP+ride.km,c)<CFG.reserveSoc) return;
     if(toP<bd){bd=toP;best=c}
   });
-  if(best){
-    best.ride=ride; ride.car=best.id; best.state='dispatched';
-    best.route=[[ride.p[0],ride.p[1]],[ride.d[0],ride.d[1]]];
-    best.p0=[best.lat,best.lng];      /* leg origin, for the road drawing */
-    return true;
-  }
+  if(best) return {car:best,mode:'idle',dh:bd};
   /* Nothing idle right now. Rather than leave the ride adrift in the global
      pool until autoDispatch's next 5s sweep finds a free car, reserve it on
      the busy car best placed to take it next — fewest rides already backed
@@ -6183,11 +6225,11 @@ function assign(ride){
      table's Queue column counts, and it's why a ride with ride.car set is
      no longer touched by autoDispatch's `!r.car` filter even though nobody
      is driving it yet. */
-  let bq=null,bs=1e9;
+  let bq=null,bs=1e9,bqDh=null;
   S.cars.forEach(function(c){
     if((c.state!=='dispatched'&&c.state!=='onTrip')||c.chQueue) return;
-    if(!c.queue) c.queue=[];
-    if(c.queue.length>=CFG.queueCap) return;
+    const q=c.queue||[];
+    if(q.length>=CFG.queueCap) return;
     const toP=dist(c.lat,c.lng,ride.p[0],ride.p[1]);
     /* Rough sanity check only — remainKm covers the CURRENT leg, not every
        leg still ahead of it in the queue, so this can't be exact. It only
@@ -6207,11 +6249,28 @@ function assign(ride){
        NOW. */
     const endPt=queueEndPoint(c);
     const dh=dist(endPt[0],endPt[1],ride.p[0],ride.p[1]);
-    const score=c.queue.length*1000+dh;
-    if(score<bs){bs=score;bq=c}
+    const score=q.length*1000+dh;
+    if(score<bs){bs=score;bq=c;bqDh=dh}
   });
-  if(!bq) return false;
-  bq.queue.push(ride); ride.car=bq.id; ride.queued=true;
+  return bq?{car:bq,mode:'queue',dh:bqDh}:null;
+}
+/* Applies what pickCar() decided. The split is deliberate: everything that
+   READS the decision (offer rows, zone chips) shares the selector, and only
+   this function is allowed to act on it. */
+function assign(ride){
+  const p=pickCar(ride);
+  if(!p) return false;
+  const best=p.car;
+  if(p.mode==='idle'){
+    best.ride=ride; ride.car=best.id; best.state='dispatched';
+    best.route=[[ride.p[0],ride.p[1]],[ride.d[0],ride.d[1]]];
+    best.p0=[best.lat,best.lng];      /* leg origin, for the road drawing */
+    return true;
+  }
+  /* pickCar() reads c.queue without creating it (it must not mutate); the
+     array has to exist before we can push to it. */
+  if(!best.queue) best.queue=[];
+  best.queue.push(ride); ride.car=best.id; ride.queued=true;
   return true;
 }
 /* There's no real ride.km for a hypothetical pickup — previewDeadhead()
@@ -6223,43 +6282,23 @@ function assign(ride){
    is nearly flat regardless of whether the next ride turns out to be 2km or
    8km. */
 const PREVIEW_TRIP_KM=4;
-/* Read-only mirror of assign()'s own two-pass car selection, for the
-   OFFERS zone chips' deadhead tint (see the render() hook that colors
-   #zone-chips). Must be kept in lockstep with assign()'s actual guards
-   (state/chQueue/soc/queueCap) or the tint would show a zone as green that
-   would really queue red the moment an offer landed there, which defeats
-   the entire point of showing it. Unlike assign(), this NEVER mutates
-   anything — no ride.car, no c.queue, no c.state — so it's safe to call
-   every render() tick purely to ask "if a ride appeared here right now,
-   how far would the car that would actually get it have to deadhead?".
+/* The OFFERS zone chips' deadhead tint (see the render() hook that colors
+   #zone-chips): "if a ride appeared in this zone right now, how far would the
+   car that would actually get it have to deadhead?".
+
+   This was a hand-maintained mirror of assign()'s two-pass selection, with a
+   comment warning it "must be kept in lockstep" — it now just calls the
+   selector both it and assign() share, so lockstep is structural rather than
+   remembered. pickCar() is pure, which is what keeps this safe to call every
+   render() tick.
+
    Returns a km number, or Infinity if no car in the fleet could take it at
-   all (empty fleet, everyone full, nobody has the range). */
+   all (empty fleet, everyone full, nobody has the range). Infinity rather
+   than null is what the tint scale expects — don't "tidy" it to match
+   offerTarget(). */
 function previewDeadhead(zoneLat,zoneLng){
-  let bd=1e9;
-  S.cars.forEach(function(c){
-    if(c.state!=='idle'||c.chQueue) return;
-    const toP=dist(c.lat,c.lng,zoneLat,zoneLng);
-    if(c.soc-socNeeded(toP+PREVIEW_TRIP_KM,c)<CFG.reserveSoc) return;
-    if(toP<bd) bd=toP;
-  });
-  if(bd<1e9) return bd;
-  /* No idle car qualifies — mirror assign()'s busy-car queue-end scoring.
-     Deliberately reads c.queue rather than assigning `c.queue=c.queue||[]`
-     the way assign() does; a preview must never leave a side effect behind
-     just because it happened to run before a car's first ride. */
-  let bs=1e9,bestDh=null;
-  S.cars.forEach(function(c){
-    if((c.state!=='dispatched'&&c.state!=='onTrip')||c.chQueue) return;
-    const q=c.queue||[];
-    if(q.length>=CFG.queueCap) return;
-    const toP=dist(c.lat,c.lng,zoneLat,zoneLng);
-    if(c.soc-socNeeded(remainKm(c)+toP+PREVIEW_TRIP_KM,c)<CFG.reserveSoc) return;
-    const endPt=queueEndPoint(c);
-    const dh=dist(endPt[0],endPt[1],zoneLat,zoneLng);
-    const score=q.length*1000+dh;
-    if(score<bs){bs=score; bestDh=dh}
-  });
-  return bestDh===null?Infinity:bestDh;
+  const p=pickCar({p:[zoneLat,zoneLng],km:PREVIEW_TRIP_KM});
+  return p?p.dh:Infinity;
 }
 /* The farthest a real dispatch could plausibly deadhead in THIS city, used
    to scale the zone-chip tint to the city's own geography instead of some
@@ -9706,6 +9745,14 @@ let tileLayer=null;
 function setMapStyle(style){
   S.mapStyle=(style==='satellite')?'satellite':'standard';
   $('map').classList.toggle('map-sat',S.mapStyle==='satellite');
+  /* Repaint the settings button from the SAME funnel that changes the style,
+     so the label, the .map-sat class and the live tile layer can never
+     disagree. They used to: loading a save assigned S.mapStyle directly and
+     nothing repainted the button, which was invisible only because the
+     default matched what nearly every save held. Satellite becoming the
+     default (0.81.0) would have made that mismatch the common case — a
+     'standard' save opening with the button reading "Satellite". */
+  paintMapStyle();
   if(!map) return;
   const t=TILE_STYLES[S.mapStyle];
   if(tileLayer) map.removeLayer(tileLayer);
@@ -10758,7 +10805,8 @@ function render(){
      rather than the raw float — that is the only form of the countdown that
      ever reaches the screen ("Xs"), so the sig must not change every tick
      just because the float underneath it did; it only needs to change once a
-     second, when the DISPLAYED number actually moves. deadheadKm(o) is
+     second, when the DISPLAYED number actually moves. offerTarget(o) — the
+     deadhead figure AND the target car id it now carries — is
      deliberately left out: it depends on every car's live position, is
      expensive to fold into a signature cheaply, and the cost of it lagging by
      up to the same ~1s the countdown already grants is far smaller than the
@@ -10771,7 +10819,32 @@ function render(){
     lastOfferSig=offerSig;
     let acceptArrowPlaced=false;
     $('offer-list').innerHTML=S.offers.length?S.offers.slice(-CFG.offerCap).reverse().map(function(o){
-      const dh=deadheadKm(o), p=platform(o.plat);
+      /* WHICH CAR THIS WOULD GO TO (0.81.0, Pavel's ask: "Accept can tell us
+         the car name"). offerTarget() is the same selector acceptOffer() →
+         assign() will actually use, so the label cannot promise one car and
+         hand the ride to another.
+
+         It goes in this row rather than on the Accept button for two reasons,
+         both of them scars: the button's label is already the longest string
+         on the card and clips to "Accept Univ…" on narrow tiers (see the .acc
+         CSS), and #offer-list is only rebuilt when offerSig changes — a car id
+         on the button would either go stale or force a rebuild on every car
+         movement, which is exactly how Accept clicks got eaten in 0.68.0.
+         This row already carries the deadhead figure and already accepts the
+         same ~1s lag by design, so the car id rides along for free.
+
+         When the winner is a BUSY car the row says where in that car's work
+         the ride would land, because that is the smart-dispatch decision made
+         visible: it is being stacked behind existing work, not served now. A
+         busy car with an empty queue takes it "next" — printing "queue 0"
+         there was the first draft and read as though nothing was queued at
+         all, which is the opposite of what it means. With rides already
+         stacked it reads "behind 2", i.e. two fares have to finish first. */
+      const tgt=offerTarget(o), p=platform(o.plat);
+      const dh=tgt?tgt.dh:null;
+      const when=!tgt||tgt.mode==='idle'?''
+        :tgt.queue?' (behind '+tgt.queue+')':' (next)';
+      const who=!tgt?'no car free':uKm(dh,1)+' deadhead → '+tgt.id+when;
       const mins=Math.round(o.km/effSpeedKmh()*60);
       const arrow=showAcceptArrow&&!acceptArrowPlaced;
       if(arrow) acceptArrowPlaced=true;
@@ -10779,8 +10852,7 @@ function render(){
         '<div class="offer-top"><span class="pn">'+p.n+'</span><b>'+escapeHtml(o.from)+'</b>'+
           '<span class="sub">→ '+escapeHtml(o.to)+'</span>'+
           '<span class="net">'+money2(offerNet(o))+'</span></div>'+
-        '<div class="offer-rt">'+uKm(o.km,1)+' · '+mins+' min · '+
-          (dh===null?'no car free':uKm(dh,1)+' deadhead')+
+        '<div class="offer-rt">'+uKm(o.km,1)+' · '+mins+' min · '+who+
           ' · '+money2(o.fare)+' fare less '+Math.round(p.cut*100)+'%</div>'+
         '<div class="offer-act"><button class="acc'+(arrow?' ray-arrow':'')+'" data-acc="'+o.id+'">Accept</button>'+
           '<button data-dec="'+o.id+'">Decline</button>'+
@@ -11685,7 +11757,7 @@ const SLOTS=['slot1','slot2','slot3'];
    SAVE_V above is the STATE SHAPE version and moves only when the
    snapshot format changes — the two are deliberately independent, so
    shipping 0.9.0 does not invalidate 0.8.0 saves. */
-const VERSION='0.80.0';
+const VERSION='0.81.0';
 
 function snapshot(){
   return {
@@ -11998,8 +12070,12 @@ function restore(save,opts){
      was already in memory always looked valid, so the saved choice was
      discarded. Saves written before the setting existed adopt the browser's. */
   S.units=(s.units==='imperial'||s.units==='metric')?s.units:defaultUnits();
-  /* Saves from before satellite existed have no s.mapStyle — default standard. */
-  S.mapStyle=s.mapStyle==='satellite'?'satellite':'standard';
+  /* Saves from before satellite existed have no s.mapStyle. They keep
+     'standard' rather than adopting the new satellite default — a default is
+     for a fresh run, and must never overwrite a style the player is already
+     looking at. Routed through setMapStyle() so the button label and the
+     .map-sat class follow the save; a bare assignment left them stale. */
+  setMapStyle(s.mapStyle==='satellite'?'satellite':'standard');
   if(S.ray.cur==='advice'||S.ray.cur==='coffee'||S.ray.cur==='dodge'||S.ray.cur==='decline'||S.ray.cur==='clockoff') S.ray.cur=null;
   if(typeof S.ray.dodgeSeen!=='boolean') S.ray.dodgeSeen=false;
   if(typeof S.ray.declineSeen!=='boolean') S.ray.declineSeen=false;
@@ -15240,6 +15316,13 @@ window.DH_ACT1={
   modelId:modelId,hasModel:hasModel,MAKE:MAKE,MODEL_ALIAS:MODEL_ALIAS,
   livePlatforms:livePlatforms,acceptRate:acceptRate,
   winProb:winProb,offerNet:offerNet,deadheadKm:deadheadKm,
+  /* pickCar is the single dispatch selector assign(), offerTarget() and
+     previewDeadhead() all share (0.81.0). Exposed so a test can assert the
+     three agree, which is the whole point of it existing. */
+  pickCar:pickCar,offerTarget:offerTarget,
+  /* setMapStyle is the single funnel for tiles + .map-sat + the button label;
+     exposed so test/pick-car.test.js can assert they move together. */
+  setMapStyle:setMapStyle,
   acceptOffer:acceptOffer,declineOffer:declineOffer,
   clockOn:clockOn,clockOff:clockOff,shiftReport:shiftReport,
   /* The shift hexagraph, for test/shift-radar.test.js. HISTORY is exposed as
