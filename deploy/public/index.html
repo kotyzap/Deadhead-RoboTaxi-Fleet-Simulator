@@ -722,16 +722,36 @@ body{
 .wing{display:grid;grid-template-columns:1fr;
   /* minmax(0,...) not a bare fr: `1fr` means minmax(auto,1fr), and that
      auto minimum is what lets a track grow past its share. */
-  grid-template-rows:minmax(0,1fr) minmax(0,2fr);gap:10px;min-height:0}
+  /* .72/2.28 rather than 1/2 (Pavel, 2026-07-31: "maybe collapsing Books to
+     smaller, and making space for Offers"). Books is four metric tiles and a
+     cost breakdown — it reads fine at its natural height and gains nothing
+     from slack, whereas the stack below it holds the offer feed, which is
+     the one panel where an extra row is an extra decision you can actually
+     act on. */
+  grid-template-rows:minmax(0,.72fr) minmax(0,2.28fr);gap:10px;min-height:0}
 .stack{display:grid;
   /* No fixed track count. The right stack holds THREE panels; with two
      explicit tracks the third was auto-placed into an implicit `auto` row
      and grew with its content, squeezing the other two to their headers.
      Auto rows now share the height evenly however many panels there are. */
   grid-auto-rows:minmax(0,1fr);gap:10px;min-height:0}
-/* Equal thirds is the wrong split: Incidents says "0 open" most of the day,
-   Offers is the feed you work from. Bounded either way, so it scrolls. */
-#stack-right{grid-template-rows:minmax(0,.8fr) minmax(0,.8fr) minmax(0,1.4fr)}
+/* Equal shares are the wrong split: Incidents says "0 open" most of the day
+   and Application is a static nine-row checklist, while Offers is the feed
+   you actually work from. Bounded either way, so each still scrolls.
+
+   ONE TRACK PER PANEL, AND THE COUNT IS LOAD-BEARING. This rule listed
+   THREE tracks while the stack held FOUR panels (Incidents, Messages,
+   Application, Offers) from the moment the Application panel shipped
+   (v0.83.0) — it was inserted without extending the list. The result was
+   silent and exactly backwards: Application took the generous 1.4fr share
+   written for Offers, and Offers fell through to `grid-auto-rows`'
+   implicit 1fr. Pavel spotted the symptom from a screenshot ("Offers
+   should be visible... they are important") before anyone spotted the
+   cause. Same class as the ACHV/REQS hardcoded-list bugs: a positional
+   list that has to be edited in step with something else, and rots in
+   silence when it isn't. console-tracks.test.js now asserts the counts
+   match, in both stacks. */
+#stack-right{grid-template-rows:minmax(0,.7fr) minmax(0,.8fr) minmax(0,.7fr) minmax(0,1.8fr)}
 /* Platforms lists exactly two feeds — PLATFORMS is a two-element constant, not
    a growing list — so an equal 1fr share left it half empty while Rapid
    network, which carries five real charger sites plus two tariff metrics, had
@@ -1177,12 +1197,20 @@ html[data-theme="night"] .console{background:rgba(39,44,51,.4);
   transition:background var(--dur-fast),border-color var(--dur-fast),opacity var(--dur-fast)}
 #dh-recenter .ms{font-size:14px}
 #dh-recenter:hover{background:rgba(23,26,32,.95);border-color:rgba(255,255,255,.5)}
-/* Following is the resting state, so it is the quiet one — the accent ring
-   appears when the player has taken the wheel and the button becomes the way
-   BACK, which is the moment it is worth drawing an eye to. */
-#dh-recenter[aria-pressed="false"]{background:var(--accent);
+/* ACCENT MEANS "THIS MODE IS ON" — the same thing on both map buttons.
+   It did not, briefly (v0.96.0), and Pavel caught it immediately from a
+   screenshot: Recenter was accented while NOT following (on the older
+   reasoning that it is then the way BACK and worth an eye) while Follow was
+   accented while following. Since engaging either mode necessarily
+   disengages the other, the two rules fired together and BOTH buttons
+   changed colour in lockstep — blue together, dark together — which made
+   the accent carry no information at all.
+   One rule now, for both: accented = the mode you are in. They are mutually
+   exclusive, so exactly one is lit while a camera mode is active, and
+   neither is lit when the player has panned off on their own. */
+#dh-recenter[aria-pressed="true"]{background:var(--accent);
   border-color:transparent;color:#fff}
-#dh-recenter[aria-pressed="false"]:hover{opacity:.88;background:var(--accent)}
+#dh-recenter[aria-pressed="true"]:hover{opacity:.88;background:var(--accent)}
 /* Follow shares every value with Recenter — one pill style on this map, not
    two that can drift — and only overrides where it genuinely differs: it
    sits above Recenter, and its pressed/unpressed meaning is INVERTED.
@@ -10513,6 +10541,8 @@ function camCar(){
 function setCamFollow(id){
   const had=S.camFollow;
   S.camFollow=id||null;
+  /* A fresh follow gets a fresh zoom mandate; releasing gives it up. */
+  if(!S.camFollow) camAutoZoom=null;
   /* Taking the wheel for one car means letting go of the whole area. */
   if(S.camFollow&&followFleet) setFollow(false);
   if(S.camFollow&&!had) camSnap(true);
@@ -10551,6 +10581,12 @@ function camTick(){
   if(S.camFollow&&!camCar()) setCamFollow(null);
   paintCamBtn();
 }
+/* The zoom camSnap() last chose for itself. Used to tell "the player
+   zoomed" from "we zoomed": if the live zoom still matches this, the
+   camera is free to keep adjusting with speed; the moment it does not,
+   the player has taken the zoom and auto-adjustment stops for the rest of
+   this follow. Cleared on engage and on release. */
+let camAutoZoom=null;
 function camSnap(zoomIn){
   const c=camCar();
   if(!c||!map||typeof map.setView!=='function') return;
@@ -10564,24 +10600,74 @@ function camSnap(zoomIn){
      two follows share this map.) */
   followSuppress=true;
   try{
-    const z=zoomIn?Math.max(map.getZoom()||13,CAM_ZOOM):map.getZoom();
-    /* Smoothness, deliberately conditional. At 1x-4x the car crawls and a
-       200ms eased pan between ticks reads as continuous motion — the Waze
-       feel Pavel asked for — because the pan duration matches the tick
-       that produced it. Past that the car jumps far enough per tick that
-       an animation is always chasing a position two frames stale, so it
-       snaps instead. animate:true is safe here where it was not safe for
-       recenterMap(): panTo fires movestart, never dragstart, and dragstart
-       is the only event car-follow yields to. */
-    const smooth=!zoomIn&&S.speed<=4&&z===map.getZoom();
-    if(smooth) map.panTo(at,{animate:true,duration:0.2,easeLinearity:1});
+    const live=map.getZoom();
+    let z=live;
+    if(zoomIn){
+      /* First engage: take the speed-appropriate zoom outright. */
+      z=camZoomFor(S.speed);
+      camAutoZoom=z;
+    } else if(camAutoZoom!==null){
+      if(live!==camAutoZoom){
+        /* The player has zoomed since we last set it — their choice wins
+           from here on, and we stop touching zoom for this follow. */
+        camAutoZoom=null;
+      } else {
+        const want=camZoomFor(S.speed);
+        if(want!==camAutoZoom){ z=want; camAutoZoom=want }
+      }
+    }
+    /* Smoothness at EVERY speed, 20x included (Pavel, 2026-07-31: "it is
+       skipping fast in 20x can we smooth it? 4x is super").
+       The first version only eased at <=4x on the theory that a fast car
+       jumps too far per tick for an animation to keep up. That was the
+       wrong conclusion: the pan duration is the TICK interval, so the
+       animation is not chasing the car, it is drawing the very interval
+       the car just moved through. A bigger jump per tick simply means a
+       faster pan across the same 200ms — which is exactly what 20x should
+       look like. Snapping is what made it stutter, because each frame
+       teleported and nothing drew the space between.
+       easeLinearity:1 is load-bearing: Leaflet's default eases in and out,
+       which at tick cadence reads as a pulse per tick rather than motion.
+       Linear means constant velocity, and consecutive linear pans join into
+       one continuous glide.
+       animate:true is safe here where it was not safe for recenterMap():
+       panTo fires movestart, never dragstart, and dragstart is the only
+       event car-follow yields to. */
+    const moved=map.getCenter?map.getCenter().distanceTo(L.latLng(at)):0;
+    /* One exception, and it is not about speed: a genuine teleport — a city
+       switch, a restored save, a car that respawned somewhere else. Easing
+       across half a continent at constant velocity would be a long, silly
+       slide, so anything beyond a few km is cut rather than panned. */
+    const teleport=moved>4000;
+    const smooth=!zoomIn&&!teleport&&z===map.getZoom();
+    if(smooth) map.panTo(at,{animate:true,duration:CFG.tickMs/1000,easeLinearity:1});
     else map.setView(at,z,{animate:false});
   }catch(e){ console.warn('follow failed',e) }
   finally{ followSuppress=false }
 }
 /* Street level, not district level — following a car from the service-area
-   zoom would just be the same overview with a moving dot in the middle. */
+   zoom would just be the same overview with a moving dot in the middle.
+   This is the 1x/4x figure; 20x pulls back, see camZoomFor(). */
 const CAM_ZOOM=17;
+/* THE FOLLOW ZOOM FOLLOWS THE CLOCK (Pavel, 2026-07-31: "maybe on 20x do not
+   zoom that much on default, unzoom so it will be smoother").
+
+   Exactly right, and it is a geometry point rather than a rendering one:
+   apparent speed on screen is ground speed times pixels-per-metre, and each
+   zoom level doubles the latter. At z17 a car at 20x crosses the viewport in
+   a couple of seconds however smoothly it is drawn — the motion is genuinely
+   that fast, and no amount of easing fixes "too much happening". Pulling
+   back three levels cuts the on-screen speed roughly eightfold and hands
+   back the context you actually want when you are skipping time: where the
+   car is in the city, not which kerb it is against.
+
+   Speeds are the four on the segmented control: 0, 1, 4, 20. Paused holds
+   whatever the last moving speed chose rather than jumping on pause. */
+function camZoomFor(sp){
+  if(sp>=20) return 14;
+  if(sp>=10) return 15;
+  return CAM_ZOOM;
+}
 function paintCamBtn(){
   const b=$('dh-follow');
   if(!b) return;
@@ -11011,13 +11097,22 @@ function drawMap(){
      hood, so skipping it when nothing changed is a real saving, not just a
      JS one — and it only changes on the hour or a zone toggle, both rare
      next to the ~10x/second render() cadence this runs at. */
-  const zoneStyleSig=h+'|'+zoneLayer.map(function(o){return o.z.on!==false}).join(',');
+  /* RIDING ALONG DIMS THE ZONES (Pavel, 2026-07-31: "when following make
+     zones lighter, not that colorful"). At the service-area zoom the demand
+     circles ARE the information — which part of town is worth being in. At
+     street level following one car they are just a coloured wash over the
+     satellite imagery, competing with the thing you actually chose to look
+     at. Same shape, a third of the weight; the zone is still locatable,
+     it just stops shouting. Part of the style signature so switching
+     follow on or off repaints immediately. */
+  const dim=S.camFollow?0.34:1;
+  const zoneStyleSig=h+'|'+dim+'|'+zoneLayer.map(function(o){return o.z.on!==false}).join(',');
   if(zoneStyleSig!==lastZoneStyleSig){
     lastZoneStyleSig=zoneStyleSig;
     zoneLayer.forEach(function(o){
       const on=o.z.on!==false;
-      const lvl=on?clamp(o.z.base*CURVES[o.z.p][h]/12,0.13,0.50):0;
-      o.c.setStyle({fillOpacity:lvl,opacity:on?clamp(lvl*1.6,0.42,0.85):0});
+      const lvl=on?clamp(o.z.base*CURVES[o.z.p][h]/12,0.13,0.50)*dim:0;
+      o.c.setStyle({fillOpacity:lvl,opacity:on?clamp(lvl*1.6,0.42,0.85)*dim:0});
     });
   }
   const sel=S.cars.filter(function(c){return c.id===S.sel})[0];
@@ -11513,6 +11608,19 @@ function render(){
   const h=hour();
   /* Both are no-ops in the common case — see progGates(). */
   progGates(); progTrack();
+  /* THE APPLICATION TICKS WHILE THE CLOCK IS STOPPED (Pavel, 2026-07-31).
+     checkApp() and checkFinale() are called from checkUnlocks(), which runs
+     inside step() — and step() is skipped entirely while the sim is paused
+     (see the tick loop's `S.running&&S.speed>0` branch). progGates(), right
+     above, runs from render() and therefore DOES run when paused.
+     So two things reading the identical fact ran on two different clocks:
+     clocking off in Austin lit the Dallas tab immediately, while
+     "Commercial dispatch experience — Austin" — the SAME
+     gateMet('shift1@austin') — stayed unticked until the player started the
+     clock again. Pavel caught it from a screenshot showing exactly that
+     contradiction. Both are wall-clock throttled internally, so calling
+     them here as well as from checkUnlocks() costs a comparison. */
+  checkApp(); checkFinale();
   /* Single-car fleets should always be focused on the map — there's no one
      else to pick. This self-heals every tick regardless of entry point
      (acquire, city switch, sell/return down to one car). */
@@ -12760,7 +12868,7 @@ const SLOTS=['slot1','slot2','slot3'];
    SAVE_V above is the STATE SHAPE version and moves only when the
    snapshot format changes — the two are deliberately independent, so
    shipping 0.9.0 does not invalidate 0.8.0 saves. */
-const VERSION='0.96.0';
+const VERSION='0.97.0';
 
 function snapshot(){
   return {
@@ -14499,6 +14607,7 @@ function cityUnlocked(id){
 /* Promote anything the run has now earned into the permanent record. Called
    from render(), so it must stay free when there is nothing to do: the only
    work in the common case is one boolean test per city. */
+let pendingUnlock=null;
 function progGates(){
   /* First: bank the fact that THIS city has had a shift clocked off, because
      that is what the next city's gate reads. It has to happen before the loop
@@ -14528,7 +14637,18 @@ function progGates(){
        claiming the card: never steal it from an active tutorial beat,
        another Paolo card already up, the dodge mini-game, or (2026-07-30)
        the shift report — a city can unlock in the same tick a shift ends. */
-    if(!S.ray.skipped&&!S.ray.cur&&$('dodge-incar').hidden&&$('garage').hidden&&$('report').hidden) rayCityUnlocked(gained);
+    pendingUnlock=gained;
+  }
+  /* ...and if the guard was up, the announcement WAITS rather than being
+     lost. It used to fire or not fire in this one instant, and a city
+     unlocking while the shift report is open — which is the single most
+     likely moment for it, since clocking off is what satisfies the gate —
+     meant the player was simply never told. The ad chained onto this card
+     (northstarplan.md §2.1) went with it. */
+  if(pendingUnlock&&!S.ray.skipped&&!S.ray.cur&&
+     $('dodge-incar').hidden&&$('garage').hidden&&$('report').hidden){
+    const id=pendingUnlock; pendingUnlock=null;
+    rayCityUnlocked(id);
   }
 }
 
@@ -17034,7 +17154,7 @@ window.DH_ACT1={
   rejectionLetterHtml:rejectionLetterHtml,rayShowRejection:rayShowRejection,
   rayRecord:rayRecord,rayRecordEnd:rayRecordEnd,renderThread:renderThread,
   setCamFollow:setCamFollow,camCar:camCar,camSnap:camSnap,paintCamBtn:paintCamBtn,
-  camTick:camTick,followingFleet:function(){ return followFleet },
+  camTick:camTick,followingFleet:function(){ return followFleet },camZoomFor:camZoomFor,
   CAM_ZOOM:CAM_ZOOM,
   rayFinale:rayFinale,checkFinale:checkFinale,finaleReady:finaleReady,
   contractHtml:contractHtml,finaleSummaryHtml:finaleSummaryHtml,sigSize:sigSize,
