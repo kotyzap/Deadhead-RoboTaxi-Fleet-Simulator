@@ -1411,6 +1411,26 @@ async function handleApi(request, env, url, ctx) {
     return json(out);
   }
 
+  /* --- full account wipe: "Reset account" in the Saves modal ---
+     Deletes EVERY save row for this account in one request — every manual
+     slot, the bare 'auto', every 'auto:<city>' row, plus 'progress',
+     'profile' and 'history' (see slotAllowed()'s comment for what those
+     three are). Deliberately keyed on user_id alone rather than enumerating
+     slot names one at a time: the saves table's PRIMARY KEY is
+     (user_id, slot) (schema.sql), so a plain DELETE ... WHERE user_id = ?
+     is correct for every slot that exists today AND any slot shape added
+     later (a new city's 'auto:<city>', say) without this route needing a
+     matching update the way slotAllowed()'s whitelist does. This does NOT
+     touch the `users` row itself or the session — the account still exists
+     and the caller is still signed in after this returns; the client is
+     expected to call /api/logout right after (see doAccountReset() in
+     cloud.js). Does not touch `stats` (telemetry, not save data — see the
+     comment on that table in schema.sql) or `login_attempts`. */
+  if (p === '/api/account/reset' && method === 'DELETE') {
+    await env.DB.prepare('DELETE FROM saves WHERE user_id = ?').bind(user.id).run();
+    return json({ ok: true });
+  }
+
   /* --- one slot: read / write / delete ---
      Colon is in the charset so 'auto:<city>' matches at all; slotAllowed()
      is the actual whitelist (see its comment above). */

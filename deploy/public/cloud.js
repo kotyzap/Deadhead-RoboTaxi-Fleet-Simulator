@@ -24,6 +24,7 @@
     me: '/api/me',
     saves: '/api/saves',
     save: (slot) => '/api/save/' + encodeURIComponent(slot),
+    accountReset: '/api/account/reset',
   };
 
   /* Cloud writes for the 30-second autosave are coalesced to this
@@ -948,6 +949,77 @@
     busy(false);
   }
 
+  /* "Reset account" — #acct-status-reset in the Saved-fleets dialog.
+     Irreversible, so it is gated on window.confirm() first, the same
+     discipline deadhead.html already uses for sell/return-car/repossession
+     (see the "This cannot be undone" confirms around #sel-sell/#sel-charge
+     in deadhead.html) rather than inventing a new confirmation pattern here.
+
+     Order matters: server delete FIRST (while the session cookie is still
+     valid — /api/account/reset needs it), THEN the local IndexedDB wipe,
+     THEN sign-out, THEN reload. A failed server call does not block the
+     rest: the player asked for everything gone, and a network blip should
+     not leave them thinking the reset "didn't work" when their local copy
+     is in fact already gone — but it must not be silent either, so a
+     failure is surfaced via the Saves modal's own toast (window.DH_SAVE.toast,
+     the #sv-toast readout — #dh-msg is not visible from here, since the
+     account FORM it belongs to only lives on the intro screen) and the
+     reload is delayed just long enough for that message to be readable. */
+  const RESET_BTN_IDS = ['acct-status-out', 'acct-status-reset'];
+  async function doAccountReset() {
+    const who = signedIn || 'this account';
+    if (!window.confirm(
+      'Reset ' + who + '? This permanently deletes every saved fleet — ' +
+      'autosave, all manual slots, unlocked cities and achievements — ' +
+      'both in the cloud and in this browser, and signs you out. ' +
+      'This cannot be undone.'
+    )) return;
+
+    RESET_BTN_IDS.forEach((id) => { const b = document.getElementById(id); if (b) b.disabled = true });
+
+    let serverOk = true;
+    let serverErrMsg = '';
+    if (signedIn) {
+      // Nothing queued in pendingByKey is worth flushing — it would only
+      // write back into the account this same click is about to erase.
+      try {
+        await req(API.accountReset, { method: 'DELETE' });
+      } catch (e) {
+        serverOk = false;
+        serverErrMsg = (e && e.message) || 'network error';
+      }
+    }
+
+    pendingByKey.clear();
+    if (retryTimer) { clearTimeout(retryTimer); retryTimer = null }
+    retryDelay = RETRY_MIN_MS;
+
+    let localOk = true;
+    let localErrMsg = '';
+    try {
+      if (window.DH_SAVE && window.DH_SAVE.wipeLocal) await window.DH_SAVE.wipeLocal();
+    } catch (e) {
+      localOk = false;
+      localErrMsg = (e && e.message) || 'unknown error';
+    }
+
+    try { await req(API.logout, { method: 'POST' }) } catch { /* cookie may already be gone */ }
+    signOutLocally();
+
+    if (!serverOk || !localOk) {
+      const parts = [];
+      if (!serverOk) parts.push('cloud saves could not be cleared (' + serverErrMsg + ')');
+      if (!localOk) parts.push('local saves could not be fully cleared (' + localErrMsg + ')');
+      if (window.DH_SAVE && window.DH_SAVE.toast) {
+        window.DH_SAVE.toast('Reset incomplete — ' + parts.join('; ') + '. Reloading anyway.', true);
+      }
+      setTimeout(() => location.reload(), 2000);
+      return;
+    }
+
+    location.reload();
+  }
+
   /* The signed-in-only status readout left behind in the Saved-fleets
      dialog now that the actual Sign in/Create account FORM lives only on
      the intro screen (#intro-acct) — see mount() below. Never shows the
@@ -965,6 +1037,8 @@
     if (!statusWired) {
       const btn = document.getElementById('acct-status-out');
       if (btn) btn.addEventListener('click', doSignOut);
+      const resetBtn = document.getElementById('acct-status-reset');
+      if (resetBtn) resetBtn.addEventListener('click', doAccountReset);
       statusWired = true;
     }
   }

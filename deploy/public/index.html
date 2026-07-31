@@ -2058,6 +2058,14 @@ tr[data-car].on td{background:var(--inset)}
 .acct-status button{height:26px;padding:0 10px;font:inherit;font-size:11px;cursor:pointer;
   border:1px solid var(--brd-2);border-radius:var(--r-ctl);background:transparent;color:var(--text)}
 .acct-status button:hover{border-color:var(--accent);color:var(--accent)}
+/* Reset account — deliberately NOT styled like Sign out (a calm, reversible
+   action). This one erases every save, local and cloud, for good, so it
+   gets the same red the game already uses for a critical state (--s-crit,
+   see .clockbtn.off/.panel.alarm above) and sits behind a divider so a
+   click meant for "Sign out" can't land on it by proximity alone. */
+.acct-status .danger-sep{flex-basis:100%;height:1px;background:var(--brd);margin:2px 0 1px}
+.acct-status button.danger{border-color:var(--s-crit);color:var(--s-crit)}
+.acct-status button.danger:hover{background:var(--s-crit);color:#fff}
 .sv-foot{display:flex;align-items:center;gap:10px;margin-top:16px;
   padding-top:13px;border-top:1px solid var(--brd)}
 .sv-foot .note{flex:1;font-size:10.5px;color:var(--text-3);line-height:1.45}
@@ -3903,6 +3911,9 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
     <div class="acct-status" id="acct-status" hidden>
       <span>Signed in as <b id="acct-status-who"></b></span>
       <button type="button" id="acct-status-out">Sign out</button>
+      <div class="danger-sep"></div>
+      <span>Erase every save, cloud and local, and sign out for good.</span>
+      <button type="button" id="acct-status-reset" class="danger">Reset account</button>
     </div>
     <h4>Autosave</h4>
     <div id="sv-auto"></div>
@@ -4522,13 +4533,14 @@ const CITIES={
      (see companyplan.md/onboardingplan.md's "one operator" framing) rather
      than the first exception to it. You cannot be in two seats at once, so
      `fleetCap` drops from 12 to 1 — not "SF's fleet is small," SF has no
-     fleet, it has one car, because it has one of you. `soloSeat` also caps
-     `S.speed` at 1× (see the .seg wiring near render()): a real in-seat
-     supervisor cannot fast-forward through the job, which is the one thing
-     that changes about how every OTHER city plays. It is not extended to
-     Austin despite sharing `permit:'Supervised'` — that field stays
-     reportage, exactly per the note above; `soloSeat` is the one field that
-     actually drives a mechanic, and it is true of exactly one scenario.
+     fleet, it has one car, because it has one of you. `soloSeat` USED to
+     also cap `S.speed` at 1×; that clamp was removed 2026-07-31 (the fleet
+     cap and stipend are the mechanic worth keeping — a permanent 1x lock
+     just made SF a chore) and 4x/20x now behave exactly like every other
+     city. It is not extended to Austin despite sharing `permit:'Supervised'`
+     — that field stays reportage, exactly per the note above; `soloSeat` is
+     the one field that actually drives the one-car mechanic, and it is
+     true of exactly one scenario.
 
      AXIOM PAYS FOR THE SEAT. Being the one human aboard an experimental
      robotaxi is real, specialised work, and CFG.soloStipend ($250) is
@@ -5968,6 +5980,20 @@ function offersPerHour(){
   if(S.permit==='Under review') share*=0.5;
   return rate*share;
 }
+/* Supervised-tier fare bonus (2026-07-31). The manufacturer pays a premium
+   for supervised operation — a real safety driver aboard costs more to run
+   than an unsupervised car, and the fare reflects that, the same way
+   fareK/depK/insK already price each city's own operating reality. +15%
+   sits inside the existing city-multiplier range (roughly 1.0-1.4) and
+   offsets the discipline (lower safety tolerance, `checkSafety()` at
+   S.safety<65) that comes with the Supervised tier versus the looser
+   pricing Unsupervised cities (Dallas/Miami/Tampa/Orlando) get away with.
+   Deliberately checks the exact string 'Supervised' — the base tier —
+   and NOT the 'Under review' penalty state: a permit that has dropped
+   into review is no longer 'Supervised', so the bonus stops on its own
+   the moment checkSafety() flips S.permit, and resumes automatically once
+   safety recovers and S.permit reverts back (see checkSafety()). */
+function permitFareMult(){ return S.permit==='Supervised'?1.15:1; }
 let spawnAcc=0;
 function spawnRides(dt){
   /* No feeds connected, or clocked off, means no offers. Demand does not
@@ -5997,7 +6023,7 @@ function spawnRides(dt){
     const p=jit(from), d=jit(to), km=Math.max(1.1,dist(p[0],p[1],d[0],d[1]));
     const mins=km/effSpeedKmh()*60;
     const base=(CFG.fare.base+km*CFG.fare.perKm+mins*CFG.fare.perMin)*cityK('fareK');
-    const fare=base*S.fareMult*S.surge;
+    const fare=base*S.fareMult*S.surge*permitFareMult();
     if(Math.random()>winProb(S.fareMult)){
       S.d.lost++; log('Rider','chose another ride in '+from.n+' — priced out',1); continue;
     }
@@ -7034,7 +7060,7 @@ function guideForceOffer(){
   pick.offered++;
   const declLeft=offerDecideSecFor(S.speed);
   S.offers.push({id:'r'+Math.random().toString(36).slice(2,7),from:from.n,to:to.n,
-    p:p,d:d,km:km,fare:base*S.fareMult*S.surge,wait:0,car:null,plat:pick.id,
+    p:p,d:d,km:km,fare:base*S.fareMult*S.surge*permitFareMult(),wait:0,car:null,plat:pick.id,
     left:declLeft,leftInit:declLeft});
   return true;
 }
@@ -11146,7 +11172,9 @@ function paoloRealTime(){
    not choose would be nonsense. */
 document.querySelectorAll('.seg button').forEach(function(b){
   b.addEventListener('click',function(){
-    if(b.disabled) return;          /* soloSeat's 1x lock — see paintSoloSeat() */
+    if(b.disabled) return;          /* no city disables these anymore (soloSeat's
+                                        1x lock was removed) — guard kept in case
+                                        a future scenario re-uses paintSoloSeat() */
     const v=parseFloat(b.dataset.speed);
     setSpeed(v);
     if(v===1) paoloRealTime();
@@ -11549,7 +11577,7 @@ const SLOTS=['slot1','slot2','slot3'];
    SAVE_V above is the STATE SHAPE version and moves only when the
    snapshot format changes — the two are deliberately independent, so
    shipping 0.9.0 does not invalidate 0.8.0 saves. */
-const VERSION='0.77.1';
+const VERSION='0.79.0';
 
 function snapshot(){
   return {
@@ -12100,36 +12128,25 @@ function paintLocks(){
 }
 
 /* keep S.speed, the segmented control and the slider in agreement */
-/* SF's one-car rule and its 1x lock share the same root idea (see the
-   CITIES.sf doc comment above): you ARE the car, not someone watching a
-   dashboard. setSpeed() enforces the cap no matter who calls it; this just
-   keeps the controls' disabled/title state from lying about it — same
-   `.cell[title]+button[disabled]` convention as #cpo-up/#cpo-down. */
+/* SF's 1x speed lock (soloSeat) was removed 2026-07-31 — 4x/20x now work
+   in every city, SF included. This function is kept (rather than deleted)
+   because its call site is still wired up and a future soloSeat-flavoured
+   restriction on something OTHER than speed may want the same hook; today
+   it has nothing left to paint, so it's a deliberate no-op. The fleet cap
+   (fleetCap:1) and the stipend (CFG.soloStipend, billMidnight()) are the
+   parts of soloSeat that still do something, and neither lived here. */
 function paintSoloSeat(){
-  const solo=!!currentCity().soloSeat;
-  const why='Locked at 1× — you are physically in the car in '+currentCity().name+', not watching it from a screen.';
-  /* Used to also sit on the (now-removed) Permit chip's title — redundant
-     with the per-button and slider tooltips below, which already carry it. */
   document.querySelectorAll('.seg button').forEach(function(b){
-    const v=parseFloat(b.dataset.speed);
-    const lock=solo&&v>1;
-    b.disabled=lock;
-    b.title=lock?why:'';
+    b.disabled=false;
+    b.title='';
   });
   const sl=$('spd');
   if(sl){
-    sl.max=solo?'1':'3';
-    sl.title=solo?why:'';
+    sl.max=String(CFG.speeds.length-1);
+    sl.title='';
   }
 }
 function setSpeed(v){
-  /* SF's soloSeat: the player is physically in the car, not watching a
-     dashboard, so simulated time cannot outrun real time. Clamped HERE
-     rather than only in the two input handlers below, so every caller —
-     clockOn's CFG.defaultSpeed, closeDodge restoring the pre-mini-game
-     speed, the pause-resume button, bankruptcy — inherits the cap for
-     free instead of each needing to know soloSeat exists. */
-  if(currentCity().soloSeat&&v>1) v=1;
   S.speed=v; S.running=v>0&&!S.over;
   document.querySelectorAll('.seg button').forEach(function(o){
     o.setAttribute('aria-pressed',String(parseFloat(o.dataset.speed)===v));
@@ -12932,6 +12949,15 @@ const LocalStore=(function(){
     get:function(k){ return tx('readonly',function(st){ return st.get(k) }) },
     put:function(k,v){ return tx('readwrite',function(st){ return st.put(v,k) }) },
     del:function(k){ return tx('readwrite',function(st){ return st.delete(k) }) },
+    /* "Reset account" (cloud.js's doAccountReset()) — every key in the
+       object store, gone in one call. clear() rather than
+       indexedDB.deleteDatabase(DB): a delete needs every open connection to
+       this database closed first or it just sits in 'blocked' forever, and
+       this same IIFE is holding one open (the cached `dbp` from open()
+       above, used by every autosave since boot). clear() runs inside a
+       normal readwrite transaction on that same connection, so it needs no
+       teardown/reopen dance and can't get stuck. */
+    wipe:function(){ return tx('readwrite',function(st){ return st.clear() }) },
     list:function(){
       /* Looks up 'auto:<city>' but reports it as 'auto', so the save manager
          keeps rendering one autosave row without knowing about cities. */
@@ -14508,6 +14534,24 @@ window.addEventListener('pagehide',function(){ autosave('pagehide') });
    (see bootResume()'s EMERGENCY_KEY check) and only if it is actually newer
    than whatever IndexedDB already has. */
 const EMERGENCY_KEY='dh_emergency_snapshot';
+/* "Reset account" (cloud.js's doAccountReset(), wired to #acct-status-reset
+   in the Saved-fleets dialog). Every LITERAL of this game's local storage,
+   erased in one call: the IndexedDB saves store (LocalStore.wipe(), every
+   slot — auto, auto:<city>, slot1-3, progress, profile, history, all of it,
+   see the comment on LocalStore.wipe() above) plus the one thing that lives
+   outside it, EMERGENCY_KEY (bootResume() would otherwise resurrect a run
+   from this localStorage key on the very next load, undoing the reset).
+   Deliberately does NOT touch cloud.js's own SEEN_KEY/LAST_USER_KEY
+   localStorage entries — those just remember "an account has been used on
+   this browser" / "which username", cosmetic convenience for the sign-in
+   form, not save data, and cloud.js clears what it needs to as part of its
+   own sign-out flow. Exposed on DH_SAVE (not a bare global) for the same
+   reason snapshot/restore/migrate/LocalStore already are: cloud.js knows
+   nothing about deadhead.html's internals beyond that one object. */
+function wipeLocal(){
+  try{ localStorage.removeItem(EMERGENCY_KEY) }catch(e){ /* private mode */ }
+  return LocalStore.wipe();
+}
 window.addEventListener('beforeunload',function(){
   try{ localStorage.setItem(EMERGENCY_KEY,JSON.stringify(snapshot())) }
   catch(e){ /* private mode, quota, or no localStorage — nothing more to do here */ }
@@ -14704,9 +14748,8 @@ function newFleet(cityId,opts){
     PROG.soloSeatTold=true; progSave();
     log('Paolo','This one is yours alone — one car, and you are in it. '+MAKE+' '+
       'pays $'+CFG.soloStipend+' for every day you actually clock on, on top '+
-      'of whatever the meter makes. And the clock cannot run ahead of you the '+
-      'way it does everywhere else — you cannot fast-forward through a job '+
-      'you are physically sitting in.',0);
+      'of whatever the meter makes. No fleet to fall back on, so keep that '+
+      'one car working.',0);
   }
   /* THE FIRST city gets the guided walkthrough — the intro video and the
      scripted DAY1_ORDER beats. Every city after it does not, and the reason is
@@ -15043,6 +15086,7 @@ window.DH_ACT1={
   bgTileUrl:bgTileUrl,centerCity:centerCity,buildCityLayers:buildCityLayers,
   uTemp:uTemp,WX_CLOUD_MIN:WX_CLOUD_MIN,WXOV:WXOV,
   offersPerHour:offersPerHour,THIN_RATE:THIN_RATE,activeZones:activeZones,
+  permitFareMult:permitFareMult,
   owedOn:owedOn,sellNet:sellNet,sellValue:sellValue,canSell:canSell,sellCar:sellCar,
   principalPerDay:principalPerDay,billMidnight:billMidnight,
   volumeMult:volumeMult,nextTask:nextTask,
@@ -15137,7 +15181,7 @@ window.DH_ACT1={
   intercityPath:intercityPath,
   startTransfer:startTransfer,transferTick:transferTick};
 window.DH_SAVE={snapshot:snapshot,restore:restore,migrate:migrate,VERSION:VERSION,
-  Store:Store,LocalStore:LocalStore,V:SAVE_V,SLOTS:SLOTS,
+  Store:Store,LocalStore:LocalStore,V:SAVE_V,SLOTS:SLOTS,wipeLocal:wipeLocal,
   refresh:renderSaves,toast:toast,autosave:autosave,open:openSaves,
   saveSig:saveSig,autosaveSoon:autosaveSoon,sig:function(){ return lastSavedSig },
   /* cloud.js prefills the (now username, not email) cloud-account field from
