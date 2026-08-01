@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Deadhead — a robotaxi fleet simulator</title>
-<meta name="description" content="You start with $800 and the cheapest car is $30,000. Deadhead is a free browser sim about running a robotaxi fleet: six cars, six real driverless-ride-hailing cities, six real electricity tariffs. No install, no account.">
+<title>Deadhead — they automated the driving. Somebody still has to make it pay.</title>
+<meta name="description" content="An AI model took your whole department. What you still own is a car that drives itself. Deadhead is a free browser game about running a robotaxi fleet across six real cities — real tariffs, real service areas, a story you can fail, and an ending you have to qualify for. No install, no account.">
 <link rel="canonical" href="https://www.deadhead.cc/">
 <link rel="icon" href="img/favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="img/mark.png">
@@ -15,8 +15,8 @@
 
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Deadhead">
-<meta property="og:title" content="Deadhead — a robotaxi fleet simulator">
-<meta property="og:description" content="Six cars. Six real cities. One very honest spreadsheet. You start with $800 — enough to rent two cars, back to back. A third has to be earned. Free in your browser.">
+<meta property="og:title" content="They automated the driving. Somebody still has to make it pay.">
+<meta property="og:description" content="A new AI model took your whole department, cheaper, by the Monday. What you still own is a car that drives itself — and a man your father knows has a use for it. A free browser game: six real cities, one bank account, an ending you have to qualify for.">
 <meta property="og:url" content="https://www.deadhead.cc/">
 <meta property="og:image" content="https://www.deadhead.cc/img/og.jpg">
 <meta property="og:image:width" content="1200">
@@ -24,13 +24,13 @@
 <meta property="og:image:alt" content="Deadhead key art: three Axiom robotaxis on an elevated road above a city skyline at dusk, under the title Deadhead — Robotaxi Fleet Simulator.">
 
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Deadhead — a robotaxi fleet simulator">
-<meta name="twitter:description" content="Six cars. Six real cities. One very honest spreadsheet. You start with $800 — enough to rent two cars, back to back. A third has to be earned. Free in your browser.">
+<meta name="twitter:title" content="They automated the driving. Somebody still has to make it pay.">
+<meta name="twitter:description" content="Deadhead — a leg driven with nobody in the back, earning nothing. Also: the man the AI just finished automating. Your department is gone; your car drives itself. Free in your browser.">
 <meta name="twitter:image" content="https://www.deadhead.cc/img/og.jpg">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet">
 <style>
 
 :root{
@@ -249,6 +249,57 @@ img{max-width:100%;display:block}
 /* Room for the art to be art. The band is taller than the copy needs so the
    skyline reads above the console panel and the road traces below it. */
 .hero-band .hero{padding:74px 0 52px}
+/* 2026-08-01: the hero art is no longer the 1568px-wide annotated console, so
+   the column ratio inverts and the copy becomes the wide half.
+
+   It was briefly the prologue phone screenshot, which was the right IDEA and
+   the wrong asset: a 513x868 render of a phone UI shown at ~230px made the
+   thread inside it about 5px tall — a picture of text nobody can read is not
+   a picture of anything. Replaced with the office itself, which is a
+   photograph and survives being small.
+
+   The pair is the game's own: northstar-hired-wide.jpg (golden hour) and
+   northstar-ad-wide.jpg (dusk), the identical room at two times of day, the
+   same two files prologueOfficeArt() picks between off the player's wall
+   clock. Here the theme toggle drives it — see the script. */
+.hero-band .hero{grid-template-columns:1fr minmax(400px,46%)}
+/* ...and because that column is now the WIDE one, everything the old layout
+   could leave unconstrained has to be reined in. At 1440px the copy column is
+   ~980px: the lede ran to 130 characters a line, and `.hero .ctas .btn
+   {width:100%}` — perfectly sensible when the column was 300px — stretched
+   the primary button to nearly a metre of blue. Cap the measure, and let the
+   buttons size to their own labels. */
+/* 700, not 620: the second line of the headline is 34 characters at 48px and
+   needs ~660px to stay on one line — at 620 it broke to a third line carrying
+   the single word "pay.", which is the weakest possible way to land a
+   turn. The lede then gets its own, tighter measure below, because 700px of
+   16.5px body text is ~105 characters and reads as a wall. */
+.hero-band .hero-copy{max-width:700px}
+.hero-band .hero p.lede{max-width:60ch}
+.hero-band .hero .ctas{flex-direction:row;flex-wrap:wrap;gap:12px}
+.hero-band .hero .ctas .btn{width:auto}
+.hero-band .hero .meta{max-width:520px;gap:10px 28px}
+/* The phone is a tall, hard-edged rectangle against a sunset; without its own
+   surface it reads as a sticker pasted on the render. Same treatment as the
+   console panel it replaced, tightened to the narrower frame. */
+.hero-band .phone-stage{padding:10px;border-radius:20px;
+  background:rgba(20,22,29,.62);border-color:rgba(255,255,255,.13);
+  box-shadow:0 40px 90px -30px rgba(0,0,0,.85),
+             inset 0 1px 0 rgba(255,255,255,.09)}
+.hero-band .phone-stage img{border-radius:12px;width:100%;height:auto;display:block;
+  /* Cross-faded rather than swapped: the two office frames are the same room
+     from the same camera, so a hard cut looks like a glitch and a fade looks
+     like the light changing, which is what it is. */
+  transition:opacity .3s ease}
+.hero-band .phone-stage img.swapping{opacity:0}
+.hero-band .phone-stage figcaption{font-size:12px;color:var(--h-3);
+  text-align:center;padding:11px 4px 2px;line-height:1.5}
+@media (max-width:1180px){
+  /* Below the hero's own single-column breakpoint the art would stretch to
+     the full 1400px container. Cap it and centre it. */
+  .hero-band .hero{grid-template-columns:1fr}
+  .hero-band .phone-stage{max-width:660px;margin-inline:auto}
+}
 @media (max-width:1100px){ .hero-band .hero{padding:56px 0 40px} }
 @media (max-width:620px){
   .hero-band .hero{padding:34px 0 30px}
@@ -332,6 +383,18 @@ img{max-width:100%;display:block}
 html[data-theme="night"] .eyebrow{color:#A8BEF7}
 h1.title{
   font-size:44px;line-height:1.04;font-weight:900;letter-spacing:-.02em;color:var(--text-1);margin:0 0 16px;
+  /* The headline is two authored lines with a <br> between them, and the
+     second — "Somebody still has to make it pay." — is 34 characters that
+     need ~660px at this size. Anywhere it gets less, the line broke with
+     "pay." alone on a row of its own, which is the worst place to land a
+     turn that the whole headline exists to deliver.
+     `balance` splits an overflowing line into even halves instead of filling
+     the first and orphaning the remainder, so the fallback is now
+     "Somebody still has to / make it pay." rather than a single dangling
+     word. `pretty` is the wider-support cousin that only fixes the last line;
+     it is listed first so `balance` wins where both are understood. */
+  text-wrap:pretty;
+  text-wrap:balance;
 }
 .hero p.lede{font-size:16.5px;line-height:1.6;color:var(--text-2);margin:0 0 22px}
 .hero .ctas{display:flex;flex-direction:column;align-items:flex-start;gap:10px;margin-bottom:20px}
@@ -462,6 +525,52 @@ html[data-theme="night"] .city-card .permit{color:#A8BEF7}
   content:"";position:absolute;inset:0;
   background:linear-gradient(200deg,rgba(222,154,78,.16),transparent 55%);
   pointer-events:none;
+}
+/* ---- the portrait rotator ----
+   Paolo has a portrait per city — the same CITY_PAOLO_PHOTO set the game shows
+   on arrival, plus the New York frame from his old life and a new San
+   Francisco one. Showing one and stopping wastes five photographs, so they
+   cycle, and each carries a real piece of that city's taxi history: what the
+   trade there actually was before any of this. The facts are the point. A
+   caption that only said "Miami." would make this a slideshow. */
+.paolo .pic{cursor:default}
+.paolo .pic img{opacity:1;transition:opacity .45s ease}
+.paolo .pic img.fading{opacity:0}
+/* The city label rides on the photo; the fact sits under it, in the text
+   column's own type, because it is prose and not a caption. */
+.paolo .pic .city{
+  position:absolute;left:0;right:0;bottom:0;z-index:2;
+  padding:26px 12px 10px;
+  font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;
+  color:#fff;text-align:center;
+  background:linear-gradient(to top,rgba(11,12,17,.85),transparent);
+  text-shadow:0 1px 6px rgba(11,12,17,.8);
+}
+.paolo-fact{
+  margin-top:14px;padding-top:14px;border-top:1px solid var(--brd);
+}
+.paolo-fact p{
+  margin:0;font-size:14px;line-height:1.6;color:var(--text-3);
+  /* Reserve the tallest fact's height so the panel does not resize under the
+     reader every seven seconds. Set from the copy: four lines at 14/1.6. */
+  min-height:4.8em;
+}
+.paolo-fact p b{color:var(--text-1)}
+.paolo-dots{display:flex;gap:7px;margin-top:12px;flex-wrap:wrap}
+.paolo-dots button{
+  width:9px;height:9px;padding:0;border-radius:50%;cursor:pointer;
+  border:1px solid var(--brd-2);background:transparent;
+  transition:background .2s ease,border-color .2s ease,transform .2s ease;
+}
+.paolo-dots button:hover{border-color:var(--accent)}
+.paolo-dots button[aria-current="true"]{
+  background:var(--accent);border-color:var(--accent);transform:scale(1.25)}
+@media (max-width:980px){
+  .paolo-dots{justify-content:center}
+  .paolo-fact p{min-height:0}
+}
+@media (prefers-reduced-motion:reduce){
+  .paolo .pic img{transition:none}
 }
 .paolo h3{margin:0 0 10px;font-size:22px;color:var(--text-1)}
 .paolo p{margin:0 0 10px;font-size:15px;color:var(--text-2);line-height:1.6}
@@ -719,6 +828,144 @@ html[data-theme="night"] .gnote .gn{color:#A8BEF7}
   .hotspot{width:18px;height:18px;font-size:9.5px}
   .guide-stage{padding:6px}
 }
+
+/* ================= 2026-08-01: THE STORY-FIRST PAGE =================
+   Until now this page sold a simulator: the hero headline was a mechanic
+   ("You never drive. That's the job."), the hero ART was the twelve-marker
+   annotated console — the single most technical asset in the repo, at the
+   highest-attention point on the page — and the story was section 8 of 10.
+   A visitor who bounced at 40% scroll never learned there WAS a story.
+
+   Inverted. The story owns the top of the page, the instrumentation moved
+   into one <details> below it. Nothing was deleted: the guide, the six trims
+   and the real-data list are the same markup, relocated.
+
+   Almost no new layout was needed, because three earlier versions left their
+   CSS behind — .hold-grid (a three-up card row), .chain (a six-step city
+   strip) and .sf-wrap/.sf-grid/.spoiler (a stat block with a spoiler rail)
+   were all still in this stylesheet with zero call sites. Acts I, II and III
+   are built on those. Reviving dead rules beat writing four new grids. */
+
+/* ---- the name, as a dictionary entry ----
+   "Deadhead" carries the whole premise twice over: in the trade it is a leg
+   driven with nobody in the back, earning nothing; the other reading is the
+   person the industry just finished automating. The game is named for both
+   and the page never once said so. Set as a definition rather than a
+   headline, because the joke only lands if it reads as a straight-faced
+   glossary entry. */
+.defn{
+  max-width:780px;margin:0 auto;padding:30px 34px;text-align:center;
+}
+.defn .hw{
+  font-size:29px;font-weight:900;color:var(--text-1);letter-spacing:-.01em;
+  display:block;margin-bottom:2px;
+}
+.defn .pos{font-size:14px;color:var(--text-4);font-style:italic;margin-bottom:18px}
+.defn .sense{
+  display:flex;gap:12px;text-align:left;font-size:15.5px;line-height:1.6;
+  color:var(--text-2);padding:12px 0;border-top:1px solid var(--brd);
+}
+.defn .sense:first-of-type{border-top:none}
+.defn .sn{
+  flex:0 0 auto;width:20px;height:20px;border-radius:50%;margin-top:3px;
+  background:rgba(var(--accent-rgb),.14);color:var(--accent-2);
+  font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center;
+}
+html[data-theme="night"] .defn .sn{color:#A8BEF7}
+.defn .kick{
+  font-size:14px;color:var(--text-3);margin:18px 0 0;line-height:1.6;
+  padding-top:16px;border-top:1px solid var(--brd);
+}
+.defn .kick b{color:var(--text-1)}
+@media (max-width:620px){ .defn{padding:24px 22px} .defn .hw{font-size:24px} }
+
+/* ---- act sections ----
+   An act is a text column beside its own screenshot, alternating side so the
+   three of them read as a sequence rather than as three copies of one card.
+   grid-template-areas rather than order/direction, so the DOM stays in
+   reading order for a screen reader while the art swaps sides visually. */
+.act{display:grid;grid-template-columns:1fr 1fr;gap:34px;align-items:center;
+  grid-template-areas:"txt art"}
+.act.flip{grid-template-areas:"art txt"}
+.act .act-txt{grid-area:txt}
+.act .act-art{grid-area:art;margin:0;padding:10px}
+.act .act-art img{border-radius:12px;width:100%;height:auto;display:block}
+.act .act-art figcaption{font-size:12.5px;color:var(--text-4);line-height:1.5;
+  padding:11px 6px 2px;text-align:center}
+.act-no{
+  font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--amber-ink);margin-bottom:10px;
+}
+.act h2{font-size:29px;color:var(--text-1);margin:0 0 14px;font-weight:800;
+  letter-spacing:-.01em;max-width:26ch}
+.act p{font-size:16px;color:var(--text-2);line-height:1.65;margin:0 0 14px;max-width:56ch}
+.act p.aside{font-size:14px;color:var(--text-3)}
+.act .quote{
+  border-left:2px solid var(--mint);padding:2px 0 2px 16px;margin:18px 0 0;
+  font-size:15.5px;line-height:1.6;color:var(--text-2);font-style:italic;
+}
+.act .quote cite{display:block;font-style:normal;font-size:13px;
+  color:var(--text-4);margin-top:7px}
+@media (max-width:900px){
+  .act,.act.flip{grid-template-columns:1fr;grid-template-areas:"art" "txt";gap:24px}
+  .act h2{font-size:25px;max-width:none}
+}
+
+/* ---- the folded-away technical half ----
+   A <details>, so the receipts are one click from anyone who wants them and
+   cost nothing to anyone who doesn't. Collapsed on every width: a visitor
+   who opened the page for the story should not have to scroll past a spec
+   ladder to reach the CTA. The <summary> is styled as a real affordance
+   rather than a bare disclosure triangle, because a hairline triangle at the
+   bottom of a long page is a link nobody clicks. */
+.deep{
+  max-width:900px;margin:0 auto;padding:0;overflow:hidden;
+}
+.deep>summary{
+  cursor:pointer;list-style:none;padding:24px 28px;
+  display:flex;align-items:center;gap:16px;
+}
+.deep>summary::-webkit-details-marker{display:none}
+.deep>summary .sm-txt{flex:1 1 auto;min-width:0}
+.deep>summary h2{
+  font-size:21px;color:var(--text-1);margin:0 0 4px;font-weight:800;letter-spacing:-.01em}
+.deep>summary p{margin:0;font-size:14px;color:var(--text-3);line-height:1.5}
+/* The fold hides the three best-researched things on the site behind one
+   line of text, so the summary has to advertise its own weight — otherwise
+   it reads as a footnote and nobody opens it. Three counts, as chips. */
+.deep>summary .sm-tags{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+.deep>summary .sm-tags span{
+  font-size:11px;font-weight:700;letter-spacing:.04em;
+  padding:4px 9px;border-radius:999px;
+  color:var(--mint-ink);background:rgba(132,194,168,.14);
+  border:1px solid rgba(132,194,168,.32);
+}
+.deep>summary{border-left:3px solid var(--amber);border-radius:20px}
+.deep[open]>summary{border-radius:20px 20px 0 0}
+.deep>summary .chev{
+  flex:0 0 auto;width:34px;height:34px;border-radius:11px;
+  border:1px solid var(--brd-2);background:var(--panel-solid);
+  display:flex;align-items:center;justify-content:center;
+  font-size:13px;color:var(--text-3);
+  transition:transform .22s ease, color .22s ease;
+}
+.deep>summary:hover .chev{color:var(--text-1)}
+.deep[open]>summary .chev{transform:rotate(180deg)}
+.deep[open]>summary{border-bottom:1px solid var(--brd)}
+.deep .deep-body{padding:4px 28px 10px}
+/* The relocated sections were written as top-level <section>s with 54px of
+   their own padding; inside the fold that stacks into a lot of dead space. */
+.deep .deep-body section{padding:34px 0}
+.deep .deep-body section:first-child{padding-top:26px}
+.deep .deep-body .sec-head{margin-bottom:26px}
+.deep .deep-body .sec-head h2{font-size:24px}
+/* A card's hover-lift inside a disclosure that the reader has just expanded
+   reads as the panel reacting to the click, not to the pointer. */
+.deep .panel:hover{transform:none}
+@media (max-width:620px){
+  .deep>summary{padding:20px}
+  .deep .deep-body{padding:0 18px 8px}
+}
 </style>
 </head>
 <body>
@@ -726,10 +973,11 @@ html[data-theme="night"] .gnote .gn{color:#A8BEF7}
 <div class="topbar">
   <div class="brand"><b>DEADHEAD</b><span>robotaxi fleet ops</span></div>
   <nav class="topnav">
-    <a href="#guide">Guide</a>
-    <a href="#cars">Cars</a>
-    <a href="#work">The work</a>
+    <a href="#name">The name</a>
+    <a href="#act1">The story</a>
     <a href="#paolo">Paolo</a>
+    <a href="#work">The work</a>
+    <a href="#deep">How real is it?</a>
   </nav>
   <div style="display:flex;align-items:center;gap:10px">
     <a class="theme-btn" href="https://ko-fi.com/K3K6RR4LY" target="_blank" rel="noopener" title="Buy Paolo a coffee" style="text-decoration:none">☕</a>
@@ -743,40 +991,35 @@ html[data-theme="night"] .gnote .gn{color:#A8BEF7}
 
   <!-- HERO -->
   <div class="hero">
-    <div>
+    <div class="hero-copy">
       <span class="eyebrow">Free · Browser · No install</span>
-      <h1 class="title">You never drive.<br><em>That's the job.</em></h1>
-      <p class="lede">A robotaxi fleet simulator played entirely through the car's own centre console. You're not the driver — you're the person the driver got replaced by, and the job turns out to be harder.</p>
+      <!-- The non-breaking spaces are load-bearing. Between roughly 1000 and
+           1300px the copy column is ~630px, the second line needs ~660px, and
+           it broke with "pay." alone on a row — the single word the whole
+           headline is built to land. text-wrap:balance did NOT fix it (it
+           bails on a two-segment block split by <br> and left the orphan
+           in place at every width tested). Gluing the last three words makes
+           the only available break point the one before "make", so the worst
+           case is now "Somebody still has to / make it pay." — a real line,
+           not a dangling word. Verified 390-1600px. -->
+      <h1 class="title">They automated the driving.<br><em>Somebody still has to make&nbsp;it&nbsp;pay.</em></h1>
+      <p class="lede">A new AI model took your whole department, cheaper, by the Monday. What you still own is a car that drives itself — and a man your father knows has a use for it. The job is deciding which rides are worth taking. It is not a step up.</p>
       <div class="ctas">
-        <a class="btn btn-primary" href="https://game.deadhead.cc/" target="_blank" rel="noopener">▶ Play free in your browser</a>
-        <a class="btn btn-ghost" href="#guide">See the console tour</a>
+        <a class="btn btn-primary" href="https://game.deadhead.cc/" target="_blank" rel="noopener">▶ Take the job — play free</a>
+        <a class="btn btn-ghost" href="#name">Why it's called Deadhead</a>
       </div>
       <div class="meta">
-        <div><b>$800</b> starting cash</div>
-        <div><b>6</b> real vehicles</div>
-        <div><b>6</b> real cities</div>
+        <div><b>6</b> cities, one arc</div>
+        <div><b>9</b> requirements to qualify</div>
+        <div><b>1</b> ending you can miss</div>
         <div><b>0</b> ads, ever</div>
       </div>
     </div>
-    <div class="panel guide-stage">
-      <div class="guide-shot">
-        <img src="img/console.jpg" alt="The Deadhead console during a live Austin shift, with twelve numbered markers over the fleet roster, platforms, tariff, map, vehicle card, books, zones and offer board" loading="eager" fetchpriority="high" width="1568" height="729">
-        <button class="hotspot" data-i="1"  style="left:10.0%;top:2.9%"  aria-describedby="g1"><span>1</span></button>
-        <button class="hotspot" data-i="2"  style="left:52.3%;top:2.9%"  aria-describedby="g2"><span>2</span></button>
-        <button class="hotspot" data-i="3"  style="left:57.0%;top:7.0%"  aria-describedby="g3"><span>3</span></button>
-        <button class="hotspot" data-i="4"  style="left:21.8%;top:26.3%" aria-describedby="g4"><span>4</span></button>
-        <button class="hotspot" data-i="5"  style="left:12.1%;top:47.7%" aria-describedby="g5"><span>5</span></button>
-        <button class="hotspot" data-i="6"  style="left:9.0%;top:68.0%"  aria-describedby="g6"><span>6</span></button>
-        <button class="hotspot" data-i="7"  style="left:12.1%;top:82.0%" aria-describedby="g7"><span>7</span></button>
-        <button class="hotspot" data-i="8"  style="left:41.0%;top:55.0%" aria-describedby="g8"><span>8</span></button>
-        <button class="hotspot" data-i="9"  style="left:71.5%;top:30.5%" aria-describedby="g9"><span>9</span></button>
-        <button class="hotspot" data-i="10" style="left:58.5%;top:81.9%" aria-describedby="g10"><span>10</span></button>
-        <button class="hotspot" data-i="11" style="left:93.5%;top:23.0%" aria-describedby="g11"><span>11</span></button>
-        <button class="hotspot" data-i="12" style="left:96.0%;top:93.5%" aria-describedby="g12"><span>12</span></button>
-        <div class="gtip" id="gtip" role="tooltip" aria-hidden="true"></div>
-      </div>
-      <div class="guide-hint">A real shift: Austin, day one, 08:32 — four cars out and an airport run at $38.56 under a 1.8× surge. <b>Hover a marker</b>, or <a href="#guide" style="color:var(--mint-hi);font-weight:600">read the full tour below</a>.</div>
-    </div>
+    <figure class="panel phone-stage">
+      <img id="hero-office" src="img/northstar-hired-wide.jpg" width="1600" height="900" loading="eager" fetchpriority="high"
+        alt="The Robotaxi Operations Center in San Francisco: a long room of supervising-driver stations, each facing a wall of camera feeds">
+      <figcaption id="hero-office-cap">Robotaxi Operations Center, San Francisco. That is the seat.</figcaption>
+    </figure>
   </div>
 
 </div>
@@ -789,35 +1032,149 @@ html[data-theme="night"] .gnote .gn{color:#A8BEF7}
 <div id="art-end" aria-hidden="true" style="height:1px;margin-top:-1px"></div>
 
 <div class="wrap">
-
-  <!-- GUIDE -->
-  <section id="guide">
-    <div class="sec-head center">
-      <div class="kicker">A guided tour</div>
-      <h2>One screen, and everything on it is load-bearing</h2>
-      <p>The twelve markers on the console at the top of the page, in order. Hover any card and it lights up the marker it belongs to.</p>
+  <!-- THE NAME ===========================================================
+       The pun is the premise, and until this rewrite the page never once explained
+       it. "Deadhead" is real trade vocabulary — a leg driven with nobody in
+       the back, burning power and tyres for nothing — and it is also what the
+       industry just did to the person playing. Both senses are load-bearing:
+       sense 1 is a live counter in the game, sense 2 is the plot. Written as a
+       dictionary entry because a straight-faced glossary lands the second
+       meaning without ever having to point at it. -->
+  <section id="name">
+    <div class="panel defn">
+      <span class="hw">dead·head</span>
+      <div class="pos">noun, and also verb</div>
+      <div class="sense"><span class="sn">1</span><span><b>Taxi trade.</b> To drive with nobody in the back. The miles between dropping one passenger and reaching the next — real distance, real power, real wear, and not one cent of fare against any of it.</span></div>
+      <div class="sense"><span class="sn">2</span><span><b>The other reading.</b> A man whose work has been automated out from under him. Still moving. Still costing something to keep on the road. No longer carrying anybody anywhere.</span></div>
+      <p class="kick">The game is named for both, and it means both. <b>Deadhead miles are a live number on your books</b> — the single figure that decides whether a shift made money — and they are also, fairly bluntly, the thing that happened to you before the game started.</p>
     </div>
+  </section>
 
-    <div class="guide-list" style="margin-top:0">
-      <div class="gnote" id="g1" data-i="1"><div class="gn">1</div><div><h4>Six cities, two padlocked</h4><p>Austin is the tutorial. Each next city unlocks when you clock off a full shift in the one before. Phoenix and Las Vegas are dashed out — Nobody has launched there, so neither has the game.</p></div><div class="ge" aria-hidden="true">🗺️</div></div>
-      <div class="gnote" id="g2" data-i="2"><div class="gn">2</div><div><h4>One bank, all six cities</h4><p>Not a per-city balance. A car you left parked in Miami is still billing this number at midnight while you work Tampa.</p></div><div class="ge" aria-hidden="true">🏦</div></div>
-      <div class="gnote" id="g3" data-i="3"><div class="gn">3</div><div><h4>Clock on, and set the pace</h4><p>Cars only earn while you're watching them — you're the remote operator. 1×, 4× or 20×, except in San Francisco, where you're physically in the seat and it's locked at 1×.</p></div><div class="ge" aria-hidden="true">⏱️</div></div>
-      <div class="gnote" id="g4" data-i="4"><div class="gn">4</div><div><h4>The fleet roster</h4><p>Every car: what it's doing, its charge, what it has earned today, and how many rides are stacked behind the current one.</p></div><div class="ge" aria-hidden="true">🚕</div></div>
-      <div class="gnote" id="g5" data-i="5"><div class="gn">5</div><div><h4>Two platforms, two commissions</h4><p>Hitchr takes 25% and carries 70% of demand. Zipp takes 15% and carries 30%. Your acceptance rate drives how much either sends you.</p></div><div class="ge" aria-hidden="true">🤝</div></div>
-      <div class="gnote" id="g6" data-i="6"><div class="gn">6</div><div><h4>The tariff, now and next</h4><p>$0.19/kWh at 08:00, $0.34 from 16:00 — Austin Energy's real time-of-use pricing. Every city runs its own utility's published rates.</p></div><div class="ge" aria-hidden="true">⚡</div></div>
-      <div class="gnote" id="g7" data-i="7"><div class="gn">7</div><div><h4>Real charging sites</h4><p>Actual locations with their real stall counts, peak kW and distance. Research Blvd never queues at 18 stalls — and charges at only 72 kW, 32 minutes away.</p></div><div class="ge" aria-hidden="true">🔌</div></div>
-      <div class="gnote" id="g8" data-i="8"><div class="gn">8</div><div><h4>The real geofence</h4><p>Cars follow actual road geometry inside Austin's published service area. Where the real map excludes somewhere, so does this one.</p></div><div class="ge" aria-hidden="true">🧭</div></div>
-      <div class="gnote" id="g9" data-i="9"><div class="gn">9</div><div><h4>The selected car</h4><p>Charge, range, what power costs right now, and what it would take to send it to a charger. Also what it's worth if you sell it, and what you'd still owe.</p></div><div class="ge" aria-hidden="true">🚙</div></div>
-      <div class="gnote" id="g10" data-i="10"><div class="gn">10</div><div><h4>The best offer, and the surge</h4><p>One button takes the strongest job on the board. The multiplier next to it is live demand — 1.8× here, because it's the morning rush.</p></div><div class="ge" aria-hidden="true">🔥</div></div>
-      <div class="gnote" id="g11" data-i="11"><div class="gn">11</div><div><h4>The books, broken out</h4><p>Gross, net and cost per mile, split live into depreciation, energy, maintenance, insurance and software. This is the panel that stops flattering you first.</p></div><div class="ge" aria-hidden="true">📊</div></div>
-      <div class="gnote" id="g12" data-i="12"><div class="gn">12</div><div><h4>Three numbers per offer</h4><p>$51.41 on the meter, $38.56 after commission, and 5.6 miles driven empty to reach the passenger. Only the third one decides whether you made money.</p></div><div class="ge" aria-hidden="true">🧮</div></div>
+  <!-- ACT I -->
+  <section id="act1">
+    <div class="sec-head center">
+      <div class="kicker">The story</div>
+      <h2>Three acts, and you can fail the middle one</h2>
+      <p>Not a scenario list with a difficulty slider. There is a prologue, a five-city stretch that quietly grades you, an application you can be turned down for, and one ending.</p>
+    </div>
+    <div class="act">
+      <div class="act-txt">
+        <div class="act-no">Act one · Austin</div>
+        <h2>Your father gave a man your number</h2>
+        <p>Paolo Cortez drove a cab for forty-one years and got out while getting out was still his own idea. He co-owns a dealership now, he is recruiting for an operations centre in San Francisco, and he is not pleased about what he is about to talk you into. He calls you first because your father is a good reference.</p>
+        <!-- Deliberately not a count. Paolo says "10 simple requirements" in
+             the prologue while the application itself has 9 — his is a
+             rhetorical framing that Pavel explicitly ruled should NOT be
+             wired to REQS.length (see the note above prologueBeats() in
+             deadhead.html). Printing both numbers on one page would read as
+             a contradiction rather than as a character speaking loosely, so
+             the page names the requirement and leaves the arithmetic to
+             Act two, where 9 is the real, checkable figure. -->
+        <p>You already meet one of the requirements: <b>you own a car that drives itself.</b> Austin is where you find out what that is worth. He walks you through the first shift — which offers to take, why the empty miles matter more than the meter — then goes quiet and lets you get it wrong.</p>
+        <div class="quote">“You're not driving. You're deciding. Turns out that's the part that was hard.”<cite>Paolo, somewhere in the first hour</cite></div>
+      </div>
+      <figure class="panel act-art">
+        <img src="img/paolo-messages-2026-08-01.jpg" width="584" height="769" loading="lazy"
+          alt="Paolo's message thread on the in-game phone, mid-conversation during the first shift">
+        <figcaption>Fifteen written messages across the whole arc. He speaks when something changes, not when you click.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ACT II -->
+  <section id="act2">
+    <div class="act flip">
+      <div class="act-txt">
+        <div class="act-no">Act two · Five cities</div>
+        <h2>The job is going fine. That's the trap.</h2>
+        <p>Austin, Dallas, Miami, Tampa, Orlando. Each one opens when you clock off a full shift in the last. There is <em>one</em> bank across all five, not a balance per city — so a car you left parked in Miami is still billing you at midnight while you work Tampa, and it will keep doing that until you notice.</p>
+        <p>Underneath all of it, nine requirements are being counted without being announced. Miles supervised. Shifts completed. Acceptance rate. You are being assessed for something you have not applied for yet.</p>
+        <p class="aside">Apply too early and the same mailbox writes back with an honest <b>“you meet 3 of 9”</b> and tells you which six — not a locked door and no explanation.</p>
+      </div>
+      <figure class="panel act-art">
+        <img src="img/application-rejection-2026-08-01.jpg" width="1270" height="869" loading="lazy"
+          alt="A rejection letter listing which of the nine requirements have and have not been met">
+        <figcaption>You can genuinely be turned down, and told exactly why.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ACT III -->
+  <section id="act3">
+    <div class="act">
+      <div class="act-txt">
+        <div class="act-no">Act three · San Francisco</div>
+        <h2>You qualified. Now you're in the seat.</h2>
+        <p>The role you applied for is <b>supervising driver</b>, and it is not the job you have been doing. One car. No fleet. No fast-forward — San Francisco runs at 1× because you are physically in it, and there is nobody to delegate to. The city you have been working toward is the one where you personally have to sit there.</p>
+        <p>Clear it and the game ends on a signed contract. Not a score, not a win screen, not a leaderboard position — a document, and Paolo in the room, who still thinks you made a mistake.</p>
+        <div class="quote">“I still think it's a step down. But I drove out here to watch you sign it, and I'd do it again.”<cite>Paolo, the last thing he says</cite></div>
+        <p class="aside" style="margin-top:18px">He never comes around, and the game never argues him out of it. That question is left with you.</p>
+      </div>
+      <figure class="panel act-art">
+        <img src="img/finale-contract-2026-08-01.jpg" width="1270" height="919" loading="lazy"
+          alt="A signed contract beside Paolo's closing message on the in-game phone">
+        <figcaption>The ending. It is a piece of paper.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- PAOLO -->
+  <section id="paolo">
+    <div class="panel paolo">
+      <!-- Cropped from a wider street shot: full width kept, top/bottom
+           trimmed to a 3:4 portrait centred on Paolo's face and badge, with
+           the robotaxi's sensor pod and door still in frame for context. -->
+      <div class="pic">
+        <img id="paolo-pic" src="img/paolo-robotaxi.jpg" width="900" height="1200" loading="lazy"
+          alt="Paolo Cortez, in a light blue work shirt with his hack licence badge, standing beside a robotaxi with its rooftop sensor pod, clipboard in hand" onerror="this.remove()">
+        <span class="city" id="paolo-city">New York</span>
+      </div>
+      <div>
+        <div class="kicker" style="margin-bottom:6px">The other character</div>
+        <h3>Paolo Cortez</h3>
+        <p>Forty-one years in a cab before he got out, while getting out was still his idea. He walks you through your first day, then goes quiet — and speaks again only once you've been stuck long enough to need it. He isn't a tooltip. He has opinions about what you're doing, and he's usually right.</p>
+        <p>He turns up in every city you unlock, and he knows what the trade there used to be.</p>
+        <p style="font-size:14px;color:var(--text-3)">A standing <b>Now</b> line always names the single most useful next thing, so you're never lost. It never tells you what to <em>choose</em>.</p>
+        <div class="now-line">● Now: clock on and take the best offer</div>
+        <!-- One portrait per city, and one true thing about the trade there.
+             Every fact in PAOLO_CITIES (see the script) is sourced; none of it
+             is flavour. -->
+        <div class="paolo-fact">
+          <p id="paolo-fact">Forty-one years of it, here. New York froze the number of cabs at <b>13,595 in 1937</b> and never really unfroze it — and a medallion that changed hands for <b>$1.3 million in 2014</b> was worth about <b>$150,000</b> five years later.</p>
+        </div>
+        <div class="paolo-dots" id="paolo-dots" role="tablist" aria-label="Paolo, city by city"></div>
+        <p style="font-size:14px;margin-top:10px"><a href="#act3" style="color:var(--mint-ink);font-weight:600;text-decoration:none;border-bottom:1px solid rgba(132,194,168,.5)">He has one opinion about the whole job, and he never drops it — see Act three ↑</a></p>
+      </div>
     </div>
   </section>
 
   <div class="panel mid-cta">
-    <p>You've just toured the console top to bottom. <b>Select your Robotaxi car and play</b> — the real one works exactly like this.</p>
-    <a class="btn btn-primary" href="https://game.deadhead.cc/" target="_blank" rel="noopener">▶ Select your Robotaxi and play</a>
+    <p>Paolo&rsquo;s first message is waiting. <b>Nobody makes you accept it</b> &mdash; the prologue lets you decline, and means it.</p>
+    <a class="btn btn-primary" href="https://game.deadhead.cc/" target="_blank" rel="noopener">&#9654; Start Act one</a>
   </div>
+
+  <!-- THE WORK -->
+  <section id="work">
+    <div class="sec-head center">
+      <div class="kicker">Before you click play</div>
+      <h2>Plainly: it is a screen with numbers on it</h2>
+      <p>The story is real, but so is this: you play the whole thing through a car’s centre console, and most of what you do is read offers and decide. If a fleet roster and a cost-per-mile breakdown sound like the opposite of a story to you, better to know that here than thirty seconds in.</p>
+    </div>
+    <div class="feat-grid">
+      <div class="panel feat-card"><div class="ic">🕐</div><h4>Clock on</h4><p>Cars only earn while you're watching them. Clock off and they park — and still owe their fixed cost at midnight.</p></div>
+      <div class="panel feat-card"><div class="ic">📋</div><h4>Read the offers</h4><p>The meter, what you keep after commission, and the empty miles to the pickup. Two platforms, 25% and 15%, competing for the same demand.</p></div>
+      <div class="panel feat-card"><div class="ic">⚡</div><h4>Play the tariff</h4><p>Send a car to a real charging site with real stall counts and peak kW. A 72 kW site charges slowly because it genuinely does.</p></div>
+      <div class="panel feat-card"><div class="ic">🗺️</div><h4>Draw the map</h4><p>Switch zones on and off one at a time. Every city has its own demand curve by hour, and no two read the same way.</p></div>
+      <div class="panel feat-card"><div class="ic">🎮</div><h4>Take control</h4><p>When a car gets wedged the console cuts to its camera feed and you drive it out yourself. Optional — the incident clears eventually. Whether that's soon enough is your problem.</p></div>
+      <div class="panel feat-card"><div class="ic">🏆</div><h4>Keep the books</h4><p>Cost per mile broken out live into depreciation, energy, maintenance, insurance and software. Twenty-one trophies, and a leaderboard if you want one.</p></div>
+    </div>
+    <!-- No console screenshot here. There was one, and it sat about 400px
+         above the video in the next section — whose poster frame IS
+         console.jpg. Two identical 1568px screenshots inside one scroll
+         gesture read as a rendering fault, not as emphasis. The video is the
+         better of the two because it moves, so it keeps the slot, and the
+         annotated copy lives in the fold. -->
+  </section>
 
   <!-- IN ACTION -->
   <section id="inaction">
@@ -843,110 +1200,139 @@ html[data-theme="night"] .gnote .gn{color:#A8BEF7}
     </script>
   </section>
 
-  <!-- CARS -->
-  <section id="cars">
-    <div class="sec-head center">
-      <div class="kicker">Six cars, one invented marque</div>
-      <h2>Made-up badge, checkable numbers</h2>
-      <p>Axiom does not exist. The spec ladder does — real pack sizes, real range, real cost per mile, from a 48 kWh four-seat cab to a 123 kWh light truck. None of it is flavour text: each figure feeds a system that is already running.</p>
-    </div>
-    <div class="car-scroll">
-      <div class="panel car-card">
-        <div class="shot has-photo"><img class="photo" src="img/cars/cab.webp" alt="" loading="lazy" onerror="this.parentElement.classList.add('noimg')"><span class="badge">CB</span><svg class="carart" viewBox="0 0 250 96" aria-hidden="true"><ellipse class="sh" cx="125" cy="86" rx="104" ry="4.5"/><path class="bd" d="M50 70 L50 40 C50 26 62 17 82 16 L142 16 C164 17 180 26 188 40 L190 70 Z"/><path class="gl" d="M66 39 L66 25 C66 22 70 21 78 21 L138 21 C152 22 164 27 172 36 L174 39 Z"/><path class="ac" d="M92 46 L112 46"/><circle class="ty" cx="74" cy="70" r="14"/><circle class="hb" cx="74" cy="70" r="5.5"/><circle class="ty" cx="166" cy="70" r="14"/><circle class="hb" cx="166" cy="70" r="5.5"/></svg></div>
-        <div class="body"><h3><span class="mk">Axiom</span> Cab</h3><div class="sub">Purpose-built robotaxi</div>
-          <div class="specs"><span><b>48</b> kWh</span><span><b>300</b> mi</span><span><b>4</b> seats</span><span><b>$82</b>/day</span></div>
-          <p>No wheel, no pedals, cheapest to own — and on a charger constantly. Four seats means you never take a full group.</p></div>
-      </div>
-      <div class="panel car-card">
-        <div class="shot has-photo"><img class="photo" src="img/cars/saloon.webp" alt="" loading="lazy" onerror="this.parentElement.classList.add('noimg')"><span class="badge">SL</span><svg class="carart" viewBox="0 0 250 96" aria-hidden="true"><ellipse class="sh" cx="125" cy="86" rx="104" ry="4.5"/><path class="bd" d="M16 70 L14 54 C14 50 18 47 26 46 L70 40 C88 26 116 20 144 21 C166 22 182 28 194 40 L224 47 C232 49 234 56 232 62 L232 70 Z"/><path class="gl" d="M80 39 C95 28 118 23 142 24 C159 25 172 30 182 38 Z"/><path class="ln" d="M112 27 L112 39"/><circle class="ty" cx="58" cy="70" r="14"/><circle class="hb" cx="58" cy="70" r="5.5"/><circle class="ty" cx="190" cy="70" r="14"/><circle class="hb" cx="190" cy="70" r="5.5"/></svg></div>
-        <div class="body"><h3><span class="mk">Axiom</span> Saloon</h3><div class="sub">Standard saloon</div>
-          <div class="specs"><span><b>62</b> kWh</span><span><b>321</b> mi</span><span><b>5</b> seats</span><span><b>$93</b>/day</span></div>
-          <p>The entry trim: cheap to hold, short on legs. Rentable solo on day one, same as most of this lineup — only the Truck needs more than an $800 start.</p></div>
-      </div>
-      <div class="panel car-card">
-        <div class="shot has-photo"><img class="photo" src="img/cars/cross.webp" alt="" loading="lazy" onerror="this.parentElement.classList.add('noimg')"><span class="badge">CR</span><svg class="carart" viewBox="0 0 250 96" aria-hidden="true"><ellipse class="sh" cx="125" cy="86" rx="104" ry="4.5"/><path class="bd" d="M18 60 L16 38 C16 30 22 26 32 24 L52 20 C62 10 82 6 112 6 L146 7 C170 8 188 14 200 26 L228 33 C236 35 238 43 236 49 L236 60 Z"/><path class="gl" d="M60 25 C70 14 86 10 110 10 L144 11 C161 12 175 17 184 25 Z"/><path class="ln" d="M112 14 L112 25"/><circle class="ty" cx="62" cy="63" r="17"/><circle class="hb" cx="62" cy="63" r="7"/><circle class="ty" cx="192" cy="63" r="17"/><circle class="hb" cx="192" cy="63" r="7"/></svg></div>
-        <div class="body"><h3><span class="mk">Axiom</span> Crossover</h3><div class="sub">Standard crossover</div>
-          <div class="specs"><span><b>70</b> kWh</span><span><b>321</b> mi</span><span><b>5</b> seats</span><span><b>$101</b>/day</span></div>
-          <p>More pack, more frontal area — the same distance for more money. Needs $502 to rent — comfortably inside an $800 start.</p></div>
-      </div>
-      <div class="panel car-card">
-        <div class="shot has-photo"><img class="photo" src="img/cars/saloonlong.webp" alt="" loading="lazy" onerror="this.parentElement.classList.add('noimg')"><span class="badge">SLL</span><svg class="carart" viewBox="0 0 250 96" aria-hidden="true"><ellipse class="sh" cx="125" cy="86" rx="104" ry="4.5"/><path class="bd" d="M16 70 L14 54 C14 50 18 47 26 46 L70 40 C88 26 116 20 144 21 C166 22 182 28 194 40 L224 47 C232 49 234 56 232 62 L232 70 Z"/><path class="gl" d="M80 39 C95 28 118 23 142 24 C159 25 172 30 182 38 Z"/><path class="ln" d="M112 27 L112 39"/><circle class="ty" cx="58" cy="70" r="14"/><circle class="hb" cx="58" cy="70" r="5.5"/><circle class="ty" cx="190" cy="70" r="14"/><circle class="hb" cx="190" cy="70" r="5.5"/></svg></div>
-        <div class="body"><h3><span class="mk">Axiom</span> Saloon Long</h3><div class="sub">Long-range saloon</div>
-          <div class="specs"><span><b>82</b> kWh</span><span><b>363</b> mi</span><span><b>5</b> seats</span><span><b>$103</b>/day</span></div>
-          <p>The longest range in the catalogue. It sits on a charger less than anything else here.</p></div>
-      </div>
-      <div class="panel car-card">
-        <div class="shot has-photo"><img class="photo" src="img/cars/crosssix.webp" alt="" loading="lazy" onerror="this.parentElement.classList.add('noimg')"><span class="badge">CR6</span><svg class="carart" viewBox="0 0 250 96" aria-hidden="true"><ellipse class="sh" cx="125" cy="86" rx="104" ry="4.5"/><path class="bd" d="M12 64 L12 28 C12 22 18 18 30 16 L44 12 C50 10 58 9 70 9 L150 10 C176 11 194 18 206 30 L228 36 C236 38 238 46 236 52 L236 64 Z"/><path class="gl" d="M30 30 L30 18 C36 14 46 13 62 13 L148 14 C166 15 180 20 190 30 Z"/><path class="ln" d="M92 16 L92 29"/><path class="ln" d="M136 17 L136 29"/><circle class="ty" cx="58" cy="66" r="17"/><circle class="hb" cx="58" cy="66" r="7"/><circle class="ty" cx="192" cy="66" r="17"/><circle class="hb" cx="192" cy="66" r="7"/></svg></div>
-        <div class="body"><h3><span class="mk">Axiom</span> Crossover Six</h3><div class="sub">Three-row, six seats</div>
-          <div class="specs"><span><b>85</b> kWh</span><span><b>330</b> mi</span><span><b>6</b> seats</span><span><b>$115</b>/day</span></div>
-          <p>The biggest pack short of the Truck, spent carrying a third row nobody has booked yet.</p></div>
-      </div>
-      <div class="panel car-card">
-        <div class="shot has-photo"><img class="photo" src="img/cars/truck.webp" alt="" loading="lazy" onerror="this.parentElement.classList.add('noimg')"><span class="badge">TR</span><svg class="carart" viewBox="0 0 250 96" aria-hidden="true"><ellipse class="sh" cx="125" cy="86" rx="104" ry="4.5"/><path class="bd" d="M14 64 L14 38 L20 34 L96 34 L96 22 C96 18 102 16 112 16 L156 17 C168 18 176 22 184 30 L226 38 C234 40 236 46 234 52 L234 64 Z"/><path class="gl" d="M104 30 L104 21 C104 19 108 19 114 19 L152 20 C162 21 170 25 176 31 Z"/><path class="ln" d="M132 19 L132 30"/><path class="ac" d="M22 40 L92 40"/><circle class="ty" cx="54" cy="66" r="16"/><circle class="hb" cx="54" cy="66" r="6.5"/><circle class="ty" cx="196" cy="66" r="16"/><circle class="hb" cx="196" cy="66" r="6.5"/></svg></div>
-        <div class="body"><h3><span class="mk">Axiom</span> Truck</h3><div class="sub">Light truck, five seats</div>
-          <div class="specs"><span><b>123</b> kWh</span><span><b>320</b> mi</span><span><b>5</b> seats</span><span><b>$152</b>/day</span></div>
-          <p>Worst cost per mile by a wide margin, 38 minutes to fill, and $152 owed every midnight before it moves.</p></div>
-      </div>
-    </div>
-  </section>
+  <!-- THE FOLD ===========================================================
+       Everything in here used to be the top half of the page: the twelve-marker
+       console tour, the six-trim spec ladder and the real-data list. All three
+       are the best thing about the project and all three were killing it as a
+       pitch — a visitor who came for a story about losing a job to automation
+       met a cost-per-mile table in the first screenful. Folded, not cut. One
+       click for whoever wants the receipts, nothing for whoever doesn't.
 
-  <!-- THE WORK -->
-  <section id="work">
-    <div class="sec-head center">
-      <div class="kicker">What you actually do</div>
-      <h2>Run the fleet, not the car</h2>
-      <p>All of it happens on one screen: the car's own centre console.</p>
-    </div>
-    <div class="feat-grid">
-      <div class="panel feat-card"><div class="ic">🕐</div><h4>Clock on</h4><p>Cars only earn while you're watching them. Clock off and they park — and still owe their fixed cost at midnight.</p></div>
-      <div class="panel feat-card"><div class="ic">📋</div><h4>Read the offers</h4><p>The meter, what you keep after commission, and the empty miles to the pickup. Two platforms, 25% and 15%, competing for the same demand.</p></div>
-      <div class="panel feat-card"><div class="ic">⚡</div><h4>Play the tariff</h4><p>Send a car to a real charging site with real stall counts and peak kW. A 72 kW site charges slowly because it genuinely does.</p></div>
-      <div class="panel feat-card"><div class="ic">🗺️</div><h4>Draw the map</h4><p>Switch zones on and off one at a time. Every city has its own demand curve by hour, and no two read the same way.</p></div>
-      <div class="panel feat-card"><div class="ic">🎮</div><h4>Take control</h4><p>When a car gets wedged the console cuts to its camera feed and you drive it out yourself. Optional — the incident clears eventually. Whether that's soon enough is your problem.</p></div>
-      <div class="panel feat-card"><div class="ic">🏆</div><h4>Keep the books</h4><p>Cost per mile broken out live into depreciation, energy, maintenance, insurance and software. Twenty-one trophies, and a leaderboard if you want one.</p></div>
-    </div>
-  </section>
-
-  <!-- REAL DATA -->
-  <section>
-    <div class="sec-head center">
-      <div class="kicker">Real data, not set dressing</div>
-      <h2>The numbers are the difficulty setting</h2>
-      <p>Everything <em>around</em> the hardware — Hitchr, Zipp, Meridian, Halo — is invented. The cars and the numbers are not. That line is deliberate.</p>
-    </div>
-    <div class="real">
-      <div><span class="tick">✓</span><span><b>Six real geofences</b>, each drawn from the actual published service area — not a symmetric shape dropped on a map.</span></div>
-      <div><span class="tick">✓</span><span><b>Real charging sites</b> with actual coordinates, stall counts and peak kW.</span></div>
-      <div><span class="tick">✓</span><span><b>Real time-of-use electricity</b> from six real utilities, hour by hour.</span></div>
-      <div><span class="tick">✓</span><span><b>Real MSRP</b> on all six cars, with a cost side scaled to match.</span></div>
-      <div><span class="tick">✓</span><span><b>Real fares</b>, calibrated against observed prices in each market.</span></div>
-      <div><span class="tick">✓</span><span><b>Live weather</b> for whichever city you're in.</span></div>
-      <div><span class="tick">✓</span><span><b>Real road geometry</b> — cars follow actual streets on the map.</span></div>
-      <div><span class="tick">✓</span><span><b>Where reality made it worse</b>, it was left worse. Miami has no airport zone because the real box doesn't reach one.</span></div>
-    </div>
-  </section>
-
-  <!-- PAOLO -->
-  <section id="paolo">
-    <div class="panel paolo">
-      <!-- Cropped from a wider street shot: full width kept, top/bottom
-           trimmed to a 3:4 portrait centred on Paolo's face and badge, with
-           the robotaxi's sensor pod and door still in frame for context. -->
-      <div class="pic"><img src="img/paolo-robotaxi.jpg" width="900" height="1200" loading="lazy"
-        alt="Paolo Cortez, in a light blue work shirt with his NYC Hack License badge, standing beside a robotaxi with its rooftop sensor pod, clipboard in hand" onerror="this.remove()"></div>
-      <div>
-        <div class="kicker" style="margin-bottom:6px">Your advisor</div>
-        <h3>Paolo Cortez</h3>
-        <p>Forty-one years in a cab before he got out, while getting out was still his idea. He walks you through your first day, then goes quiet — and speaks again only once you've been stuck long enough to need it. He isn't a tooltip. He has opinions about what you're doing, and he's usually right.</p>
-        <p style="font-size:14px;color:var(--text-3)">A standing <b>Now</b> line always names the single most useful next thing, so you're never lost. It never tells you what to <em>choose</em>.</p>
-        <div class="now-line">● Now: clock on and take the best offer</div>
+       Collapsed at every width, including desktop. Open-by-default would put
+       roughly 1400px of spec between the story and the closing CTA, which is
+       the same mistake in a nicer wrapper. -->
+  <details class="panel deep" id="deep">
+    <summary>
+      <div class="sm-txt">
+        <h2>How real is it, actually?</h2>
+        <p>Real service areas, real electricity tariffs, real charging sites, real cost per mile &mdash; plus a full annotated tour of the console. Open this if you want the receipts.</p>
+        <div class="sm-tags"><span>12-marker console tour</span><span>6 trims, real specs</span><span>8 things drawn from public data</span></div>
       </div>
+      <span class="chev" aria-hidden="true">&#9662;</span>
+    </summary>
+    <div class="deep-body">
+      <!-- GUIDE -->
+      <section id="guide">
+        <div class="sec-head center">
+          <div class="kicker">A guided tour</div>
+          <h2>One screen, and everything on it is load-bearing</h2>
+          <p>Twelve markers on one real shift, in order. Hover any note and it lights the marker it belongs to.</p>
+        </div>
+
+        <div class="panel guide-stage">
+          <div class="guide-shot">
+            <img src="img/console.jpg" alt="The Deadhead console during a live Austin shift, with twelve numbered markers over the fleet roster, platforms, tariff, map, vehicle card, books, zones and offer board" loading="lazy" width="1568" height="729">
+            <button class="hotspot" data-i="1"  style="left:10.0%;top:2.9%"  aria-describedby="g1"><span>1</span></button>
+            <button class="hotspot" data-i="2"  style="left:52.3%;top:2.9%"  aria-describedby="g2"><span>2</span></button>
+            <button class="hotspot" data-i="3"  style="left:57.0%;top:7.0%"  aria-describedby="g3"><span>3</span></button>
+            <button class="hotspot" data-i="4"  style="left:21.8%;top:26.3%" aria-describedby="g4"><span>4</span></button>
+            <button class="hotspot" data-i="5"  style="left:12.1%;top:47.7%" aria-describedby="g5"><span>5</span></button>
+            <button class="hotspot" data-i="6"  style="left:9.0%;top:68.0%"  aria-describedby="g6"><span>6</span></button>
+            <button class="hotspot" data-i="7"  style="left:12.1%;top:82.0%" aria-describedby="g7"><span>7</span></button>
+            <button class="hotspot" data-i="8"  style="left:41.0%;top:55.0%" aria-describedby="g8"><span>8</span></button>
+            <button class="hotspot" data-i="9"  style="left:71.5%;top:30.5%" aria-describedby="g9"><span>9</span></button>
+            <button class="hotspot" data-i="10" style="left:58.5%;top:81.9%" aria-describedby="g10"><span>10</span></button>
+            <button class="hotspot" data-i="11" style="left:93.5%;top:23.0%" aria-describedby="g11"><span>11</span></button>
+            <button class="hotspot" data-i="12" style="left:96.0%;top:93.5%" aria-describedby="g12"><span>12</span></button>
+            <div class="gtip" id="gtip" role="tooltip" aria-hidden="true"></div>
+          </div>
+          <div class="guide-hint">Austin, day one, 08:32. <b>Hover a marker</b>, or read the twelve notes underneath.</div>
+        </div>
+        <div class="guide-list" style="margin-top:0">
+          <div class="gnote" id="g1" data-i="1"><div class="gn">1</div><div><h4>Six cities, two padlocked</h4><p>Austin is the tutorial. Each next city unlocks when you clock off a full shift in the one before. Phoenix and Las Vegas are dashed out — Nobody has launched there, so neither has the game.</p></div><div class="ge" aria-hidden="true">🗺️</div></div>
+          <div class="gnote" id="g2" data-i="2"><div class="gn">2</div><div><h4>One bank, all six cities</h4><p>Not a per-city balance. A car you left parked in Miami is still billing this number at midnight while you work Tampa.</p></div><div class="ge" aria-hidden="true">🏦</div></div>
+          <div class="gnote" id="g3" data-i="3"><div class="gn">3</div><div><h4>Clock on, and set the pace</h4><p>Cars only earn while you're watching them — you're the remote operator. 1×, 4× or 20×, except in San Francisco, where you're physically in the seat and it's locked at 1×.</p></div><div class="ge" aria-hidden="true">⏱️</div></div>
+          <div class="gnote" id="g4" data-i="4"><div class="gn">4</div><div><h4>The fleet roster</h4><p>Every car: what it's doing, its charge, what it has earned today, and how many rides are stacked behind the current one.</p></div><div class="ge" aria-hidden="true">🚕</div></div>
+          <div class="gnote" id="g5" data-i="5"><div class="gn">5</div><div><h4>Two platforms, two commissions</h4><p>Hitchr takes 25% and carries 70% of demand. Zipp takes 15% and carries 30%. Your acceptance rate drives how much either sends you.</p></div><div class="ge" aria-hidden="true">🤝</div></div>
+          <div class="gnote" id="g6" data-i="6"><div class="gn">6</div><div><h4>The tariff, now and next</h4><p>$0.19/kWh at 08:00, $0.34 from 16:00 — Austin Energy's real time-of-use pricing. Every city runs its own utility's published rates.</p></div><div class="ge" aria-hidden="true">⚡</div></div>
+          <div class="gnote" id="g7" data-i="7"><div class="gn">7</div><div><h4>Real charging sites</h4><p>Actual locations with their real stall counts, peak kW and distance. Research Blvd never queues at 18 stalls — and charges at only 72 kW, 32 minutes away.</p></div><div class="ge" aria-hidden="true">🔌</div></div>
+          <div class="gnote" id="g8" data-i="8"><div class="gn">8</div><div><h4>The real geofence</h4><p>Cars follow actual road geometry inside Austin's published service area. Where the real map excludes somewhere, so does this one.</p></div><div class="ge" aria-hidden="true">🧭</div></div>
+          <div class="gnote" id="g9" data-i="9"><div class="gn">9</div><div><h4>The selected car</h4><p>Charge, range, what power costs right now, and what it would take to send it to a charger. Also what it's worth if you sell it, and what you'd still owe.</p></div><div class="ge" aria-hidden="true">🚙</div></div>
+          <div class="gnote" id="g10" data-i="10"><div class="gn">10</div><div><h4>The best offer, and the surge</h4><p>One button takes the strongest job on the board. The multiplier next to it is live demand — 1.8× here, because it's the morning rush.</p></div><div class="ge" aria-hidden="true">🔥</div></div>
+          <div class="gnote" id="g11" data-i="11"><div class="gn">11</div><div><h4>The books, broken out</h4><p>Gross, net and cost per mile, split live into depreciation, energy, maintenance, insurance and software. This is the panel that stops flattering you first.</p></div><div class="ge" aria-hidden="true">📊</div></div>
+          <div class="gnote" id="g12" data-i="12"><div class="gn">12</div><div><h4>Three numbers per offer</h4><p>$51.41 on the meter, $38.56 after commission, and 5.6 miles driven empty to reach the passenger. Only the third one decides whether you made money.</p></div><div class="ge" aria-hidden="true">🧮</div></div>
+        </div>
+      </section>
+      <!-- CARS -->
+      <section id="cars">
+        <div class="sec-head center">
+          <div class="kicker">Six cars, one invented marque</div>
+          <h2>Made-up badge, checkable numbers</h2>
+          <p>Axiom does not exist. The spec ladder does — real pack sizes, real range, real cost per mile, from a 48 kWh four-seat cab to a 123 kWh light truck. None of it is flavour text: each figure feeds a system that is already running.</p>
+        </div>
+        <div class="car-scroll">
+          <div class="panel car-card">
+            <div class="shot has-photo"><img class="photo" src="img/cars/cab.webp" alt="" loading="lazy" onerror="this.parentElement.classList.add('noimg')"><span class="badge">CB</span><svg class="carart" viewBox="0 0 250 96" aria-hidden="true"><ellipse class="sh" cx="125" cy="86" rx="104" ry="4.5"/><path class="bd" d="M50 70 L50 40 C50 26 62 17 82 16 L142 16 C164 17 180 26 188 40 L190 70 Z"/><path class="gl" d="M66 39 L66 25 C66 22 70 21 78 21 L138 21 C152 22 164 27 172 36 L174 39 Z"/><path class="ac" d="M92 46 L112 46"/><circle class="ty" cx="74" cy="70" r="14"/><circle class="hb" cx="74" cy="70" r="5.5"/><circle class="ty" cx="166" cy="70" r="14"/><circle class="hb" cx="166" cy="70" r="5.5"/></svg></div>
+            <div class="body"><h3><span class="mk">Axiom</span> Cab</h3><div class="sub">Purpose-built robotaxi</div>
+              <div class="specs"><span><b>48</b> kWh</span><span><b>300</b> mi</span><span><b>4</b> seats</span><span><b>$82</b>/day</span></div>
+              <p>No wheel, no pedals, cheapest to own — and on a charger constantly. Four seats means you never take a full group.</p></div>
+          </div>
+          <div class="panel car-card">
+            <div class="shot has-photo"><img class="photo" src="img/cars/saloon.webp" alt="" loading="lazy" onerror="this.parentElement.classList.add('noimg')"><span class="badge">SL</span><svg class="carart" viewBox="0 0 250 96" aria-hidden="true"><ellipse class="sh" cx="125" cy="86" rx="104" ry="4.5"/><path class="bd" d="M16 70 L14 54 C14 50 18 47 26 46 L70 40 C88 26 116 20 144 21 C166 22 182 28 194 40 L224 47 C232 49 234 56 232 62 L232 70 Z"/><path class="gl" d="M80 39 C95 28 118 23 142 24 C159 25 172 30 182 38 Z"/><path class="ln" d="M112 27 L112 39"/><circle class="ty" cx="58" cy="70" r="14"/><circle class="hb" cx="58" cy="70" r="5.5"/><circle class="ty" cx="190" cy="70" r="14"/><circle class="hb" cx="190" cy="70" r="5.5"/></svg></div>
+            <div class="body"><h3><span class="mk">Axiom</span> Saloon</h3><div class="sub">Standard saloon</div>
+              <div class="specs"><span><b>62</b> kWh</span><span><b>321</b> mi</span><span><b>5</b> seats</span><span><b>$93</b>/day</span></div>
+              <p>The entry trim: cheap to hold, short on legs. Rentable solo on day one, same as most of this lineup — only the Truck needs more than an $800 start.</p></div>
+          </div>
+          <div class="panel car-card">
+            <div class="shot has-photo"><img class="photo" src="img/cars/cross.webp" alt="" loading="lazy" onerror="this.parentElement.classList.add('noimg')"><span class="badge">CR</span><svg class="carart" viewBox="0 0 250 96" aria-hidden="true"><ellipse class="sh" cx="125" cy="86" rx="104" ry="4.5"/><path class="bd" d="M18 60 L16 38 C16 30 22 26 32 24 L52 20 C62 10 82 6 112 6 L146 7 C170 8 188 14 200 26 L228 33 C236 35 238 43 236 49 L236 60 Z"/><path class="gl" d="M60 25 C70 14 86 10 110 10 L144 11 C161 12 175 17 184 25 Z"/><path class="ln" d="M112 14 L112 25"/><circle class="ty" cx="62" cy="63" r="17"/><circle class="hb" cx="62" cy="63" r="7"/><circle class="ty" cx="192" cy="63" r="17"/><circle class="hb" cx="192" cy="63" r="7"/></svg></div>
+            <div class="body"><h3><span class="mk">Axiom</span> Crossover</h3><div class="sub">Standard crossover</div>
+              <div class="specs"><span><b>70</b> kWh</span><span><b>321</b> mi</span><span><b>5</b> seats</span><span><b>$101</b>/day</span></div>
+              <p>More pack, more frontal area — the same distance for more money. Needs $502 to rent — comfortably inside an $800 start.</p></div>
+          </div>
+          <div class="panel car-card">
+            <div class="shot has-photo"><img class="photo" src="img/cars/saloonlong.webp" alt="" loading="lazy" onerror="this.parentElement.classList.add('noimg')"><span class="badge">SLL</span><svg class="carart" viewBox="0 0 250 96" aria-hidden="true"><ellipse class="sh" cx="125" cy="86" rx="104" ry="4.5"/><path class="bd" d="M16 70 L14 54 C14 50 18 47 26 46 L70 40 C88 26 116 20 144 21 C166 22 182 28 194 40 L224 47 C232 49 234 56 232 62 L232 70 Z"/><path class="gl" d="M80 39 C95 28 118 23 142 24 C159 25 172 30 182 38 Z"/><path class="ln" d="M112 27 L112 39"/><circle class="ty" cx="58" cy="70" r="14"/><circle class="hb" cx="58" cy="70" r="5.5"/><circle class="ty" cx="190" cy="70" r="14"/><circle class="hb" cx="190" cy="70" r="5.5"/></svg></div>
+            <div class="body"><h3><span class="mk">Axiom</span> Saloon Long</h3><div class="sub">Long-range saloon</div>
+              <div class="specs"><span><b>82</b> kWh</span><span><b>363</b> mi</span><span><b>5</b> seats</span><span><b>$103</b>/day</span></div>
+              <p>The longest range in the catalogue. It sits on a charger less than anything else here.</p></div>
+          </div>
+          <div class="panel car-card">
+            <div class="shot has-photo"><img class="photo" src="img/cars/crosssix.webp" alt="" loading="lazy" onerror="this.parentElement.classList.add('noimg')"><span class="badge">CR6</span><svg class="carart" viewBox="0 0 250 96" aria-hidden="true"><ellipse class="sh" cx="125" cy="86" rx="104" ry="4.5"/><path class="bd" d="M12 64 L12 28 C12 22 18 18 30 16 L44 12 C50 10 58 9 70 9 L150 10 C176 11 194 18 206 30 L228 36 C236 38 238 46 236 52 L236 64 Z"/><path class="gl" d="M30 30 L30 18 C36 14 46 13 62 13 L148 14 C166 15 180 20 190 30 Z"/><path class="ln" d="M92 16 L92 29"/><path class="ln" d="M136 17 L136 29"/><circle class="ty" cx="58" cy="66" r="17"/><circle class="hb" cx="58" cy="66" r="7"/><circle class="ty" cx="192" cy="66" r="17"/><circle class="hb" cx="192" cy="66" r="7"/></svg></div>
+            <div class="body"><h3><span class="mk">Axiom</span> Crossover Six</h3><div class="sub">Three-row, six seats</div>
+              <div class="specs"><span><b>85</b> kWh</span><span><b>330</b> mi</span><span><b>6</b> seats</span><span><b>$115</b>/day</span></div>
+              <p>The biggest pack short of the Truck, spent carrying a third row nobody has booked yet.</p></div>
+          </div>
+          <div class="panel car-card">
+            <div class="shot has-photo"><img class="photo" src="img/cars/truck.webp" alt="" loading="lazy" onerror="this.parentElement.classList.add('noimg')"><span class="badge">TR</span><svg class="carart" viewBox="0 0 250 96" aria-hidden="true"><ellipse class="sh" cx="125" cy="86" rx="104" ry="4.5"/><path class="bd" d="M14 64 L14 38 L20 34 L96 34 L96 22 C96 18 102 16 112 16 L156 17 C168 18 176 22 184 30 L226 38 C234 40 236 46 234 52 L234 64 Z"/><path class="gl" d="M104 30 L104 21 C104 19 108 19 114 19 L152 20 C162 21 170 25 176 31 Z"/><path class="ln" d="M132 19 L132 30"/><path class="ac" d="M22 40 L92 40"/><circle class="ty" cx="54" cy="66" r="16"/><circle class="hb" cx="54" cy="66" r="6.5"/><circle class="ty" cx="196" cy="66" r="16"/><circle class="hb" cx="196" cy="66" r="6.5"/></svg></div>
+            <div class="body"><h3><span class="mk">Axiom</span> Truck</h3><div class="sub">Light truck, five seats</div>
+              <div class="specs"><span><b>123</b> kWh</span><span><b>320</b> mi</span><span><b>5</b> seats</span><span><b>$152</b>/day</span></div>
+              <p>Worst cost per mile by a wide margin, 38 minutes to fill, and $152 owed every midnight before it moves.</p></div>
+          </div>
+        </div>
+      </section>
+      <!-- REAL DATA -->
+      <section>
+        <div class="sec-head center">
+          <div class="kicker">Real data, not set dressing</div>
+          <h2>The numbers are the difficulty setting</h2>
+          <p>Everything <em>around</em> the hardware — Hitchr, Zipp, Meridian, Halo — is invented. The cars and the numbers are not. That line is deliberate.</p>
+        </div>
+        <div class="real">
+          <div><span class="tick">✓</span><span><b>Six real geofences</b>, each drawn from the actual published service area — not a symmetric shape dropped on a map.</span></div>
+          <div><span class="tick">✓</span><span><b>Real charging sites</b> with actual coordinates, stall counts and peak kW.</span></div>
+          <div><span class="tick">✓</span><span><b>Real time-of-use electricity</b> from six real utilities, hour by hour.</span></div>
+          <div><span class="tick">✓</span><span><b>Real MSRP</b> on all six cars, with a cost side scaled to match.</span></div>
+          <div><span class="tick">✓</span><span><b>Real fares</b>, calibrated against observed prices in each market.</span></div>
+          <div><span class="tick">✓</span><span><b>Live weather</b> for whichever city you're in.</span></div>
+          <div><span class="tick">✓</span><span><b>Real road geometry</b> — cars follow actual streets on the map.</span></div>
+          <div><span class="tick">✓</span><span><b>Where reality made it worse</b>, it was left worse. Miami has no airport zone because the real box doesn't reach one.</span></div>
+        </div>
+      </section>
     </div>
-  </section>
+  </details>
 
   <div class="panel mid-cta">
-    <p>Paolo's <b>Now</b> line is already waiting on your first shift.</p>
-    <a class="btn btn-primary" href="https://game.deadhead.cc/" target="_blank" rel="noopener">▶ Meet Paolo in-game</a>
+    <p>That is the whole of it: <b>a story you can fail, and an ending you have to qualify for.</b> Free, in a browser tab, right now.</p>
+    <a class="btn btn-primary" href="https://game.deadhead.cc/" target="_blank" rel="noopener">&#9654; Play Deadhead free</a>
   </div>
 
   <!-- ALSO IN THE BOX -->
@@ -957,12 +1343,14 @@ html[data-theme="night"] .gnote .gn{color:#A8BEF7}
     </div>
     <div class="feat-grid">
       <div class="panel feat-card"><div class="ic">💾</div><h4>Save anywhere</h4><p>Local saves by default, or sign in for cloud saves synced across devices. Passwords are never transmitted — key derivation runs in your browser.</p></div>
+      <div class="panel feat-card"><div class="ic">👥</div><h4>Up to four players, one browser</h4><p>Sign-in card remembers up to four accounts as coloured circles — pick yours, or add a fresh one. Prefer to skip accounts entirely? One tap plays fully offline on just this device.</p></div>
       <div class="panel feat-card"><div class="ic">🌗</div><h4>Light and dark</h4><p>Both themes, and the layout genuinely reworks itself between a phone, a laptop and an ultrawide.</p></div>
-      <div class="panel feat-card"><div class="ic">📄</div><h4>One HTML file</h4><p><!-- "826 KB" was written once and never revisited; the file was 975 KB by
-     0.65.0. An exact byte count in marketing copy has to be re-checked on
-     every release and silently rots if it isn't, so this is deliberately a
-     bound rather than a figure — it stays true until the file doubles. -->
-     Under 1 MB, no build step. <a href="https://github.com/kotyzap/Deadhead-RoboTaxi-Fleet-Simulator/blob/main/deadhead.html">Download it</a> and it runs offline.</p></div>
+      <div class="panel feat-card"><div class="ic">📄</div><h4>One HTML file</h4><p><!-- 2026-08-01: was "826 KB", drifted silently to a false "Under 1 MB"
+     claim once the file passed 1 MB (1.25 MB at 0.120.0, after the story/
+     application/ending layer landed). Re-bounded to 1.5 MB — re-check this
+     the next time the file's size roughly doubles, don't wait for it to
+     go stale and false again. -->
+     Under 1.5 MB, no build step. <a href="https://github.com/kotyzap/Deadhead-RoboTaxi-Fleet-Simulator/blob/main/deadhead.html">Download it</a> and it runs offline.</p></div>
     </div>
   </section>
 
@@ -982,10 +1370,10 @@ html[data-theme="night"] .gnote .gn{color:#A8BEF7}
       <a href="https://game.deadhead.cc/" target="_blank" rel="noopener">Play</a>
       <a href="https://github.com/kotyzap/Deadhead-RoboTaxi-Fleet-Simulator" target="_blank" rel="noopener">GitHub</a>
       <a href="https://ko-fi.com/K3K6RR4LY" target="_blank" rel="noopener">Ko-fi</a>
-      <a href="#guide">Guide</a>
-      <a href="#cars">Cars</a>
+      <a href="#act1">The story</a>
+      <a href="#deep">How real is it?</a>
     </div>
-    <div style="font-size:13px;color:var(--text-4)">Deadhead — a robotaxi fleet simulator</div>
+    <div style="font-size:13px;color:var(--text-4)">Deadhead — they automated the driving; somebody still has to make it pay</div>
     <p class="fine">Deadhead is an independent work of fiction. It is not affiliated with, endorsed by, sponsored by or connected to any vehicle manufacturer or ride-hailing operator, and it uses no manufacturer&rsquo;s name, badge, model names or photographs. Every company and vehicle in the game &mdash; Axiom, Hitchr, Zipp, Meridian, Halo &mdash; is invented. What is real is the arithmetic: service areas, electricity tariffs, permit regimes and observed street fares are drawn from public information.</p>
   </footer>
 
@@ -994,16 +1382,55 @@ html[data-theme="night"] .gnote .gn{color:#A8BEF7}
 <script>
   const root = document.documentElement;
   const btn = document.getElementById('themeToggle');
-  function applyTheme(t){
+  /* ---- the hero office, by time of day ----
+     Two photographs of the identical Robotaxi Operations Center — the same
+     files the game's own prologueOfficeArt() picks between, where the choice
+     is made off the player's wall clock. Here the theme toggle is the honest
+     analogue: a visitor who has put the page in Night mode and is looking at
+     a golden-hour room has been told two different things at once.
+
+     Both frames are preloaded on first swap, so the second and every later
+     toggle is instant and the cross-fade never shows a gap. */
+  const OFFICE = {
+    day:   {src:'img/northstar-hired-wide.jpg',
+            cap:'Robotaxi Operations Center, San Francisco. That is the seat.'},
+    night: {src:'img/northstar-ad-wide.jpg',
+            cap:'Robotaxi Operations Center, San Francisco. Night shift is quieter.'}
+  };
+  let officeWarmed = false;
+  function applyOffice(t, animate){
+    const img = document.getElementById('hero-office');
+    const cap = document.getElementById('hero-office-cap');
+    if(!img) return;
+    if(!officeWarmed){
+      officeWarmed = true;
+      Object.values(OFFICE).forEach(o => { new Image().src = o.src; });
+    }
+    const want = OFFICE[t] || OFFICE.day;
+    if(img.getAttribute('src') === want.src) return;
+    if(!animate){ img.src = want.src; if(cap) cap.textContent = want.cap; return; }
+    img.classList.add('swapping');
+    /* Decode before showing, or the fade-in lands on a half-painted frame. */
+    const next = new Image();
+    next.onload = next.onerror = () => {
+      img.src = want.src;
+      if(cap) cap.textContent = want.cap;
+      requestAnimationFrame(() => img.classList.remove('swapping'));
+    };
+    next.src = want.src;
+  }
+
+  function applyTheme(t, animate){
     root.setAttribute('data-theme', t);
     btn.textContent = t === 'night' ? '☀️' : '🌙';
     btn.setAttribute('aria-label', t === 'night' ? 'Switch to light theme' : 'Switch to dark theme');
+    applyOffice(t, animate);
   }
   const saved = localStorage.getItem('deadhead-landing-theme');
-  applyTheme(saved === 'night' ? 'night' : 'day');
+  applyTheme(saved === 'night' ? 'night' : 'day', false);
   btn.addEventListener('click', () => {
     const next = root.getAttribute('data-theme') === 'night' ? 'day' : 'night';
-    applyTheme(next);
+    applyTheme(next, true);
     localStorage.setItem('deadhead-landing-theme', next);
   });
 
@@ -1129,10 +1556,211 @@ html[data-theme="night"] .gnote .gn{color:#A8BEF7}
       if(n) n.scrollIntoView({behavior:'smooth', block:'center'});
     }));
 
-    if(autoLive){
+    /* ---- the guide now lives inside a closed <details> ----------------
+       Two things break if the cycle just starts on load, as it used to when
+       this was the hero:
+
+       1. Everything inside a closed <details> has no layout box, so
+          showTip()'s offsetWidth/offsetHeight and getBoundingClientRect()
+          all return 0 — the tooltip gets positioned at the origin and stays
+          there when the reader finally opens the fold.
+       2. It is a 3s interval animating a subtree nobody can see, for the
+          entire time the page is open, which on most visits is forever.
+
+       So the cycle is armed but not started, and only runs while the fold is
+       actually open. Closing it stops the timer for good — by then the reader
+       has seen the demo and any further cycling is fighting them. */
+    const fold = document.getElementById('deep');
+    function startAuto(){
+      if(!autoLive || autoTimer) return;
       autoStep();                        /* marker 1, immediately */
       autoTimer = setInterval(autoStep, 3000);
     }
+    if(!fold){
+      startAuto();
+    } else {
+      fold.addEventListener('toggle', () => {
+        if(fold.open) startAuto(); else stopAuto();
+      });
+      if(fold.open) startAuto();
+    }
+  })();
+
+  /* ---- Paolo, city by city ----------------------------------------------
+     Six portraits: the New York frame from his old life, the four
+     CITY_PAOLO_PHOTO images the game already shows on arrival (Dallas, Miami,
+     Tampa, Orlando) and a new San Francisco one. Ordered as the game's arc
+     runs, with New York first because that is where he came from.
+
+     Austin was the one gap until Pavel supplied a portrait for it on
+     2026-08-01; all six cities in the arc are now covered, plus New York.
+
+     EVERY FACT IS SOURCED. This is the one place on the page where the
+     research is the content, so nothing in here is invented, rounded for
+     effect, or inferred:
+       New York  — Haas Act froze the fleet at 13,595 (1937); medallions peaked
+                   at $1.3M (2014) and traded around $120–150k by 2019.
+                   citylimits.org/need-to-know-taxi-medallions-in-new-york/
+       Austin    — Prop 1 rejected 56-44 on 7 May 2016; Uber and Lyft ceased
+                   service the following morning and did not return until
+                   29 May 2017, when HB 100 moved all TNC authority to the
+                   state and voided the local ordinances of Austin and 30-odd
+                   other Texas cities.  texastribune.org/2017/05/25/
+                   uber-lyft-returning-austin-monday/ and
+                   money.cnn.com/2016/05/08/technology/
+                   uber-lyft-austin-vote-fingerprinting/
+       Dallas    — council voted 10 Dec 2014, effective 30 Apr 2015: taxis kept
+                   city-set maximum fares while every other vehicle-for-hire
+                   was freed from them.  dallasobserver.com (7117802)
+       Miami     — capped at 2,121 medallions; Uber/Lyft ran illegally 2014–16
+                   accruing ~$4M in county fines until the 3 May 2016 vote; a
+                   $431k medallion (2012) resold near $40k by 2016.  ij.org
+       Tampa     — the Hillsborough PTC set a $50 minimum per ride for sedans
+                   and limos regardless of distance; the agency was abolished
+                   by 31 Dec 2017 (HB 647).  ij.org/case/tampafares/
+       Orlando   — the original 2014 ordinance would have forced app cars to
+                   charge MORE than taxis via a $3/mile floor; dropped in the
+                   15 Dec 2014 compromise, effective 1 Feb 2015.  mynews13.com
+       San Fran. — Waymo's oldest public market, which is why the game ends
+                   here rather than starting here.
+     Two things deliberately NOT stated: the PTC's founding year and Miami's
+     medallion-system start year. Sources contradict each other on both, and a
+     section whose whole claim is "these are real" cannot carry a maybe. */
+  (function(){
+    const PAOLO_CITIES = [
+      {id:'ny', city:'New York', src:'img/paolo-robotaxi.jpg',
+       alt:'Paolo Cortez in a light blue work shirt with his hack licence badge, beside a robotaxi on a Manhattan avenue, clipboard in hand',
+       fact:'Forty-one years of it, here. New York froze the number of cabs at <b>13,595 in 1937</b> and never really unfroze it — and a medallion that changed hands for <b>$1.3 million in 2014</b> was worth about <b>$150,000</b> five years later.'},
+      {id:'austin', city:'Austin', src:'img/paolo-austin.jpg',
+       alt:'Paolo Cortez beside a robotaxi on Congress Avenue in Austin, the Frost Bank tower and Sixth Street signs behind him',
+       fact:'Austin is the one city that threw the app companies out and lost. Voters rejected Proposition 1 <b>56–44 in May 2016</b>, Uber and Lyft switched off the next morning, and they stayed gone for <b>a year</b> — until the state legislature voided Austin’s rules and every other city’s along with them.'},
+      {id:'dallas', city:'Dallas', src:'img/paolo-dallas.jpg',
+       alt:'Paolo Cortez beside a robotaxi, downtown Dallas behind him',
+       fact:'Dallas deregulated the ride and not the cab. From <b>April 2015</b> taxis still had to obey a city-set maximum fare; every other vehicle-for-hire was free to charge whatever it liked.'},
+      {id:'miami', city:'Miami', src:'img/paolo-miami.jpg',
+       alt:'Paolo Cortez beside a robotaxi on a Miami street with palms behind him',
+       fact:'Miami-Dade capped the trade at <b>2,121 medallions</b>. Uber and Lyft simply operated illegally from <b>2014 to 2016</b> — about <b>$4 million</b> in county fines — until the county gave up and legalised them. A medallion worth $431,000 in 2012 resold near <b>$40,000</b>.'},
+      {id:'tampa', city:'Tampa', src:'img/paolo-tampa.jpg',
+       alt:'Paolo Cortez beside a robotaxi, Tampa streetscape behind him',
+       fact:'Hillsborough County ran the strangest rule in Florida: sedans and limos had to charge a <b>$50 minimum per ride</b>, however short the trip, to keep them off the taxis’ turf. The agency that wrote it was <b>abolished at the end of 2017</b>.'},
+      {id:'orlando', city:'Orlando', src:'img/paolo-orlando.jpg',
+       alt:'Paolo Cortez beside a robotaxi near Lake Eola, Orlando',
+       fact:'Orlando’s first attempt at rules for app cars would have forced them to charge <b>more</b> than taxis — a <b>$3-per-mile floor</b>. The council dropped it in <b>December 2014</b> before the ordinance ever took effect.'},
+      {id:'sf', city:'San Francisco', src:'img/paolo-sf.jpg',
+       alt:'Paolo Cortez beside a robotaxi on a San Francisco hill, the Golden Gate Bridge and a cable car behind him',
+       fact:'And here. San Francisco is the oldest driverless market in the country, which is exactly why the game ends here instead of starting here — by the time you arrive, nothing about it is new to anyone but you.'}
+    ];
+    const img  = document.getElementById('paolo-pic');
+    const cityEl = document.getElementById('paolo-city');
+    const factEl = document.getElementById('paolo-fact');
+    const dots = document.getElementById('paolo-dots');
+    if(!img || !factEl || !dots) return;
+
+    let at = 0, timer = null, held = false;
+    const calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    PAOLO_CITIES.forEach((c, i) => {
+      const d = document.createElement('button');
+      d.type = 'button';
+      d.setAttribute('role','tab');
+      d.setAttribute('aria-label', c.city);
+      d.setAttribute('aria-current', i === 0 ? 'true' : 'false');
+      /* A manual pick ends the cycle for good — once the reader is steering,
+         a timer that yanks the photo away three seconds later is a bug from
+         where they are sitting. */
+      d.addEventListener('click', () => { stop(); show(i); });
+      dots.appendChild(d);
+    });
+
+    function paint(i){
+      const c = PAOLO_CITIES[i];
+      img.src = c.src;
+      img.alt = c.alt;
+      if(cityEl) cityEl.textContent = c.city;
+      factEl.innerHTML = c.fact;
+      dots.querySelectorAll('button').forEach((d, n) =>
+        d.setAttribute('aria-current', n === i ? 'true' : 'false'));
+      at = i;
+    }
+    function show(i){
+      if(i === at) return;
+      if(calm){ paint(i); return; }
+      /* Decode first, then swap under cover of the fade — otherwise the
+         fade-in reveals a half-painted 900x1200 JPEG. */
+      const next = new Image();
+      next.onload = next.onerror = () => {
+        img.classList.add('fading');
+        setTimeout(() => {
+          paint(i);
+          requestAnimationFrame(() => img.classList.remove('fading'));
+        }, 220);
+      };
+      next.src = PAOLO_CITIES[i].src;
+    }
+    function step(){ if(!held) show((at + 1) % PAOLO_CITIES.length) }
+    function stop(){ clearInterval(timer); timer = null }
+
+    /* Seven seconds: long enough to read a three-line fact without racing,
+       short enough that a reader who lingers sees more than two cities. */
+    function start(){ if(!timer && !calm) timer = setInterval(step, 7000) }
+
+    /* Pausing on hover/focus matters more here than on a normal carousel,
+       because the caption is something you READ. */
+    const card = document.querySelector('.paolo');
+    if(card){
+      ['mouseenter','focusin'].forEach(e => card.addEventListener(e, () => { held = true }));
+      ['mouseleave','focusout'].forEach(e => card.addEventListener(e, () => { held = false }));
+    }
+    /* Don't animate a card nobody is looking at. */
+    if('IntersectionObserver' in window && card){
+      new IntersectionObserver(([e]) => { e.isIntersecting ? start() : stop() },
+        {threshold:.25}).observe(card);
+    } else {
+      start();
+    }
+    /* Warm the rest so the first swap is not a blank frame. */
+    setTimeout(() => PAOLO_CITIES.slice(1).forEach(c => { new Image().src = c.src }), 1200);
+  })();
+
+  /* ---- anchors that point into the fold ----
+     #guide and #cars are linked from the nav, the footer and from body copy,
+     and they now sit inside a collapsed <details>. A hash pointing at a
+     display:none element scrolls nowhere in every browser, so the link reads
+     as broken rather than as collapsed. Open the ancestor first, then scroll
+     it into view ourselves — `scroll-behavior:smooth` on <html> means the
+     native jump would have raced the reflow from opening the panel anyway. */
+  (function(){
+    function reveal(hash, smooth){
+      if(!hash || hash.length < 2) return false;
+      let el;
+      try { el = document.querySelector(hash); } catch(e) { return false; }
+      if(!el) return false;
+      let opened = false;
+      for(let p = el.closest('details'); p; p = p.parentElement.closest('details')){
+        if(!p.open){ p.open = true; opened = true; }
+      }
+      if(!opened && el.tagName !== 'DETAILS') return false;
+      /* Let the disclosure lay out before measuring where to scroll to.
+         Then do it AGAIN a beat later: everything inside the fold is
+         loading="lazy", so at the moment it opens the browser knows the
+         images' reserved boxes but has not decoded them, and a target deep
+         in the panel keeps moving down as they arrive. A #cars deep link
+         landed ~2000px short of #cars for exactly this reason. The second
+         pass is cheap and lands on the settled layout. */
+      const go = () => el.scrollIntoView(
+        {behavior: smooth ? 'smooth' : 'auto', block: 'start'});
+      requestAnimationFrame(go);
+      setTimeout(go, 350);
+      return true;
+    }
+    document.addEventListener('click', e => {
+      const a = e.target.closest('a[href^="#"]');
+      if(!a) return;
+      if(reveal(a.getAttribute('href'), true)) e.preventDefault();
+    });
+    /* Deep link straight from another page or a bookmark. */
+    if(location.hash) reveal(location.hash, false);
+    window.addEventListener('hashchange', () => reveal(location.hash, true));
   })();
 </script>
 </body>
