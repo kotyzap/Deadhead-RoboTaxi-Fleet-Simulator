@@ -3731,6 +3731,41 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
   .card-acts button.avail{box-shadow:0 0 0 2px rgba(var(--accent-2-rgb),.22)}
 }
 
+/* Pavel, 2026-08-01, mobile screenshot: "In the garage, you dont see CTA on
+   the car." A card is photo (5:2, ~136px), 7 spec rows, a note, then the
+   Buy/Finance/Rent buttons — 450px+ of vertical content before the actual
+   decision, so on a phone the buttons sat below the fold and needed a
+   scroll most players never made. Follow-up: "what about moving available
+   CTA next to smaller photo - on mobile?"
+
+   Below 760px .card becomes a 2-column grid: a shrunk, square-ish photo on
+   the left and the CTA buttons on the right, SAME row — so the buy/rent/
+   finance decision is visible the instant the card scrolls into view, no
+   scroll-past-the-spec-sheet required. Battery/range/etc. and the note move
+   to their own full-width row below, still reachable, just no longer
+   gating the buttons.
+
+   This only reorders grid AREAS, not the DOM — cardHtml()/ownCardHtml()'s
+   markup order (art, spec, note, acts) is untouched, so nothing above 760px
+   or in any test that reads DOM order needs to change. */
+@media (max-width:760px){
+  .card{display:grid;grid-template-columns:96px 1fr;
+    grid-template-areas:"art acts" "spec spec" "note note"}
+  .card-art{grid-area:art;aspect-ratio:auto;min-height:96px;
+    border-bottom:none;border-right:1px solid var(--glass-brd)}
+  .card-art .card-ident{left:6px;right:6px;bottom:5px}
+  .card-art .card-ident h4{font-size:11px;line-height:1.25}
+  .card-art .card-ident h4 .mk{font-size:8px}
+  .card-art .card-ident .tag{font-size:9px}
+  .card-art .card-badge{font-size:8px;padding:1px 5px;top:5px;right:6px}
+  .card-art .card-own{font-size:8px;padding:1px 5px;top:5px;left:6px}
+  .card-acts{grid-area:acts;margin-top:0;padding:8px 12px 8px 8px;
+    justify-content:center}
+  .spec{grid-area:spec;padding:10px 13px 0;
+    border-top:1px solid var(--glass-brd)}
+  .card-note{grid-area:note}
+}
+
 /* ---------------- locked panels ---------------- */
 .panel.locked{position:relative}
 .panel.locked .p-body{filter:grayscale(1) opacity(.32);pointer-events:none;
@@ -14227,7 +14262,7 @@ const SLOTS=['slot1','slot2','slot3'];
    SAVE_V above is the STATE SHAPE version and moves only when the
    snapshot format changes — the two are deliberately independent, so
    shipping 0.9.0 does not invalidate 0.8.0 saves. */
-const VERSION='0.123.4';
+const VERSION='0.123.6';
 
 function snapshot(){
   return {
