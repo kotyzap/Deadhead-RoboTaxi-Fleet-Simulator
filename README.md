@@ -106,12 +106,16 @@ area, real electricity tariff and real permit status — not a reskin with a new
 
 | city | permit | fleet cap | goal | what's actually true about it |
 |---|:---:|:---:|---|---|
-| 🎓 **Austin** | Supervised | 17 | $40,000 | the tutorial. Seven zones plus the airport, and Austin Energy's real five-hour evening peak |
-| 🤠 **Dallas** | Unsupervised | 24 | $60,000, safety ≥ 70 | launched with no safety monitor at all. Highway-speed trips wear the car harder, but S Riverfront is 34 stalls at 325 kW — the best charging site in the game |
-| 🌴 **Miami** | Unsupervised | 16 | $50,000, safety ≥ 75 | a tiny geofence with no airport and no downtown. FPL's peak runs nine straight hours, and Florida carries the harshest insurance rates in the table |
-| 🌇 **Tampa** | Unsupervised | 14 | $45,000 | the exact mirror of Miami: all core, no suburbs, and an evening rush instead of a morning one — plus the cheapest overnight power in the game, if the fleet can wait for it |
-| 🎢 **Orlando** | Unsupervised | 14 | $42,000 | a corridor that runs past MCO without touching it. No airport zone, no brewery zones, the thinnest demand of the six — and the cheapest power of all of them |
-| 🌉 **San Francisco** | Supervised | 12 | $38,000, safety ≥ 75 | still invite-only in reality, hence the smallest fleet in the game. PG&E's off-peak price alone beats every other city's peak. Highest insurance, worst congestion — and the first city where the airport run is real |
+| 🎓 **Austin** | Supervised | 17 | up to $40,000 | the tutorial. Seven zones plus the airport, and Austin Energy's real five-hour evening peak |
+| 🤠 **Dallas** | Unsupervised | 24 | up to $60,000, safety ≥ 70 | launched with no safety monitor at all. Highway-speed trips wear the car harder, but S Riverfront is 34 stalls at 325 kW — the best charging site in the game |
+| 🌴 **Miami** | Unsupervised | 16 | up to $50,000, safety ≥ 75 | a tiny geofence with no airport and no downtown. FPL's peak runs nine straight hours, and Florida carries the harshest insurance rates in the table |
+| 🌇 **Tampa** | Unsupervised | 14 | up to $45,000 | the exact mirror of Miami: all core, no suburbs, and an evening rush instead of a morning one — plus the cheapest overnight power in the game, if the fleet can wait for it |
+| 🎢 **Orlando** | Unsupervised | 14 | up to $42,000 | a corridor that runs past MCO without touching it. No airport zone, no brewery zones, the thinnest demand of the six — and the cheapest power of all of them |
+| 🌉 **San Francisco** | Supervised | 12 | **$100,000**, safety ≥ 75 | still invite-only in reality, hence the smallest fleet in the game. PG&E's off-peak price alone beats every other city's peak. Highest insurance, worst congestion — and the first city where the airport run is real |
+
+Every city but San Francisco's "goal" is an optional ceiling — a bar to chase, not a
+requirement to move on (that's just one clean shift). San Francisco's $100,000 is the one
+that's real: it's checked against the whole fleet's banked cash and gates the game's ending.
 
 Nothing above is tuned for difficulty after the fact. Where the real service area excludes
 downtown, the airport, or every brewery in town, the game excludes it too.
