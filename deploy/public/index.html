@@ -306,7 +306,7 @@ body{
    justify-content:flex-end so ANY wrapped line hugs the right edge rather than
    the left. This still matters at >=2250px: that tier's "everything on one
    line" threshold was measured against FIVE city tabs and three more (SF Bay,
-   Phoenix, Las Vegas) have shipped since. Past 2250px but short of fitting all
+   New York, Las Vegas) have shipped since. Past 2250px but short of fitting all
    eight tabs plus every control, .tb-ctrls spills onto a second line, and
    without this the default flex-start would left-anchor that line instead of
    matching every other tier's right-aligned control row. */
@@ -2031,7 +2031,14 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border:0;border-radiu
   .tb-info{padding-bottom:7px;border-bottom:1px solid var(--brd)}
   .brand{flex:0 1 auto;min-width:0;padding:0;border-right:0;border-bottom:0}
   .brand b{font-size:13.5px}
-  .citypick{margin-left:auto}
+  /* City moved next to the version chip instead of all the way to the far
+     edge (Pavel, 2026-08-01) — margin-left:auto here used to push it there
+     on its own; that job now belongs to #tb-info-icons, the one thing that
+     actually needs the far-right position, since Exit/Settings land there
+     too (see layoutTopbarIcons()). */
+  .citypick{margin-left:0}
+  .tb-info-icons{margin-left:auto;display:flex;align-items:center;gap:6px}
+  .tb-info-icons:empty{display:none}
   .tb-item{gap:5px}
   .tb-item label{font-size:9px}
   .tb-item b{font-size:13px}
@@ -2156,7 +2163,19 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border:0;border-radiu
   .slot-act{width:100%;justify-content:flex-end}
   .sv-foot{flex-wrap:wrap}
   .sv-foot .note{flex:1 0 100%}
-  #ray{left:8px;right:8px;bottom:10px;width:auto;padding:15px 16px 12px}
+  /* bottom:10px alone left the Accept/Decline row sitting right at the
+     bottom edge of the LARGE viewport — mobile Chrome and Safari both
+     reserve their own bottom toolbar there (Pavel, 2026-08-01, screenshot:
+     Accept dimmed and half-covered on Chrome for iOS). That toolbar is
+     browser chrome, not an OS safe area, so env(safe-area-inset-bottom)
+     alone does not cover it (that variable is for the home-indicator strip
+     and is 0 in a plain browser tab without viewport-fit=cover) — there is
+     no CSS-only way to measure a mobile browser's OWN chrome height. This
+     raises the floor enough to clear it on both browsers in practice, and
+     still adds the real safe-area inset on top for whichever devices do
+     report one (notched phones, or this ever runs standalone/PWA). */
+  #ray{left:8px;right:8px;bottom:calc(28px + env(safe-area-inset-bottom));
+    width:auto;padding:15px 16px 12px}
 
   /* Cooperative gestures. Leaflet sets touch-action:none on its container,
      so without this every swipe that starts on the map pans the map and the
@@ -2733,8 +2752,20 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
    centring it: place-items:end, with a top padding sized in vh so the reserve
    tracks the artwork, which is itself letterboxed to the viewport height.
    Not a fixed pixel offset — the title's position moves with the contain fit. */
+/* Bottom padding is a raised floor, not the bare 18px it looks like: mobile
+   Chrome and Safari both reserve their own bottom toolbar below the visible
+   page, and a fixed, full-viewport overlay's own bottom edge sits right
+   behind it — the prologue/city-arrival Accept-Decline row was landing half
+   under that chrome (Pavel, 2026-08-01, screenshot: Accept dimmed and
+   partly covered on Chrome for iOS). Same fix as #ray below: no CSS can
+   measure a mobile browser's own chrome height, so this raises the floor
+   generously and adds env(safe-area-inset-bottom) on top for whichever
+   devices do report a real inset. */
 #prologue{position:fixed;inset:0;z-index:92;display:grid;place-items:end center;
-  padding:clamp(88px,21vh,230px) 16px 18px}
+  padding:clamp(88px,21vh,230px) 16px calc(18px + env(safe-area-inset-bottom))}
+@media (max-width:760px){
+  #prologue{padding-bottom:calc(28px + env(safe-area-inset-bottom))}
+}
 #prologue[hidden]{display:none}
 /* Just enough scrim to hold text against a bright golden-hour photo. The
    tutorial scrim taught this the hard way — see #dimscrim's note on why
@@ -2922,7 +2953,7 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
    to shrink here or there is no room left for a phone at all — but it must not
    go to zero, or this is the one tier where the title gets covered again. */
 @media (max-height:620px){
-  #prologue{padding:clamp(52px,13vh,92px) 12px 12px}
+  #prologue{padding:clamp(52px,13vh,92px) 12px calc(20px + env(safe-area-inset-bottom))}
   .pro-phone{min-height:0;padding:8px 9px 10px;border-radius:24px}
   .pro-status,.pro-notch{display:none}
   .pro-thread{padding-top:8px}
@@ -3172,7 +3203,13 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
   .intro-video-play:hover{transform:scale(1.07)}
 }
 .intro-video-play[hidden]{display:none}
-.intro-btns{display:flex;gap:10px}
+.intro-btns{display:flex;align-items:center;gap:10px}
+/* Quiet, same recipe as .splash-ver just above it in the boot sequence:
+   reduced weight/opacity, no letter-spacing, so it reads as a build number
+   next to Skip rather than a second button. */
+.intro-ver{font-size:11px;font-weight:400;color:rgba(255,255,255,.5);
+  margin-left:auto;white-space:nowrap}
+@media (max-width:760px){ .intro-ver{font-size:10px} }
 #intro-skip,#intro-start{height:38px;padding:0 18px;border:1px solid rgba(255,255,255,.28);
   border-radius:19px;background:rgba(255,255,255,.08);color:#fff;font:inherit;
   font-size:12.5px;cursor:pointer;transition:background var(--dur-fast)}
@@ -3808,6 +3845,14 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
          itself is untouched — safety-score review, demand throttling, the
          Incidents panel copy and the Books cost line all still read it. -->
     <div class="tb-item tb-opt"><label>Trophies</label><b id="tb-achv">0/0</b></div>
+    <!-- Phone-only landing spot for Exit/Settings (Pavel, 2026-08-01: "those
+         two buttons move to the first row"). Empty at every wider tier —
+         layoutTopbarIcons() is the only thing that ever puts anything in
+         here, moving the REAL #exit-btn/#settings-btn nodes in from
+         .tb-ctrls below (not clones: one element, one id, one set of
+         handlers, same as the console-panel reparenting elsewhere in this
+         file) and moving them back out the moment the phone tier ends. -->
+    <span class="tb-info-icons" id="tb-info-icons"></span>
     </div><!-- /.tb-info -->
 
     <!-- Day/Clock/Cash moved OUT of .tb-info and into .tb-ctrls (2026-07-30,
@@ -3861,6 +3906,10 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
          this, whether or not it has already run or been skipped. -->
     <button class="ghost iconly" id="tutorial-btn" aria-label="Replay tutorial"
       title="Replay Paolo's tutorial messages"><svg class="ms"><use href="#i-book"/></svg></button>
+    <!-- Reinsertion point for layoutTopbarIcons() — marks exactly where
+         #exit-btn/#settings-btn belong when they are moved back out of
+         .tb-info#tb-info-icons above, once the phone tier ends. -->
+    <span id="tb-ctrls-icons-anchor" hidden aria-hidden="true"></span>
     <!-- Pavel's ask: a way back to the sign-in/account screen that doesn't
          erase anything — the opposite number to "Reset everything" in the
          Saves dialog. See exitGame(): reuses showIntro() itself rather than
@@ -4589,6 +4638,12 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
       <div class="intro-acct" id="intro-acct"></div>
       <div class="intro-btns">
         <button id="intro-skip">Play on this device only</button>
+        <!-- Same string as .brand's #ver and the splash's #splash-ver — this
+             is the one screen between those two that had no version at all
+             (Pavel, 2026-08-01, screenshot: LOADING pill shows it, this
+             window doesn't). Quiet by design, same treatment as splash-ver:
+             a build number, not a call to action. -->
+        <span class="intro-ver" id="intro-ver"></span>
       </div>
     </div>
   </div>
@@ -7835,12 +7890,20 @@ const RAY=[
      instant the own-car card shipped and would have sat directly above a
      screen showing a free Saloon, contradicting itself in the same glance. */
   {n:1, spot:'gar-cards',
-   /* {NAME} is the only beat that greets the player by name (open question in
+   /* Pavel, 2026-08-01: "I went through black initial messages and this is the
+      message that welcomes me. Isn't it irrelevant or doubling the info?" —
+      right. This beat used to open with "My name is Paolo Cortez. Forty-one
+      years in a cab before I got out, while getting out was still my idea."
+      but by the time it fires the player has already read exactly that in the
+      prologue (prologueBeats() n:0 and n:2, on the phone, before the garage
+      even opens). Trimmed to what the prologue does NOT already cover: this
+      is the garage app, not a text thread, and here is what to actually do
+      in it today.
+      {NAME} is the only beat that greets the player by name (open question in
       onboardingplan.md §2, resolved conservatively: once, not everywhere —
       Paolo using it in every beat reads as a mail-merge). rayShow() replaces
       it, already escaped. */
-   t:"Welcome to Deadhead Robotaxi Fleet Ops. My name is Paolo Cortez. Forty-one "+
-     "years in a cab before I got out, while getting out was still my idea. "+
+   t:"Welcome to Deadhead Robotaxi Fleet Ops. "+
      /* {ITOLD}, not {NAME}: a player who left the username blank gets
         playerName()'s 'Player' placeholder, and "You're Player, I'm told."
         is what that looked like on the live site. The token resolves to the
@@ -7853,9 +7916,9 @@ const RAY=[
       a Paolo photograph on arrival (CITY_PAOLO_PHOTO / showCityArrival), and
       Austin — the one city where you actually MEET him — got none, because
       Austin is gated out of the arrival screen in favour of this scripted
-      tutorial. He introduces himself by name in this very line and the player
-      had no idea what he looked like until Dallas. Names the table key, not a
-      filename; see rayShow(). */
+      tutorial. The prologue named him and told his story on the phone; this
+      is simply the first time the player sees his face. Names the table key,
+      not a filename; see rayShow(). */
    pic:'austin',
    picAlt:'Paolo Cortez, in a work shirt with his hack licence badge, beside a '+
      'robotaxi on Congress Avenue in Austin'},
@@ -7866,12 +7929,23 @@ const RAY=[
   {n:3, spot:'panel-platforms',
    t:"The car can't earn until somebody's sending it rides. Two apps will. "+
      "Neither one is your friend."},
+  /* Beats 4 and 5 used to be two separate cards, both spotlighting
+     panel-offers. rayReady(4) only required a connected platform, not an
+     actual offer — so beat 4 (explaining the three numbers on an offer)
+     routinely fired against an empty "Waiting for offers" panel, with
+     nothing concrete for "watch the third one" to point at (Pavel,
+     2026-08-01, screenshot: beat 4 up, Offers panel empty). Merged into one
+     beat that now waits for a real offer to exist (see rayReady below) —
+     the same condition beat 5 already used — so there is always an actual
+     offer on screen to read while this plays. n:5 is deliberately not
+     reused for anything else: raySeen/PROG.raySeen for existing players who
+     already saw the old beat 5 are simply inert now, same as any other
+     merged/dropped line in this file's history. */
   {n:4, spot:'panel-offers',
    t:"Three numbers on every offer. What's on the meter, what you actually get paid, "+
-     "and how far you drive empty to reach them.<br><br>Watch the third one."},
-  {n:5, spot:'panel-offers',
-   t:"Forty-five seconds to decide. That's not them being generous. That's them "+
-     "stopping you doing the arithmetic.<br><br>Do it anyway."},
+     "and how far you drive empty to reach them.<br><br>Watch the third one."+
+     "<br><br>You've got forty-five seconds to decide — that's not them being "+
+     "generous, that's them stopping you doing the arithmetic. Do it anyway."},
   /* Pavel, 2026-08-01: "Consider rephrasing. I never get the joke." — the
      spoken-number phrasing ("Ten eighty", "eight ten") read as wordplay that
      wasn't landing; there was no actual joke to get, just an example fare
@@ -7988,23 +8062,24 @@ function markRaySkipped(){
 
 /* Trigger predicates, in beat order. First unseen beat whose predicate is
    true gets shown. Beat 1 is fired explicitly by clockOn().
-   Pavel, 2026-08-01: beats 1-14 are all TEACHING content (mechanics —
-   buying a car, platforms, offers, driving, surge, idle, charging,
-   incidents, reports, safety, the second-car thesis). They belong to the
-   first city only. Most of them already only ever fired there in practice
-   because DAY1_ORDER scripts them during Austin's guided walkthrough and
-   raySeen() bans them for the rest of the career once seen — but three
-   beats (8 surge, 9 idle, 13 cancel) are deliberately excluded from
-   DAY1_ORDER as "organic" triggers (see the long DAY1_ORDER note below),
-   and ANY of the fourteen left unseen when a player leaves Austin (either
-   an excluded one that never got its chance, or a DAY1_ORDER one abandoned
-   by leaving mid-walkthrough) stayed eligible to fire in later cities with
-   no city check at all — which is exactly how beat 9's speed-control tip
-   surfaced stale in a live Dallas screenshot. One gate up front now covers
-   all fourteen, rather than patching each trigger individually. Beat 15
-   (Paolo's one opinion about the job) is deliberately excluded: it isn't
-   tutorial content, it's narrative tied to PROG.app.applied and can land
-   in whichever city the player happens to apply from. */
+   Pavel, 2026-08-01: beats 1-14 (thirteen of them exist; n:5 was merged into
+   n:4, see RAY[] above) are all TEACHING content (mechanics — buying a car,
+   platforms, offers, driving, surge, idle, charging, incidents, reports,
+   safety, the second-car thesis). They belong to the first city only. Most
+   of them already only ever fired there in practice because DAY1_ORDER
+   scripts them during Austin's guided walkthrough and raySeen() bans them
+   for the rest of the career once seen — but three beats (8 surge, 9 idle,
+   13 cancel) are deliberately excluded from DAY1_ORDER as "organic"
+   triggers (see the long DAY1_ORDER note below), and ANY of them left
+   unseen when a player leaves Austin (either an excluded one that never
+   got its chance, or a DAY1_ORDER one abandoned by leaving mid-walkthrough)
+   stayed eligible to fire in later cities with no city check at all — which
+   is exactly how beat 9's speed-control tip surfaced stale in a live Dallas
+   screenshot. One gate up front now covers all of them, rather than
+   patching each trigger individually. Beat 15 (Paolo's one opinion about
+   the job) is deliberately excluded: it isn't tutorial content, it's
+   narrative tied to PROG.app.applied and can land in whichever city the
+   player happens to apply from. */
 function rayReady(n){
   if(n>=1&&n<=14&&S.city!==cityList()[0]) return false;
   const d=S.d||{};
@@ -8017,8 +8092,18 @@ function rayReady(n){
        scrim (raySpot can't ring a covered target, so it wouldn't even point at
        anything) would arrive before the player is looking at the app. */
     case 3:  return S.cars.length>0&&$('garage').hidden;
-    case 4:  return livePlatforms().length>0;
-    case 5:  return S.offers.length>0;
+    /* Requires a real offer, not just a connected platform (2026-08-01 —
+       this used to be livePlatforms().length>0 alone, which let the beat
+       fire against an empty, "Waiting for offers" panel with nothing for
+       "watch the third one" to point at; see the merge note on RAY[3]
+       above). guideCheck()/guideForceOffer() force one into existence at
+       this exact point during the scripted Day-1 walkthrough if none has
+       appeared organically yet. */
+    case 4:  return livePlatforms().length>0&&S.offers.length>0;
+    /* n:5 no longer exists — merged into RAY[3] above. Left out of this
+       switch entirely rather than kept as a dead case: default below
+       already returns false for any unhandled n, which is exactly right
+       for a beat number that no longer fires. */
     case 6:  return d.done>0;
     /* while the car is actually driving the empty leg */
     case 7:  return S.cars.some(function(c){
@@ -8048,7 +8133,7 @@ function rayReady(n){
 }
 
 /* ---------------- guided day 1 ----------------
-   The 14 beats above are normally opportunistic — first ready, unseen beat
+   The 13 beats above are normally opportunistic — first ready, unseen beat
    wins, in whatever order the player's own actions happen to satisfy them.
    For a brand-new fleet that reads as scattered: two lessons can become
    ready in the same tick and whichever wins the array scan is arbitrary,
@@ -8065,7 +8150,11 @@ function rayReady(n){
    the very lesson ("accept a ride") the script is teaching — so those
    three remain available to fire organically, any later day, once guided
    mode ends. */
-const DAY1_ORDER=[1,2,3,4,5,6,7,11,10,12,14];
+/* n:5 was merged into n:4 (2026-08-01, see RAY[] above) and dropped from
+   this list — DAY1_ORDER names beat numbers that still exist, not array
+   positions, so removing one entry does not renumber or reindex anything
+   after it. */
+const DAY1_ORDER=[1,2,3,4,6,7,11,10,12,14];
 
 function guideForceOffer(){
   const live=livePlatforms(); if(!live.length) return false;
@@ -8101,7 +8190,11 @@ function guideCheck(){
   if(S.ray.dayIdx>=DAY1_ORDER.length){ S.ray.guided=false; S.ray.day1Done=true; return }
   const n=DAY1_ORDER[S.ray.dayIdx];
   if(raySeen(n)){ S.ray.dayIdx++; return }        /* defensive: never get stuck */
-  if(n===5&&S.onClock&&livePlatforms().length>0&&!S.offers.length) guideForceOffer();
+  /* n===4, not n===5 (2026-08-01): rayReady(4) now requires a real offer to
+     exist, not just a connected platform — see its own comment — so the
+     force has to happen at beat 4's slot in the script, one step earlier
+     than before. */
+  if(n===4&&S.onClock&&livePlatforms().length>0&&!S.offers.length) guideForceOffer();
   if(n===11&&!S.cars.some(function(c){return c.state==='blocked'})) guideForceIncident();
   if(n===10&&!S.cars.some(function(c){return c.soc<=CFG.chargeAt})) guideForceLowCharge();
   if(rayReady(n)) rayShow(n);
@@ -12347,6 +12440,28 @@ function cityTabsHtml(night){
    so a resize/theme change that does not touch cityTabSig (there is none —
    both live behind the one guard) never leaves the pill's colour or label
    stale relative to the strip it stands in for. */
+/* Moves the REAL #exit-btn/#settings-btn nodes between .tb-ctrls (their
+   permanent home on tablet/desktop, alongside Garage/Saves/tutorial) and
+   .tb-info#tb-info-icons (row 1, beside the version chip and city picker) —
+   never clones, so ids/handlers/aria state travel with the element instead
+   of needing to be duplicated and kept in sync. Pavel, 2026-08-01, phone
+   screenshot: those two icons were stranded alone on a fourth topbar row
+   with nothing else on it, purely because .tb-ctrls's OWN flex-wrap ran out
+   of width before reaching them — moving them into .tb-info's row instead
+   (which had room to spare) removes that row entirely. #tb-ctrls-icons-anchor
+   marks where they belong when they move back; :empty on #tb-info-icons
+   means this is a no-op — zero footprint — at every wider tier. */
+function layoutTopbarIcons(){
+  const dest=$('tb-info-icons'), anchor=$('tb-ctrls-icons-anchor'),
+        exitBtn=$('exit-btn'), setBtn=$('settings-btn');
+  if(!dest||!anchor||!exitBtn||!setBtn) return;
+  if(MOBILE.matches){
+    if(exitBtn.parentNode!==dest){ dest.appendChild(exitBtn); dest.appendChild(setBtn) }
+  } else if(exitBtn.parentNode===dest){
+    anchor.parentNode.insertBefore(exitBtn,anchor);
+    anchor.parentNode.insertBefore(setBtn,anchor);
+  }
+}
 function renderCityPicker(night){
   const btn=$('city-pick');
   if(!btn) return;
@@ -12460,24 +12575,32 @@ function cityLockLine(id){
 }
 
 /* ============================================================
-   PLANNED CITIES — Phoenix and Las Vegas
+   PLANNED CITIES — New York and Las Vegas
 
    A graphic mockup, not a scenario: no CITIES entry, no zones, no chargers,
    no economy, and deliberately outside cityList()/gateMet()/cityUnlocked() —
-   those all assume a real, playable city on the other side of the lock,
-   and Phoenix/Vegas are not that yet. This is two dashed, permanently-locked
-   tabs at the end of the strip and one Paolo line each when clicked, nothing
-   more. If either city becomes a real scenario later, it moves into CITIES
-   properly (see San Francisco for that process) and drops out of this list.
+   those all assume a real, playable city on the other side of the lock, and
+   neither of these is that yet. This is two dashed, permanently-locked tabs
+   at the end of the strip and one Paolo line each when clicked, nothing more.
+   If either city becomes a real scenario later, it moves into CITIES properly
+   (see San Francisco for that process) and drops out of this list.
 
    Rendered by renderCityTabs() alongside the real tabs but keyed on
    data-planned rather than data-city, so the existing click handler's
-   cityUnlocked()/switchCity() paths never see them. */
+   cityUnlocked()/switchCity() paths never see them.
+
+   2026-08-01 (Pavel): the slot that was Phoenix is now NEW YORK — his own
+   city, the one every website portrait of him before Austin is standing in.
+   It renders exactly where Phoenix did: first in this array, so first among
+   the planned tabs and therefore immediately after San Francisco, the last
+   REAL tab on the strip. Nothing about the render path changed, only which
+   city is being teased and what Paolo says about it — and what he says now
+   can be personal in a way "Phoenix" never could be. */
 const PLANNED_CITIES=[
-  {id:'phx', name:'Phoenix',
-   line:"Phoenix. Axiom's talked about it out loud, but nobody's signed "+
-     "anything I've seen. Keep clearing shifts here — you'll be first "+
-     "through that door whenever it's actually a door."},
+  {id:'nyc', name:'New York',
+   line:"New York. That's where I actually drove — forty-one years of it. "+
+     "Nobody's running these cars there yet, and City Hall isn't in a hurry. "+
+     "I'll believe it when I see one on my old corner."},
   {id:'lv', name:'Las Vegas',
    line:"Vegas is a rumor with good odds, way I hear it. Nothing's running "+
      "yet. Clock your shifts, and I'll be the one who tells you the day "+
@@ -14104,7 +14227,7 @@ const SLOTS=['slot1','slot2','slot3'];
    SAVE_V above is the STATE SHAPE version and moves only when the
    snapshot format changes — the two are deliberately independent, so
    shipping 0.9.0 does not invalidate 0.8.0 saves. */
-const VERSION='0.123.1';
+const VERSION='0.123.4';
 
 function snapshot(){
   return {
@@ -18726,6 +18849,10 @@ $('ver').textContent='v'+VERSION;
    2026-07-30). Guarded on the element existing purely out of habit — #splash
    is always in the markup — rather than because it's ever actually missing. */
 if($('splash-ver')) $('splash-ver').textContent='v'+VERSION;
+/* Same string, third and last of the boot-sequence copies (Pavel,
+   2026-08-01: the login/account window had none at all). Guarded the same
+   way as splash-ver, for the same reason. */
+if($('intro-ver')) $('intro-ver').textContent='v'+VERSION;
 if(S.units!=='imperial'&&S.units!=='metric') S.units=defaultUnits();
 /* Before the first render, so nothing paints in the previous city's tone for
    a frame. For Austin this writes exactly the values :root already declares. */
@@ -18734,6 +18861,8 @@ renderCityTabs();
 paintUnits();
 syncSoundBtn();
 syncRayBtn();
+layoutTopbarIcons();
+MOBILE.addEventListener('change',layoutTopbarIcons);
 /* The markup carries `hidden`, but assert it here too so a refactor that
    drops the attribute cannot ship a card stuck on screen. */
 $('ray').hidden=true; raySpotClear();
