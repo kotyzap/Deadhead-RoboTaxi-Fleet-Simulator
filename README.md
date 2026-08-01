@@ -100,7 +100,7 @@ area, real electricity tariff and real permit status — not a reskin with a new
 
 <div align="center">
 
-**Austin** → **Dallas** → **Miami** → **Tampa** → **Orlando** → **San Francisco** → 🔒 Phoenix → 🔒 Las Vegas
+**Austin** → **Dallas** → **Miami** → **Tampa** → **Orlando** → **San Francisco** → 🔒 New York → 🔒 Las Vegas
 
 </div>
 
@@ -120,9 +120,10 @@ that's real: it's checked against the whole fleet's banked cash and gates the ga
 Nothing above is tuned for difficulty after the fact. Where the real service area excludes
 downtown, the airport, or every brewery in town, the game excludes it too.
 
-Phoenix and Las Vegas sit at the end of the tab strip, padlocked — a graphic mockup with no
-scenario behind either yet. Click one and Paolo says so, in his own words, rather than the
-tab simply doing nothing.
+New York and Las Vegas sit at the end of the tab strip, padlocked — a graphic mockup with no
+scenario behind either yet. New York is Paolo's own city, the one he actually drove a cab in
+for forty-one years; nobody is running these cars there today. Click one of the two and
+Paolo says so, in his own words, rather than the tab simply doing nothing.
 
 ---
 

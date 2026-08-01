@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Deadhead — they automated the driving. Somebody still has to make it pay.</title>
+<title>Deadhead — to drive with nobody in the back</title>
 <meta name="description" content="An AI model took your whole department. What you still own is a car that drives itself. Deadhead is a free browser game about running a robotaxi fleet across six real cities — real tariffs, real service areas, a story you can fail, and an ending you have to qualify for. No install, no account.">
 <link rel="canonical" href="https://www.deadhead.cc/">
 <link rel="icon" href="img/favicon.png" type="image/png">
@@ -15,7 +15,7 @@
 
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Deadhead">
-<meta property="og:title" content="They automated the driving. Somebody still has to make it pay.">
+<meta property="og:title" content="dead·head — to drive with nobody in the back">
 <meta property="og:description" content="A new AI model took your whole department, cheaper, by the Monday. What you still own is a car that drives itself — and a man your father knows has a use for it. A free browser game: six real cities, one bank account, an ending you have to qualify for.">
 <meta property="og:url" content="https://www.deadhead.cc/">
 <meta property="og:image" content="https://www.deadhead.cc/img/og.jpg">
@@ -24,7 +24,7 @@
 <meta property="og:image:alt" content="Deadhead key art: three Axiom robotaxis on an elevated road above a city skyline at dusk, under the title Deadhead — Robotaxi Fleet Simulator.">
 
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="They automated the driving. Somebody still has to make it pay.">
+<meta name="twitter:title" content="dead·head — to drive with nobody in the back">
 <meta name="twitter:description" content="Deadhead — a leg driven with nobody in the back, earning nothing. Also: the man the AI just finished automating. Your department is gone; your car drives itself. Free in your browser.">
 <meta name="twitter:image" content="https://www.deadhead.cc/img/og.jpg">
 
@@ -276,6 +276,48 @@ img{max-width:100%;display:block}
    16.5px body text is ~105 characters and reads as a wall. */
 .hero-band .hero-copy{max-width:700px}
 .hero-band .hero p.lede{max-width:60ch}
+
+/* ---- the hero as a dictionary entry ----
+   The headword is now the <h1>, so it inherits h1.title's 44px/900 — right
+   for a headline, and right here too: a dictionary headword is set heavy and
+   large. What it must NOT inherit is the old headline's mint <em>, which was
+   the colour of the line the joke turned on; there is no turn in "dead·head",
+   and the turn now lives in sense 2's "Also:". */
+/* Bigger than the old headline was, not smaller. h1.title's 44px was sized
+   for a two-line sentence; this is ONE nine-character word carrying the whole
+   first screen, and at 44px it read as a label above the definition rather
+   than as the thing being defined. Fluid rather than a pair of breakpoint
+   values because it is one word — there is no wrap to protect, so it can just
+   track the viewport. */
+.hero-band h1.title{
+  font-size:clamp(40px,4.4vw,62px);
+  margin-bottom:2px;letter-spacing:-.02em;
+}
+.hero-pos{
+  margin:0 0 16px;font-size:14.5px;font-style:italic;color:var(--h-3);
+}
+.hero-def{
+  margin:0 0 20px;display:grid;grid-template-columns:auto 1fr;
+  gap:9px 11px;align-items:start;max-width:58ch;
+}
+.hero-def dt{
+  font-size:12.5px;font-weight:800;color:var(--mint-hi);
+  font-variant-numeric:tabular-nums;padding-top:3px;
+}
+.hero-def dd{margin:0;font-size:15.5px;line-height:1.55;color:var(--h-2)}
+/* The second sense is the whole reason the first one is on the page. "Also:"
+   is where the reader realises the entry has been about them since the top,
+   so it gets the mint the old headline's turn used to own. */
+.hero-def dd em{font-style:normal;font-weight:700;color:var(--mint-hi)}
+/* Below the definition the lede is support, not the lead — so it drops a
+   step in size, and the approved line closes it in the body colour. */
+.hero-band .hero p.lede{font-size:15.5px;color:var(--h-3)}
+.hero-band .hero p.lede b{color:var(--h-1);font-weight:600}
+@media (max-width:620px){
+  .hero-def{gap:7px 9px}
+  .hero-def dd{font-size:14.5px}
+  .hero-pos{font-size:13.5px;margin-bottom:13px}
+}
 .hero-band .hero .ctas{flex-direction:row;flex-wrap:wrap;gap:12px}
 .hero-band .hero .ctas .btn{width:auto}
 .hero-band .hero .meta{max-width:520px;gap:10px 28px}
@@ -526,6 +568,122 @@ html[data-theme="night"] .city-card .permit{color:#A8BEF7}
   background:linear-gradient(200deg,rgba(222,154,78,.16),transparent 55%);
   pointer-events:none;
 }
+/* ---- CITY TABS -------------------------------------------------------------
+   This was seven 9px dots under the fact, which is where it went wrong: the
+   rotator was the most content-rich thing on the page and its only control
+   and only label was a row of grey specks (Pavel: "This was hidden behind
+   small points"). Named tabs, in the game's own per-city colours.
+
+   THE COLOURS ARE NOT DECORATIVE and were not picked here. Each one is that
+   city's real `tone.day.accent` / `tone.night.accent` out of the CITIES table
+   in deadhead.html — Austin blue, Dallas bronze, Miami magenta, Tampa teal,
+   Orlando violet, San Francisco fog green. A player who has seen the game's
+   city strip already knows these; anything invented here would have been a
+   second, contradicting palette. Each accent was chosen in the game to clear
+   4.5:1 on white, which is also what makes white text on the filled pill
+   safe. New York has no entry because it is not a city in the game — it gets
+   the darkened taxi-yellow (--amber-ink), which is the one hue nobody else in
+   the table is using and happens to be exactly right.
+
+   Passed in as --city / --city-night per button rather than written as six CSS
+   rules, so the table in the script stays the single source. */
+.city-tabs{
+  display:flex;gap:6px;flex-wrap:wrap;
+  padding:0 0 18px;margin:0 0 20px;border-bottom:1px solid var(--brd);
+}
+.city-tabs button{
+  --c:var(--city);
+  font:700 13px/1 Inter,sans-serif;letter-spacing:.01em;
+  padding:9px 14px;border-radius:999px;cursor:pointer;
+  color:var(--c);background:transparent;
+  border:1px solid currentColor;
+  /* The idle border is the city colour at low opacity — currentColor above,
+     then knocked back here so six saturated outlines don't read as six
+     buttons all demanding a press. */
+  border-color:color-mix(in srgb, var(--c) 38%, transparent);
+  transition:background .18s ease,color .18s ease,border-color .18s ease;
+}
+html[data-theme="night"] .city-tabs button{--c:var(--city-night)}
+.city-tabs button:hover{
+  border-color:var(--c);
+  background:color-mix(in srgb, var(--c) 10%, transparent);
+}
+.city-tabs button[aria-selected="true"]{
+  background:var(--c);border-color:var(--c);color:#fff;
+}
+.city-tabs button:focus-visible{outline:2px solid var(--c);outline-offset:2px}
+/* New York's tab — the game's own "coming soon" language (PLANNED_CITIES:
+   dashed border, a padlock glyph) so a visitor who has played the game reads
+   this the same way they read Deadhead's own locked tabs. Not aria-disabled
+   and not dimmed to the QUIET level a true disabled control gets: the slide
+   behind it is real content, only the city itself isn't real yet — see the
+   script's comment on why this stays clickable. */
+.city-tabs button.locked{
+  border-style:dashed;
+  background:transparent;
+}
+.city-tabs button.locked .lk{
+  font-size:10px;margin-right:5px;vertical-align:1px;
+}
+.city-tabs button.locked[aria-selected="true"]{
+  /* Selected-and-locked still fills, so the active state reads consistently
+     across all seven tabs — the dash is what marks it as locked, not a
+     permanently pale fill that would look disabled even while showing. */
+  background:var(--c);border-style:solid;color:#fff;
+}
+.city-tabs button.locked[aria-selected="true"] .lk{filter:brightness(3)}
+/* color-mix is well supported now but not universally; without it the idle
+   pill would fall back to a fully saturated border, which is legible and
+   simply less quiet. Named here so the fallback is a decision, not a
+   surprise. */
+@supports not (color: color-mix(in srgb, red 50%, blue)){
+  .city-tabs button{border-color:var(--c);opacity:.72}
+  .city-tabs button[aria-selected="true"]{opacity:1}
+}
+@media (max-width:620px){
+  .city-tabs{gap:5px;padding-bottom:14px;margin-bottom:16px}
+  .city-tabs button{padding:7px 11px;font-size:12px}
+}
+
+/* ---- the city block, ABOVE Paolo's own copy ----
+   Pavel's structural call: the thing that CHANGES goes first, and Paolo's
+   fixed introduction — which is identical on all seven tabs — sits underneath
+   it. Reading order now matches what the tabs promise. */
+.city-now{margin-bottom:20px}
+.city-now h3{
+  margin:0 0 8px;font-size:26px;font-weight:800;letter-spacing:-.01em;
+  color:var(--city-ink);line-height:1.1;
+}
+html[data-theme="night"] .city-now h3{color:var(--city-night)}
+.city-now .fact{
+  margin:0;font-size:15px;line-height:1.6;color:var(--text-2);
+  /* Reserve the tallest fact's height so the card does not resize under the
+     reader every seven seconds. MEASURED, not guessed: at this column width
+     the seven facts run 2 or 3 lines (Austin, New York, Miami and Tampa are
+     the 3s), so 3 lines x 1.6 = 4.8em. It was set to 4.8em on a guess first
+     and left a visible hole under the two-line ones; the real max is the same
+     number, but now it is the real number.
+     Dropped entirely below 980px, where the column narrows enough that the
+     facts run 4-7 lines and reserving the tallest would leave a hole three
+     lines deep under the shortest. */
+  min-height:calc(3 * 1.6em);
+}
+.city-now .fact b{color:var(--text-1);font-weight:700}
+.paolo-static{border-top:1px solid var(--brd);padding-top:18px}
+.paolo-static h4{
+  margin:0 0 8px;font-size:17px;color:var(--text-1);font-weight:800;
+}
+.paolo-static p{margin:0 0 9px;font-size:14px;color:var(--text-3);line-height:1.6}
+.paolo-static p b{color:var(--text-2)}
+@media (max-width:980px){
+  .city-tabs{justify-content:center}
+  .city-now .fact{min-height:0}
+  .paolo-static{text-align:left}
+}
+@media (max-width:620px){
+  .city-now h3{font-size:22px}
+}
+
 /* ---- the portrait rotator ----
    Paolo has a portrait per city — the same CITY_PAOLO_PHOTO set the game shows
    on arrival, plus the New York frame from his old life and a new San
@@ -533,47 +691,35 @@ html[data-theme="night"] .city-card .permit{color:#A8BEF7}
    cycle, and each carries a real piece of that city's taxi history: what the
    trade there actually was before any of this. The facts are the point. A
    caption that only said "Miami." would make this a slideshow. */
+/* The card is now tabs + a two-column body, so the padding moved out to the
+   wrapper and .paolo keeps only the grid. */
+.paolo-card{padding:26px 28px 28px}
+.paolo{padding:0}
+/* `align-items:center` was right when the right column was a short bio. It now
+   holds a city heading, a four-line fact, a bio, the Now line and a link — far
+   taller than a 3:4 portrait — so centring left the photo floating in the
+   middle of the card with a gap above it. Top-aligned, and the portrait's own
+   sticky-ish top edge lines up with the city name it belongs to. */
+.paolo{align-items:start}
+/* Below 980px the base rule centres all text, which was fine for a short bio
+   and is wrong for two paragraphs of prose plus a sourced fact. The photo
+   stays centred (it is one object); the words go back to the left.
+   `.paolo-card .paolo`, not `.paolo`: the rule being overridden is
+   `@media (max-width:980px){ .paolo{...text-align:center} }` which is declared
+   LATER in this stylesheet, so an equal-specificity override here loses on
+   source order — the same trap the hero band's .lede colour hit. Two classes
+   makes the outcome independent of where in the file each one sits. */
+@media (max-width:980px){
+  .paolo-card .paolo{text-align:left}
+  .paolo-card .paolo .pic{max-width:220px;margin:0 auto}
+}
 .paolo .pic{cursor:default}
 .paolo .pic img{opacity:1;transition:opacity .45s ease}
 .paolo .pic img.fading{opacity:0}
-/* The city label rides on the photo; the fact sits under it, in the text
-   column's own type, because it is prose and not a caption. */
-.paolo .pic .city{
-  position:absolute;left:0;right:0;bottom:0;z-index:2;
-  padding:26px 12px 10px;
-  font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;
-  color:#fff;text-align:center;
-  background:linear-gradient(to top,rgba(11,12,17,.85),transparent);
-  text-shadow:0 1px 6px rgba(11,12,17,.8);
-}
-.paolo-fact{
-  margin-top:14px;padding-top:14px;border-top:1px solid var(--brd);
-}
-.paolo-fact p{
-  margin:0;font-size:14px;line-height:1.6;color:var(--text-3);
-  /* Reserve the tallest fact's height so the panel does not resize under the
-     reader every seven seconds. Set from the copy: four lines at 14/1.6. */
-  min-height:4.8em;
-}
-.paolo-fact p b{color:var(--text-1)}
-.paolo-dots{display:flex;gap:7px;margin-top:12px;flex-wrap:wrap}
-.paolo-dots button{
-  width:9px;height:9px;padding:0;border-radius:50%;cursor:pointer;
-  border:1px solid var(--brd-2);background:transparent;
-  transition:background .2s ease,border-color .2s ease,transform .2s ease;
-}
-.paolo-dots button:hover{border-color:var(--accent)}
-.paolo-dots button[aria-current="true"]{
-  background:var(--accent);border-color:var(--accent);transform:scale(1.25)}
-@media (max-width:980px){
-  .paolo-dots{justify-content:center}
-  .paolo-fact p{min-height:0}
-}
 @media (prefers-reduced-motion:reduce){
   .paolo .pic img{transition:none}
 }
-.paolo h3{margin:0 0 10px;font-size:22px;color:var(--text-1)}
-.paolo p{margin:0 0 10px;font-size:15px;color:var(--text-2);line-height:1.6}
+@media (max-width:620px){ .paolo-card{padding:20px} }
 .now-line{
   display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:var(--accent-2);
   background:rgba(var(--accent-rgb),.09);border:1px solid rgba(var(--accent-rgb),.22);
@@ -973,7 +1119,6 @@ html[data-theme="night"] .defn .sn{color:#A8BEF7}
 <div class="topbar">
   <div class="brand"><b>DEADHEAD</b><span>robotaxi fleet ops</span></div>
   <nav class="topnav">
-    <a href="#name">The name</a>
     <a href="#act1">The story</a>
     <a href="#paolo">Paolo</a>
     <a href="#work">The work</a>
@@ -993,20 +1138,24 @@ html[data-theme="night"] .defn .sn{color:#A8BEF7}
   <div class="hero">
     <div class="hero-copy">
       <span class="eyebrow">Free · Browser · No install</span>
-      <!-- The non-breaking spaces are load-bearing. Between roughly 1000 and
-           1300px the copy column is ~630px, the second line needs ~660px, and
-           it broke with "pay." alone on a row — the single word the whole
-           headline is built to land. text-wrap:balance did NOT fix it (it
-           bails on a two-segment block split by <br> and left the orphan
-           in place at every width tested). Gluing the last three words makes
-           the only available break point the one before "make", so the worst
-           case is now "Somebody still has to / make it pay." — a real line,
-           not a dangling word. Verified 390-1600px. -->
-      <h1 class="title">They automated the driving.<br><em>Somebody still has to make&nbsp;it&nbsp;pay.</em></h1>
-      <p class="lede">A new AI model took your whole department, cheaper, by the Monday. What you still own is a car that drives itself — and a man your father knows has a use for it. The job is deciding which rides are worth taking. It is not a step up.</p>
+      <!-- THE HEADLINE IS THE DICTIONARY ENTRY (Pavel, 2026-08-01). It was a
+           section of its own further down the page and it was the best thing
+           on the page, which is an argument for it being the first thing.
+           The name carries the whole premise twice over — the trade term and
+           the person — so the definition IS the pitch, and a headline that
+           merely described the pitch was doing less work.
+           Set as a real glossary entry rather than styled as a slogan: the
+           second sense only lands if the first one is read straight. -->
+      <h1 class="title">dead&middot;head</h1>
+      <p class="hero-pos">noun, and also verb</p>
+      <dl class="hero-def">
+        <dt>1.</dt><dd>To drive with nobody in the back as a robotaxi driver. Real miles, real power, real wear &mdash; and not one cent of fare against any of it.</dd>
+        <dt>2.</dt><dd><em>Also:</em> a man whose work has just been automated. Still moving. Still costing something to keep on the road. No longer carrying anybody anywhere.</dd>
+      </dl>
+      <p class="lede">A new AI model took your whole department, cheaper, by the Monday. What you still own is a car that drives itself, and a man your father knows has a use for it. <b>They automated the driving. Somebody still has to make it pay.</b></p>
       <div class="ctas">
         <a class="btn btn-primary" href="https://game.deadhead.cc/" target="_blank" rel="noopener">▶ Take the job — play free</a>
-        <a class="btn btn-ghost" href="#name">Why it's called Deadhead</a>
+        <a class="btn btn-ghost" href="#act1">Read the story</a>
       </div>
       <div class="meta">
         <div><b>6</b> cities, one arc</div>
@@ -1032,24 +1181,13 @@ html[data-theme="night"] .defn .sn{color:#A8BEF7}
 <div id="art-end" aria-hidden="true" style="height:1px;margin-top:-1px"></div>
 
 <div class="wrap">
-  <!-- THE NAME ===========================================================
-       The pun is the premise, and until this rewrite the page never once explained
-       it. "Deadhead" is real trade vocabulary — a leg driven with nobody in
-       the back, burning power and tyres for nothing — and it is also what the
-       industry just did to the person playing. Both senses are load-bearing:
-       sense 1 is a live counter in the game, sense 2 is the plot. Written as a
-       dictionary entry because a straight-faced glossary lands the second
-       meaning without ever having to point at it. -->
-  <section id="name">
-    <div class="panel defn">
-      <span class="hw">dead·head</span>
-      <div class="pos">noun, and also verb</div>
-      <div class="sense"><span class="sn">1</span><span><b>Taxi trade.</b> To drive with nobody in the back. The miles between dropping one passenger and reaching the next — real distance, real power, real wear, and not one cent of fare against any of it.</span></div>
-      <div class="sense"><span class="sn">2</span><span><b>The other reading.</b> A man whose work has been automated out from under him. Still moving. Still costing something to keep on the road. No longer carrying anybody anywhere.</span></div>
-      <p class="kick">The game is named for both, and it means both. <b>Deadhead miles are a live number on your books</b> — the single figure that decides whether a shift made money — and they are also, fairly bluntly, the thing that happened to you before the game started.</p>
-    </div>
-  </section>
-
+  <!-- The dead·head dictionary entry USED TO BE A SECTION HERE. Pavel moved it
+       into the hero on 2026-08-01 ("this should be the main HERO header") and
+       it is deliberately not duplicated: the page would otherwise define the
+       word twice, three screens apart, which reads as an editing accident
+       rather than as emphasis. The one thing that section carried and the
+       hero does not — that deadhead miles are a LIVE NUMBER on the books, not
+       just a metaphor — moved into Act two, where the books are the subject. -->
   <!-- ACT I -->
   <section id="act1">
     <div class="sec-head center">
@@ -1089,6 +1227,7 @@ html[data-theme="night"] .defn .sn{color:#A8BEF7}
         <h2>The job is going fine. That's the trap.</h2>
         <p>Austin, Dallas, Miami, Tampa, Orlando. Each one opens when you clock off a full shift in the last. There is <em>one</em> bank across all five, not a balance per city — so a car you left parked in Miami is still billing you at midnight while you work Tampa, and it will keep doing that until you notice.</p>
         <p>Underneath all of it, nine requirements are being counted without being announced. Miles supervised. Shifts completed. Acceptance rate. You are being assessed for something you have not applied for yet.</p>
+        <p>And the word in the title is a column on your books. <b>Deadhead miles</b> — the ones you drive empty to reach a passenger — are counted against every fare, every shift, and they are usually the figure that decides whether a day made money. Sense 1 is not a metaphor here. It is arithmetic.</p>
         <p class="aside">Apply too early and the same mailbox writes back with an honest <b>“you meet 3 of 9”</b> and tells you which six — not a locked door and no explanation.</p>
       </div>
       <figure class="panel act-art">
@@ -1118,32 +1257,47 @@ html[data-theme="night"] .defn .sn{color:#A8BEF7}
     </div>
   </section>
 
-  <!-- PAOLO -->
+  <!-- PAOLO, CITY BY CITY ==================================================
+       Structure is Pavel's call (2026-08-01): the CITY is the thing that
+       changes, so named tabs sit on top and the city's own block comes first;
+       Paolo's introduction is identical on all seven and sits underneath it.
+       Previously the fact was buried below his bio behind seven grey dots. -->
   <section id="paolo">
-    <div class="panel paolo">
-      <!-- Cropped from a wider street shot: full width kept, top/bottom
-           trimmed to a 3:4 portrait centred on Paolo's face and badge, with
-           the robotaxi's sensor pod and door still in frame for context. -->
-      <div class="pic">
-        <img id="paolo-pic" src="img/paolo-robotaxi.jpg" width="900" height="1200" loading="lazy"
-          alt="Paolo Cortez, in a light blue work shirt with his hack licence badge, standing beside a robotaxi with its rooftop sensor pod, clipboard in hand" onerror="this.remove()">
-        <span class="city" id="paolo-city">New York</span>
-      </div>
-      <div>
-        <div class="kicker" style="margin-bottom:6px">The other character</div>
-        <h3>Paolo Cortez</h3>
-        <p>Forty-one years in a cab before he got out, while getting out was still his idea. He walks you through your first day, then goes quiet — and speaks again only once you've been stuck long enough to need it. He isn't a tooltip. He has opinions about what you're doing, and he's usually right.</p>
-        <p>He turns up in every city you unlock, and he knows what the trade there used to be.</p>
-        <p style="font-size:14px;color:var(--text-3)">A standing <b>Now</b> line always names the single most useful next thing, so you're never lost. It never tells you what to <em>choose</em>.</p>
-        <div class="now-line">● Now: clock on and take the best offer</div>
-        <!-- One portrait per city, and one true thing about the trade there.
-             Every fact in PAOLO_CITIES (see the script) is sourced; none of it
-             is flavour. -->
-        <div class="paolo-fact">
-          <p id="paolo-fact">Forty-one years of it, here. New York froze the number of cabs at <b>13,595 in 1937</b> and never really unfroze it — and a medallion that changed hands for <b>$1.3 million in 2014</b> was worth about <b>$150,000</b> five years later.</p>
+    <div class="panel paolo-card">
+      <!-- Buttons are built in the script from PAOLO_CITIES so the tab strip,
+           the portrait, the heading and the fact cannot fall out of step. -->
+      <div class="city-tabs" id="paolo-tabs" role="tablist" aria-label="Paolo, city by city"></div>
+      <div class="paolo">
+        <!-- Cropped to a 3:4 portrait centred on Paolo's face and badge, with
+             the robotaxi's sensor pod and door still in frame for context. The
+             city caption that used to sit on the photo is gone: the tab strip
+             and the heading beside it already name the city twice. -->
+        <!-- This markup is PAOLO_CITIES[0] (Austin) hardcoded, in case the
+             script never runs — see the script's own comment on why New York
+             moved to LAST in the array and cannot be this fallback slide
+             any more. Keep in sync with PAOLO_CITIES[0] by hand; the script
+             overwrites all of it on load regardless. -->
+        <div class="pic">
+          <img id="paolo-pic" src="img/paolo-austin.jpg" width="900" height="1200" loading="lazy"
+            alt="Paolo Cortez beside a robotaxi on Congress Avenue in Austin, the Frost Bank tower and Sixth Street signs behind him" onerror="this.remove()">
         </div>
-        <div class="paolo-dots" id="paolo-dots" role="tablist" aria-label="Paolo, city by city"></div>
-        <p style="font-size:14px;margin-top:10px"><a href="#act3" style="color:var(--mint-ink);font-weight:600;text-decoration:none;border-bottom:1px solid rgba(132,194,168,.5)">He has one opinion about the whole job, and he never drops it — see Act three ↑</a></p>
+        <div>
+          <!-- CHANGES per tab. Every fact in PAOLO_CITIES is sourced; see the
+               script. -->
+          <div class="city-now">
+            <h3 id="paolo-city">Austin</h3>
+            <p class="fact" id="paolo-fact">Austin is the one city that threw the app companies out and lost. Voters rejected Proposition 1 <b>56–44 in May 2016</b>, Uber and Lyft switched off the next morning, and they stayed gone for <b>a year</b> — until the state legislature voided Austin’s rules and every other city’s along with them.</p>
+          </div>
+          <!-- FIXED. Identical on every tab. -->
+          <div class="paolo-static">
+            <div class="kicker" style="margin-bottom:6px">The other character</div>
+            <h4>Paolo Cortez</h4>
+            <p>Forty-one years in a cab before he got out, while getting out was still his idea. He walks you through your first day, then goes quiet — and speaks again only once you've been stuck long enough to need it. He isn't a tooltip. He has opinions about what you're doing, and he's usually right.</p>
+            <p>A standing <b>Now</b> line always names the single most useful next thing, so you're never lost. It never tells you what to <em>choose</em>.</p>
+            <div class="now-line">● Now: clock on and take the best offer</div>
+            <p style="margin-top:12px"><a href="#act3" style="color:var(--mint-ink);font-weight:600;text-decoration:none;border-bottom:1px solid rgba(132,194,168,.5)">He has one opinion about the whole job, and he never drops it — see Act three ↑</a></p>
+          </div>
+        </div>
       </div>
     </div>
   </section>
@@ -1249,7 +1403,7 @@ html[data-theme="night"] .defn .sn{color:#A8BEF7}
           <div class="guide-hint">Austin, day one, 08:32. <b>Hover a marker</b>, or read the twelve notes underneath.</div>
         </div>
         <div class="guide-list" style="margin-top:0">
-          <div class="gnote" id="g1" data-i="1"><div class="gn">1</div><div><h4>Six cities, two padlocked</h4><p>Austin is the tutorial. Each next city unlocks when you clock off a full shift in the one before. Phoenix and Las Vegas are dashed out — Nobody has launched there, so neither has the game.</p></div><div class="ge" aria-hidden="true">🗺️</div></div>
+          <div class="gnote" id="g1" data-i="1"><div class="gn">1</div><div><h4>Six cities, two padlocked</h4><p>Austin is the tutorial. Each next city unlocks when you clock off a full shift in the one before. New York and Las Vegas are dashed out — nobody has launched there, so neither has the game. New York is Paolo's own city; he's never actually worked one of these there.</p></div><div class="ge" aria-hidden="true">🗺️</div></div>
           <div class="gnote" id="g2" data-i="2"><div class="gn">2</div><div><h4>One bank, all six cities</h4><p>Not a per-city balance. A car you left parked in Miami is still billing this number at midnight while you work Tampa.</p></div><div class="ge" aria-hidden="true">🏦</div></div>
           <div class="gnote" id="g3" data-i="3"><div class="gn">3</div><div><h4>Clock on, and set the pace</h4><p>Cars only earn while you're watching them — you're the remote operator. 1×, 4× or 20×, except in San Francisco, where you're physically in the seat and it's locked at 1×.</p></div><div class="ge" aria-hidden="true">⏱️</div></div>
           <div class="gnote" id="g4" data-i="4"><div class="gn">4</div><div><h4>The fleet roster</h4><p>Every car: what it's doing, its charge, what it has earned today, and how many rides are stacked behind the current one.</p></div><div class="ge" aria-hidden="true">🚕</div></div>
@@ -1627,59 +1781,125 @@ html[data-theme="night"] .defn .sn{color:#A8BEF7}
      medallion-system start year. Sources contradict each other on both, and a
      section whose whole claim is "these are real" cannot carry a maybe. */
   (function(){
+    /* `c` / `cn` are each city's REAL accent out of the CITIES table in
+       deadhead.html (tone.day.accent / tone.night.accent) — Austin blue,
+       Dallas bronze, Miami magenta, Tampa teal, Orlando violet, SF fog green.
+       Copied, not invented: the game already teaches these six colours on its
+       own city strip, and a second palette here would contradict it. New York
+       is not a city in the game, so it takes --amber-ink, the darkened
+       taxi-yellow nobody else in the table uses — and, as of 2026-08-01, the
+       same colour the game's own locked New York tab uses for its dashed
+       outline (PLANNED_CITIES in deadhead.html, the slot that used to be
+       Phoenix). New York moved to LAST in this array on Pavel's instruction
+       ("Nove [move] New York after San Francisco and put lock in it"), so it
+       sits where the game puts it: right after the last real, playable city.
+       `locked:true` is the only thing that makes it render differently from
+       the six real cities — a dashed tab and a small lock glyph, same
+       language the game's own PLANNED_CITIES tabs use for New York and Las
+       Vegas — while the portrait, fact and rotation are unchanged. It is
+       still real content, not a stub: Paolo's own city, the one every
+       portrait of him before Austin already stood in. */
     const PAOLO_CITIES = [
-      {id:'ny', city:'New York', src:'img/paolo-robotaxi.jpg',
-       alt:'Paolo Cortez in a light blue work shirt with his hack licence badge, beside a robotaxi on a Manhattan avenue, clipboard in hand',
-       fact:'Forty-one years of it, here. New York froze the number of cabs at <b>13,595 in 1937</b> and never really unfroze it — and a medallion that changed hands for <b>$1.3 million in 2014</b> was worth about <b>$150,000</b> five years later.'},
-      {id:'austin', city:'Austin', src:'img/paolo-austin.jpg',
+      {id:'austin', c:'#3E6AE1', cn:'#406EE8', city:'Austin', src:'img/paolo-austin.jpg',
        alt:'Paolo Cortez beside a robotaxi on Congress Avenue in Austin, the Frost Bank tower and Sixth Street signs behind him',
        fact:'Austin is the one city that threw the app companies out and lost. Voters rejected Proposition 1 <b>56–44 in May 2016</b>, Uber and Lyft switched off the next morning, and they stayed gone for <b>a year</b> — until the state legislature voided Austin’s rules and every other city’s along with them.'},
-      {id:'dallas', city:'Dallas', src:'img/paolo-dallas.jpg',
+      {id:'dallas', c:'#A15C1E', cn:'#A7662B', city:'Dallas', src:'img/paolo-dallas.jpg',
        alt:'Paolo Cortez beside a robotaxi, downtown Dallas behind him',
        fact:'Dallas deregulated the ride and not the cab. From <b>April 2015</b> taxis still had to obey a city-set maximum fare; every other vehicle-for-hire was free to charge whatever it liked.'},
-      {id:'miami', city:'Miami', src:'img/paolo-miami.jpg',
+      {id:'miami', c:'#B5257E', cn:'#D4308D', city:'Miami', src:'img/paolo-miami.jpg',
        alt:'Paolo Cortez beside a robotaxi on a Miami street with palms behind him',
        fact:'Miami-Dade capped the trade at <b>2,121 medallions</b>. Uber and Lyft simply operated illegally from <b>2014 to 2016</b> — about <b>$4 million</b> in county fines — until the county gave up and legalised them. A medallion worth $431,000 in 2012 resold near <b>$40,000</b>.'},
-      {id:'tampa', city:'Tampa', src:'img/paolo-tampa.jpg',
+      {id:'tampa', c:'#0D7687', cn:'#0E8092', city:'Tampa', src:'img/paolo-tampa.jpg',
        alt:'Paolo Cortez beside a robotaxi, Tampa streetscape behind him',
        fact:'Hillsborough County ran the strangest rule in Florida: sedans and limos had to charge a <b>$50 minimum per ride</b>, however short the trip, to keep them off the taxis’ turf. The agency that wrote it was <b>abolished at the end of 2017</b>.'},
-      {id:'orlando', city:'Orlando', src:'img/paolo-orlando.jpg',
+      {id:'orlando', c:'#7F4DD5', cn:'#895BD9', city:'Orlando', src:'img/paolo-orlando.jpg',
        alt:'Paolo Cortez beside a robotaxi near Lake Eola, Orlando',
        fact:'Orlando’s first attempt at rules for app cars would have forced them to charge <b>more</b> than taxis — a <b>$3-per-mile floor</b>. The council dropped it in <b>December 2014</b> before the ordinance ever took effect.'},
-      {id:'sf', city:'San Francisco', src:'img/paolo-sf.jpg',
+      {id:'sf', c:'#187A4A', cn:'#1B8250', city:'San Francisco', src:'img/paolo-sf.jpg',
        alt:'Paolo Cortez beside a robotaxi on a San Francisco hill, the Golden Gate Bridge and a cable car behind him',
-       fact:'And here. San Francisco is the oldest driverless market in the country, which is exactly why the game ends here instead of starting here — by the time you arrive, nothing about it is new to anyone but you.'}
+       fact:'And here. San Francisco is the oldest driverless market in the country, which is exactly why the game ends here instead of starting here — by the time you arrive, nothing about it is new to anyone but you.'},
+      /* LAST, and LOCKED — see the note above the array. This is not a city
+         in Deadhead; it's where Paolo actually drove, and the game does not
+         let you take him back there yet. */
+      {id:'ny', city:'New York', c:'#8A5A12', cn:'#ECB863', locked:true, src:'img/paolo-robotaxi.jpg',
+       alt:'Paolo Cortez in a light blue work shirt with his hack licence badge, beside a robotaxi on a Manhattan avenue, clipboard in hand',
+       fact:'Forty-one years of it, here — before any of this. New York froze the number of cabs at <b>13,595 in 1937</b> and never really unfroze it; a medallion that changed hands for <b>$1.3 million in 2014</b> was worth about <b>$150,000</b> five years later. Nobody is running these cars on his old corner yet. That is the one city Deadhead does not let you drive.'}
     ];
     const img  = document.getElementById('paolo-pic');
     const cityEl = document.getElementById('paolo-city');
     const factEl = document.getElementById('paolo-fact');
-    const dots = document.getElementById('paolo-dots');
-    if(!img || !factEl || !dots) return;
+    const tabs = document.getElementById('paolo-tabs');
+    if(!img || !factEl || !tabs) return;
 
     let at = 0, timer = null, held = false;
     const calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     PAOLO_CITIES.forEach((c, i) => {
-      const d = document.createElement('button');
-      d.type = 'button';
-      d.setAttribute('role','tab');
-      d.setAttribute('aria-label', c.city);
-      d.setAttribute('aria-current', i === 0 ? 'true' : 'false');
+      const t = document.createElement('button');
+      t.type = 'button';
+      t.setAttribute('role','tab');
+      t.setAttribute('aria-selected', i === 0 ? 'true' : 'false');
+      /* Dashed outline + lock glyph for New York, same visual language as the
+         game's own PLANNED_CITIES tabs — deliberately NOT aria-disabled: the
+         slide behind it is real content (Paolo's actual history), only the
+         CITY is not yet a place Deadhead can send you. A disabled control
+         would make that slide unreachable by keyboard, which is the wrong
+         lock to put on it. */
+      if(c.locked){
+        t.classList.add('locked');
+        /* No escaping helper lives on this page (unlike deadhead.html's
+           escapeHtml) — every city name here is a hardcoded literal in
+           PAOLO_CITIES, never user input, so building the lock glyph via
+           textContent on a child span is the honest way to do this without
+           importing a security tool this page has no other use for. */
+        const lock = document.createElement('span');
+        lock.className = 'lk';
+        lock.setAttribute('aria-hidden','true');
+        lock.textContent = '🔒';
+        t.appendChild(lock);
+        t.appendChild(document.createTextNode(c.city));
+        t.title = c.city + ' — not a city in Deadhead (yet)';
+      } else {
+        t.textContent = c.city;
+      }
+      /* The colours ride in as custom properties rather than as six CSS
+         rules, so this array stays the only place a city's hue is written. */
+      t.style.setProperty('--city', c.c);
+      t.style.setProperty('--city-night', c.cn);
       /* A manual pick ends the cycle for good — once the reader is steering,
-         a timer that yanks the photo away three seconds later is a bug from
+         a timer that yanks the photo away seven seconds later is a bug from
          where they are sitting. */
-      d.addEventListener('click', () => { stop(); show(i); });
-      dots.appendChild(d);
+      t.addEventListener('click', () => { stop(); show(i); });
+      tabs.appendChild(t);
+    });
+
+    /* Left/right arrows across the strip, which is what a role="tablist" of
+       real buttons promises a keyboard user. Also stops the cycle: they are
+       steering now. */
+    tabs.addEventListener('keydown', e => {
+      const d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+      if(!d) return;
+      e.preventDefault();
+      stop();
+      const n = (at + d + PAOLO_CITIES.length) % PAOLO_CITIES.length;
+      show(n);
+      tabs.querySelectorAll('button')[n].focus();
     });
 
     function paint(i){
       const c = PAOLO_CITIES[i];
       img.src = c.src;
       img.alt = c.alt;
-      if(cityEl) cityEl.textContent = c.city;
+      if(cityEl){
+        cityEl.textContent = c.city;
+        /* The heading takes the city's colour too, so the tab and the block it
+           controls are visibly the same thing. */
+        cityEl.style.setProperty('--city-ink', c.c);
+        cityEl.style.setProperty('--city-night', c.cn);
+      }
       factEl.innerHTML = c.fact;
-      dots.querySelectorAll('button').forEach((d, n) =>
-        d.setAttribute('aria-current', n === i ? 'true' : 'false'));
+      tabs.querySelectorAll('button').forEach((t, n) =>
+        t.setAttribute('aria-selected', n === i ? 'true' : 'false'));
       at = i;
     }
     function show(i){
