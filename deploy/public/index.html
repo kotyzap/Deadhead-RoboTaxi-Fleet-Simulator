@@ -2648,8 +2648,21 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
    costume. It is also why the shell needs no second rule set for night mode:
    it already is night. Everything that belongs to the GAME rather than to the
    phone — the accent button, easing — uses tokens. */
-#prologue{position:fixed;inset:0;z-index:92;display:grid;place-items:center;
-  padding:16px}
+/* THE WORDMARK MUST STAY VISIBLE (Pavel, 2026-07-31): "make sure the title of
+   the game DEADHEAD in the BG picture is visible same way as registration form
+   splash screen."
+
+   The same requirement the intro already has — .splash-bg uses `contain`
+   specifically so DEADHEAD / ROBOTAXI FLEET SIMULATOR is never cropped (see its
+   note), and .intro-frame sits below it. Giving the phone a min-height in
+   v0.105.0 grew it up over that band.
+
+   Fixed by reserving the band and BOTTOM-aligning the stage rather than
+   centring it: place-items:end, with a top padding sized in vh so the reserve
+   tracks the artwork, which is itself letterboxed to the viewport height.
+   Not a fixed pixel offset — the title's position moves with the contain fit. */
+#prologue{position:fixed;inset:0;z-index:92;display:grid;place-items:end center;
+  padding:clamp(88px,21vh,230px) 16px 18px}
 #prologue[hidden]{display:none}
 /* Just enough scrim to hold text against a bright golden-hour photo. The
    tutorial scrim taught this the hard way — see #dimscrim's note on why
@@ -2658,11 +2671,22 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
 .pro-scrim{position:absolute;inset:0;background:rgba(6,7,9,.5);
   backdrop-filter:blur(2px)}
 .pro-stage{position:relative;display:flex;flex-direction:column;
-  align-items:center;gap:14px;max-height:100%}
+  align-items:center;gap:14px;max-height:100%;min-height:0}
 /* THE PHONE. Sized in vh as well as px so a short laptop viewport never gets a
    phone taller than the window — the thread scrolls inside instead. */
+/* min-height as well as max: with one short message the shell collapsed to
+   about 215px and read as a stub notification, not as a phone somebody is
+   holding (seen on the live 0.104.0). A handset has a body before it has a
+   conversation. Capped against the viewport so a short laptop window still
+   fits, and the thread's flex:1 absorbs the empty space until messages fill
+   it. */
+/* Heights are now bounded by the padded grid area rather than by the viewport,
+   because #prologue reserves the wordmark band above (see its note). max-height
+   100% keeps the shell inside whatever is left; the min-height is what stops it
+   collapsing to a notification toast at message one. */
 .pro-phone{position:relative;width:min(92vw,380px);
-  max-height:min(84vh,720px);display:flex;flex-direction:column;
+  min-height:min(58vh,470px);max-height:100%;
+  display:flex;flex-direction:column;
   background:#0d0f13;color:#f4f5f7;
   border:1px solid rgba(255,255,255,.16);border-radius:34px;
   box-shadow:0 30px 70px rgba(0,0,0,.6),0 0 0 4px rgba(0,0,0,.55);
@@ -2673,6 +2697,13 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
   padding:9px 8px 7px;font-size:10.5px;letter-spacing:.03em;
   color:rgba(255,255,255,.62);font-variant-numeric:tabular-nums}
 .pro-status-r{display:inline-flex;align-items:center;gap:2px}
+/* Weather sits left of the signal bars, the way a real status bar orders it.
+   Slightly brighter than the rest of the chrome because it is information
+   rather than decoration, and given its own right margin so it does not crowd
+   the bars. Empty until the first fetch resolves — no "—°F" placeholder on a
+   phone, which is chrome, not a dashboard. */
+.pro-wx{margin-right:7px;color:rgba(255,255,255,.78);letter-spacing:.02em;
+  white-space:nowrap}
 .pro-sig{display:inline-block;width:3px;background:rgba(255,255,255,.55);border-radius:1px}
 .pro-sig:nth-child(1){height:4px}
 .pro-sig:nth-child(2){height:6px}
@@ -2703,9 +2734,23 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
 .pro-shot{align-self:flex-start;max-width:88%;padding:5px;
   border-radius:16px 16px 16px 5px;background:rgba(255,255,255,.11);
   animation:pro-in .34s var(--ease) both}
+/* zoom-in because these open full-screen in #photolb — the poster is the ONE
+   image in this game the player is meant to actually read, and at 260px inside
+   a phone bubble its nine requirements are illegible (live 0.104.0). The bubble
+   is the notification; the lightbox is the ad. */
+.pro-shot{cursor:zoom-in}
 .pro-shot img{display:block;width:100%;border-radius:12px;
   aspect-ratio:4/3;object-fit:cover;background:rgba(255,255,255,.05)}
 .pro-shot.wide img{aspect-ratio:16/9}
+/* Enlarged. object-fit:contain and no aspect-ratio so nothing is cropped —
+   cover is right for a thumbnail and wrong for something being read. Reuses
+   the #photolb shell the finale contract already uses (z-index 1300, so it
+   clears #prologue's 92 with room to spare). */
+#photolb .pro-shot{width:min(1000px,94vw);max-width:none;cursor:zoom-out;
+  padding:8px}
+#photolb .pro-shot img{aspect-ratio:auto;object-fit:contain;
+  max-height:82vh;width:100%}
+#photolb .pro-shot small{font-size:12px;padding:8px 6px 3px}
 .pro-shot small{display:block;padding:5px 7px 2px;font-size:10.5px;
   color:rgba(255,255,255,.5);line-height:1.35}
 /* The three-dot "he is typing" bubble. */
@@ -2715,7 +2760,14 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
   animation:splash-dot 1.1s ease-in-out infinite}
 .pro-typing i:nth-child(2){animation-delay:.14s}
 .pro-typing i:nth-child(3){animation-delay:.28s}
-.pro-foot{padding:11px 6px 2px;display:flex;flex-direction:column;gap:8px}
+/* Read and Decline sit on ONE row. Read takes the remaining width so it stays
+   the obvious action; Decline is sized to its own label rather than given an
+   equal half, because equal halves would read as a 50/50 decision and this is
+   not one yet — §3.2's fork is where two answers genuinely weigh the same. */
+.pro-foot{padding:11px 6px 2px;display:flex;flex-direction:row;gap:8px;
+  align-items:stretch}
+.pro-foot .pro-btn{flex:1 1 auto;min-width:0}
+.pro-foot .pro-btn-alt{flex:0 0 auto;padding:0 16px}
 .pro-btn{width:100%;height:40px;border:0;border-radius:20px;cursor:pointer;
   font:inherit;font-size:13px;font-weight:500;
   background:var(--accent);color:#fff;transition:opacity .15s var(--ease)}
@@ -2729,17 +2781,50 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
 .pro-btn small{display:block;font-size:10.5px;font-weight:400;opacity:.75;
   margin-top:1px}
 .pro-btn.tall{height:auto;padding:9px 14px;line-height:1.3}
-.pro-skip{border:0;background:none;cursor:pointer;font:inherit;font-size:11.5px;
-  letter-spacing:.05em;color:rgba(255,255,255,.55);padding:4px 10px}
-.pro-skip:hover{color:rgba(255,255,255,.85)}
+/* .pro-skip's rules are gone with the element: "Skip" became "Decline" and moved
+   into the phone's own footer beside Read (see the markup note there), so a
+   ghost text-button style outside the handset had nothing left to style. */
+/* ---- DOUBLE-CLICK TO BLOW THE HANDSET UP --------------------------------
+   Pavel, 2026-07-31: "double click must increase the size to the full screen
+   phone mockup display." At 380px the messages are 12.5px and the poster
+   thumbnail is ~260px wide, which is fine as a glance and mean to anyone
+   reading it on a 4K panel or with reading glasses on.
+
+   A CLASS ON THE CONTAINER, not on the phone: the wordmark reserve
+   (#prologue's padding) has to relax at the same moment, and one class on one
+   ancestor keeps those two facts from drifting apart.
+
+   Everything scales together — bubble text, header, buttons, image width —
+   because a phone that grew its shell but kept 12.5px type would look like a
+   stretched screenshot rather than a bigger phone. */
+#prologue.pro-max{padding:14px}
+#prologue.pro-max .pro-phone{width:min(96vw,880px);min-height:0;max-height:100%;
+  border-radius:26px;padding:13px 14px 15px}
+#prologue.pro-max .pro-msg{font-size:15.5px;max-width:76%;padding:11px 15px;
+  border-radius:19px 19px 19px 6px}
+#prologue.pro-max .pro-shot{max-width:70%}
+#prologue.pro-max .pro-shot small{font-size:12px}
+#prologue.pro-max .pro-who b{font-size:15px}
+#prologue.pro-max .pro-who small{font-size:12px}
+#prologue.pro-max .pro-av{width:36px;height:36px;font-size:13px}
+#prologue.pro-max .pro-status{font-size:12px}
+#prologue.pro-max .pro-btn{height:48px;font-size:15px;border-radius:24px}
+#prologue.pro-max .pro-thread{gap:11px;padding:16px 10px 6px}
 @media (max-width:420px){
   .pro-phone{width:96vw;border-radius:26px}
   .pro-msg,.pro-shot{max-width:92%}
+  /* Already edge to edge on a phone — maximising can only change the type. */
+  #prologue.pro-max .pro-phone{width:98vw}
+  #prologue.pro-max .pro-msg,#prologue.pro-max .pro-shot{max-width:92%}
 }
 /* Short landscape (a laptop, or a phone on its side): the phone would be taller
    than the window, so let the thread do the scrolling and trim the chrome. */
+/* Short landscape (a laptop, or a phone on its side). The wordmark reserve has
+   to shrink here or there is no room left for a phone at all — but it must not
+   go to zero, or this is the one tier where the title gets covered again. */
 @media (max-height:620px){
-  .pro-phone{max-height:94vh;padding:8px 9px 10px;border-radius:24px}
+  #prologue{padding:clamp(52px,13vh,92px) 12px 12px}
+  .pro-phone{min-height:0;padding:8px 9px 10px;border-radius:24px}
   .pro-status,.pro-notch{display:none}
   .pro-thread{padding-top:8px}
 }
@@ -4261,7 +4346,14 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
       <div class="pro-notch" aria-hidden="true"></div>
       <div class="pro-status" aria-hidden="true">
         <span id="pro-clock">--:--</span>
-        <span class="pro-status-r"><i class="pro-sig"></i><i class="pro-sig"></i><i class="pro-sig"></i><b class="pro-batt"></b></span>
+        <!-- Real current weather, same WX/uTemp() source the game's own status
+             bar and map header use (Pavel, 2026-07-31) — so the phone agrees
+             with the console the player is about to be handed, rather than
+             inventing a second version of the truth. °F comes for free: uTemp()
+             holds Celsius and converts on uImp(), and defaultUnits() already
+             picks imperial for US locales, so a US player sees Fahrenheit here
+             and can flip the whole game to metric in the Gear menu afterwards. -->
+        <span class="pro-status-r"><span id="pro-wx" class="pro-wx"></span><i class="pro-sig"></i><i class="pro-sig"></i><i class="pro-sig"></i><b class="pro-batt"></b></span>
       </div>
       <div class="pro-head">
         <span class="pro-av">PC</span>
@@ -4270,13 +4362,20 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
       <!-- aria-live so a screen reader hears each message as it lands rather
            than only on the final focus change. -->
       <div class="pro-thread" id="pro-thread" aria-live="polite"></div>
+      <!-- TWO BUTTONS, SIDE BY SIDE (Pavel, 2026-07-31: "Add blue read and next
+           to it 'decline' as it is now skip").
+           The rename is what moved this INSIDE the phone. "Skip" was the player
+           talking to the game — a cutscene control — so it belonged outside the
+           handset, and that is where it started. "Decline" is the player talking
+           to PAOLO: you are declining a stranger's messages, which is a thing
+           you do on a phone, in the fiction. Same function, honest word, and it
+           quietly rehearses storyplan.md §3.2's real fork, where declining him
+           is the whole choice. -->
       <div class="pro-foot">
         <button type="button" id="pro-next" class="pro-btn">Read</button>
+        <button type="button" id="pro-decline" class="pro-btn pro-btn-alt">Decline</button>
       </div>
     </div>
-    <!-- Skip stays OUTSIDE the phone: it is the player talking to the game, not
-         to Paolo. Always available — nobody should be trapped in a cutscene. -->
-    <button type="button" id="pro-skip" class="pro-skip">Skip</button>
   </div>
 </div>
 
@@ -7597,7 +7696,11 @@ const RAY=[
       it, already escaped. */
    t:"Welcome to Deadhead Robotaxi Fleet Ops. My name is Paolo Cortez. Forty-one "+
      "years in a cab before I got out, while getting out was still my idea. "+
-     "You're {NAME}, I'm told.<br><br>{CASH} and the car you already own. "+
+     /* {ITOLD}, not {NAME}: a player who left the username blank gets
+        playerName()'s 'Player' placeholder, and "You're Player, I'm told."
+        is what that looked like on the live site. The token resolves to the
+        entire clause or to nothing at all. */
+     "{ITOLD}<br><br>{CASH} and the car you already own. "+
      "Register that one and it costs nothing — or rent or finance something "+
      "else instead, if you'd rather. Either way, something needs to be "+
      "earning by tonight."},
@@ -8957,8 +9060,20 @@ function sayName(n){
   n=String(n||'');
   return n ? n.charAt(0).toUpperCase()+n.slice(1) : n;
 }
+/* Does the player have a REAL name, or are we looking at the placeholder?
+   playerName() falls back to 'Player', which is correct for a profile chip and
+   awful in dialogue — Pavel's live screenshot, 2026-07-31: Paolo opening the
+   prologue with "Is this Player?" like a call centre reading a blank field.
+   Anything that puts the name in somebody's MOUTH has to ask this first. */
+function playerNamed(){ return !!(PROFILE&&PROFILE.name) }
 function rayFill(t){
   return t
+    /* {ITOLD} is the whole "You're X, I'm told." clause, present only when
+       there is a name to say. A plain {NAME} token cannot do this: the fix has
+       to delete a sentence, not substitute a word, and only rayFill() knows
+       whether the name is real. Used by RAY beat 1 and the prologue. */
+    .replace('{ITOLD}',playerNamed()
+      ? ("You're "+escapeHtml(sayName(playerName()))+", I'm told.") : '')
     .replace('{NAME}',escapeHtml(sayName(playerName())))
     .replace(/\{FLOOR\}/g,money(floorCost()))
     .replace(/\{CASH\}/g,money(S.cash));
@@ -9675,7 +9790,12 @@ document.addEventListener('click',function(e){
   const lb=$('photolb');
   if(!lb) return;
   if(!lb.hidden){ lb.hidden=true; lb.innerHTML=''; return }
-  const c=e.target.closest?e.target.closest('.contract'):null;
+  /* .pro-shot joins .contract here (v0.105.0): the prologue's poster is the one
+     image the player is meant to READ, and a 260px bubble cannot carry nine
+     requirements. Extending this delegated handler rather than binding one in
+     showPrologue() for the same reason the comment above gives — and because
+     one lightbox with one dismiss rule beats two. */
+  const c=e.target.closest?e.target.closest('.contract,.pro-shot'):null;
   if(!c) return;
   lb.innerHTML=c.outerHTML;
   lb.hidden=false;
@@ -13357,7 +13477,7 @@ const SLOTS=['slot1','slot2','slot3'];
    SAVE_V above is the STATE SHAPE version and moves only when the
    snapshot format changes — the two are deliberately independent, so
    shipping 0.9.0 does not invalidate 0.8.0 saves. */
-const VERSION='0.104.0';
+const VERSION='0.109.0';
 
 function snapshot(){
   return {
@@ -17345,6 +17465,22 @@ $('rp-go').addEventListener('click',function(){ autosave('day-end') });
    finale-contract.jpg, and a room that looks like whatever hour you happen to
    be playing at is worth more on the way in than a reveal nobody was waiting
    for. */
+/* "Good morning" / "Good afternoon" / "Good evening", off the PLAYER's own wall
+   clock — the same clock prologueOfficeArt() reads, so the greeting and the
+   skyline in the photograph always agree.
+   Boundaries are the ordinary English ones rather than the 06:00/18:00 pair the
+   artwork uses: "afternoon" starts at noon, not at six. The two functions
+   deliberately do NOT share a threshold, because they are answering different
+   questions — one is "is it light out", the other is "what would a person say".
+   Evening runs through the small hours: 02:00 is not morning to anybody who is
+   awake at it. */
+function timeGreeting(now){
+  const h=(now||new Date()).getHours();
+  if(h>=5&&h<12) return 'Good morning';
+  if(h>=12&&h<18) return 'Good afternoon';
+  return 'Good evening';
+}
+
 function prologueOfficeArt(now){
   const h=(now||new Date()).getHours();
   const day=h>=6&&h<18;
@@ -17373,11 +17509,26 @@ function sndMsg(){
    than baked in at parse time. */
 function prologueBeats(){
   return [
-    {t:"Is this {NAME}? Paolo Cortez. Your father gave me your number — he "+
+    /* Pavel's call, 2026-07-31, replacing an earlier "Is this {NAME}?" — which
+       became "Is this Player?" for anyone who left the username blank, and read
+       like a call centre working through a form.
+       A time-of-day greeting is better for three reasons: it never depends on
+       having a name, it is what a courteous stranger actually opens with, and
+       it reads off the SAME wall clock as the office photograph below
+       (prologueOfficeArt()) — so a player texted "Good evening" also gets the
+       dusk skyline, and the two agree without either knowing about the other.
+       The name, when there is one, comes after the greeting rather than
+       carrying it. */
+    {t:timeGreeting()+(playerNamed()?', {NAME}':'')+
+       ". My name is Paolo Cortez. Your father, Fox, gave me this number — he "+
        "said you would not mind."},
-    {t:"He told me about the job. The whole department, and a model doing it "+
-       "cheaper by the Monday. I am sorry. It is happening everywhere and "+
-       "that does not make it smaller."},
+    /* "a model" -> "a new AI model", and "the job" -> "the job layoffs" (Pavel,
+       2026-07-31). Both earn their words: §2 has Paolo looking specifically for
+       people who lost jobs to AI, and this was the one line that carried that
+       and left it implicit — "a model" could have been a car. */
+    {t:"He told me about the job layoffs. The whole department, and a new AI "+
+       "model doing it cheaper by the Monday.<br><br>I am sorry. It is "+
+       "happening everywhere and that does not make it smaller."},
     {t:"Forty-one years I drove a cab. I got out while getting out was still "+
        "my idea, which is more than most of us managed."},
     {t:"Here is why I am writing. I co-own the Garage dealership now, and I "+
@@ -17393,6 +17544,18 @@ function prologueBeats(){
        "reference, so you are the first call I made."},
     {t:"And you have the car sitting there. Electric, drives itself, already "+
        "yours. That is the whole starting position: a car, and no boss."},
+    /* Pavel, 2026-07-31: "Add a photo of the car as father Fox send it to Paolo
+       if it is eligible."
+       A FORWARDED photograph, and the framing does real work. Fox sending
+       Paolo a picture of his son's car is how the introduction actually
+       happened — it explains why a man who has never met you already knows you
+       have an eligible vehicle, and it puts the father on stage for one beat
+       without giving him dialogue. It also means the car the player registers
+       thirty seconds later in the garage is a car they have already seen.
+       Read off PHOTO_FOR['saloon'], the same source ownCardHtml() uses via
+       artHtml(), so the picture can never drift from the card. */
+    {car:'saloon',
+     cap:'Forwarded from Fox — “this is his. Barely driven since the layoff.”'},
     {t:"So. Austin, tonight. Get one shift finished and see a real check with "+
        "your name on it, and then we will talk about the list."}
   ];
@@ -17400,7 +17563,7 @@ function prologueBeats(){
 
 function showPrologue(next){
   const el=$('prologue'), thread=$('pro-thread'), btn=$('pro-next'),
-        skip=$('pro-skip'), sub=$('pro-sub'), clock=$('pro-clock');
+        decline=$('pro-decline'), sub=$('pro-sub'), clock=$('pro-clock');
   const beats=prologueBeats();
   let i=0, typingT=null, clockT=null, done=false;
 
@@ -17408,19 +17571,30 @@ function showPrologue(next){
     const d=new Date();
     clock.textContent=String(d.getHours()).padStart(2,'0')+':'+
                       String(d.getMinutes()).padStart(2,'0');
+    /* Weather rides the same interval as the clock rather than getting its own:
+       fetchWeather() refreshes WX every 15 minutes on its own timer, so this
+       only has to READ it, and reading it beside the clock means the two can
+       never disagree about how stale they are.
+       Blank rather than "—°F" until the first fetch lands (offline, or simply
+       not back yet) — a status bar showing a dash is a broken phone, and this
+       one is set dressing that must never look faulty. */
+    const wx=$('pro-wx');
+    if(wx) wx.textContent=(WX&&typeof WX.temp==='number')?uTemp(WX.temp):'';
   }
   function atBottom(){ thread.scrollTop=thread.scrollHeight }
 
   function finish(){
-    if(done) return;                 /* Skip and the last card must not both run */
+    if(done) return;                 /* Decline and the last card must not both run */
     done=true;
     clearTimeout(typingT); clearInterval(clockT);
     /* Banked BEFORE the handover, so a player who closes the tab on the very
        last card is not shown the whole thing again. */
     markPrologueSeen();
     el.hidden=true;
+    el.classList.remove('pro-max');
     btn.removeEventListener('click',advance);
-    skip.removeEventListener('click',finish);
+    decline.removeEventListener('click',finish);
+    if(phone) phone.removeEventListener('dblclick',toggleBig);
     /* Same reason showIntro()'s closeIntro() calls it: the splash was only
        still on screen to be this overlay's backdrop. No-op if it already went. */
     splashHide();
@@ -17439,9 +17613,15 @@ function showPrologue(next){
     typingT=setTimeout(function(){
       if(done) return;
       sub.textContent='online';
-      if(b.pic||b.art){
-        const art=b.art?prologueOfficeArt():{src:b.pic,cap:b.cap};
-        bubble.className='pro-shot'+(b.art||b.ar==='16/9'?' wide':'');
+      if(b.pic||b.art||b.car){
+        /* `car` resolves through PHOTO_FOR so the forwarded photograph is
+           literally the same asset the garage card shows — see the beat's note.
+           `.wide` because the car renders are 5:2 press shots; cropping one to
+           4:3 would cut the car in half. */
+        const art=b.art?prologueOfficeArt()
+                 :b.car?{src:PHOTO_FOR[b.car],cap:b.cap}
+                 :{src:b.pic,cap:b.cap};
+        bubble.className='pro-shot'+(b.art||b.car||b.ar==='16/9'?' wide':'');
         /* escapeHtml on the caption even though every string here is authored:
            the art caption is chosen by a function and a future edit should not
            be able to inject markup by accident. */
@@ -17461,17 +17641,43 @@ function showPrologue(next){
     }, i===1?260:520);
   }
 
+  /* Double-click the handset to blow it up, and again to put it back.
+     ------------------------------------------------------------------
+     NOT on a photograph: those already have their own single-click gesture
+     (#photolb, the delegated .contract/.pro-shot handler), and a dblclick there
+     would fire that first and fight it. Clean division — images have the
+     lightbox, the phone itself has the zoom. Guarded rather than assumed,
+     because the two gestures overlap on exactly one element.
+
+     Bound here rather than in the markup so it is removed with everything else
+     in finish(); left on, it would keep toggling a class on a hidden overlay. */
+  function toggleBig(e){
+    if(e.target.closest&&e.target.closest('.pro-shot')) return;
+    el.classList.toggle('pro-max');
+    atBottom();          /* the reflow changes scrollHeight — stay at the newest */
+  }
+  const phone=el.querySelector('.pro-phone');
+
   el.hidden=false;
+  el.classList.remove('pro-max');   /* never inherit a previous run's zoom */
   thread.innerHTML='';
   btn.textContent='Read';
   btn.disabled=false;
-  paintClock(); clockT=setInterval(paintClock,20000);
+  if(phone) phone.addEventListener('dblclick',toggleBig);
+  /* Discoverable without a tooltip nobody reads: the title is for the mouse,
+     and the double-click is announced in Paolo's first "typing" beat below via
+     the sub line only if it ever needs to be. For now the title carries it. */
+  if(phone) phone.title='Double-click to enlarge';
+  /* 20s is right for a clock and too slow for a value that arrives once, from a
+     network call already in flight when this overlay opens — so the first
+     minute ticks faster to catch the weather landing. */
+  paintClock(); clockT=setInterval(paintClock,5000);
   /* Land on the splash artwork, both orderings — identical to showIntro()'s
      handover, including the late-open case where the splash timer already
      fired and splashBackdrop() has to bring it back. */
   if(splashLoading) el.classList.add('intro-onsplash'); else splashBackdrop();
   btn.addEventListener('click',advance);
-  skip.addEventListener('click',finish);
+  decline.addEventListener('click',finish);
   advance();                          /* the first message arrives unprompted */
 }
 
@@ -17991,6 +18197,7 @@ window.DH_ACT1={
   /* prologue.test.js — storyplan.md §3. */
   showPrologue:showPrologue,prologueBeats:prologueBeats,
   prologueOfficeArt:prologueOfficeArt,prologueSeen:prologueSeen,
+  timeGreeting:timeGreeting,playerNamed:playerNamed,
   markPrologueSeen:markPrologueSeen,
   /* rayPause/rayResume's own state is plain module `let`, not on S (see their
      comment) — exposed as getters, same pattern as ROADS/ZONES/DODGE above,
