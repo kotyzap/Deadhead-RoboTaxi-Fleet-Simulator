@@ -471,7 +471,13 @@
    rather than a broken button. The current profile gets a ring, not a
    different shape, so the row's rhythm (4 same-size circles) never shifts
    as slots fill in. */
-.acct-slots{display:flex;gap:10px;margin:0 0 10px;padding:0 1px}
+/* Pavel, 2026-08-01: "full width" — spread across the whole card rather
+   than clustering on the left with dead space to the right. space-between
+   does that while keeping every circle the same fixed size; gap is just a
+   floor so two adjacent circles never touch if the row ever gets wider
+   than 4 slots' worth of spacing. */
+.acct-slots{display:flex;justify-content:space-between;gap:8px;margin:0 0 10px;padding:0 1px}
+.acct-slots[hidden]{display:none}
 .acct-slot{width:40px;height:40px;border-radius:50%;border:0;cursor:pointer;
   display:grid;place-items:center;color:#fff;font-size:15px;font-weight:600;
   flex:0 0 auto;box-shadow:0 0 0 2px transparent;transition:box-shadow .15s}
@@ -481,6 +487,22 @@
   -webkit-backdrop-filter:blur(var(--blur)) saturate(var(--sat));
   border:1px dashed var(--brd-2);color:var(--text-3);font-weight:400;font-size:18px}
 .acct-slot.add:hover{border-color:var(--accent);color:var(--accent);filter:none}
+
+/* PLAY MODE — the top-level choice (Pavel, 2026-08-01), replacing the old
+   "Play on this device only" button that used to sit below this whole card
+   unconditionally (see deadhead.html's #intro-skip). "Play across devices"
+   is preselected: it's this card's whole reason to exist. Picking the
+   other side collapses everything below to a bare name field — #intro-skip
+   itself becomes THAT mode's one action button (see paintPlayMode()),
+   reused rather than duplicated so a page with cloud.js deleted entirely
+   still has exactly one, always-visible way to just play locally. */
+.acct-mode{display:flex;gap:6px;margin-bottom:10px}
+.acct-mode button{flex:1;height:36px;padding:0 6px;font:inherit;font-size:12px;
+  font-weight:500;cursor:pointer;border:1px solid var(--brd-2);
+  border-radius:var(--r-ctl);background:var(--inset);color:var(--text-3)}
+.acct-mode button[aria-selected="true"]{background:var(--panel-solid);
+  color:var(--text);border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.acct-mode button:hover:not([aria-selected="true"]){color:var(--text)}
 
 .acct{padding:0;border:1px solid var(--brd);border-radius:9px;
   background:var(--c-card);margin:2px 0 4px;overflow:hidden}
@@ -495,6 +517,10 @@
    signed-out panels cleanly) was clipping the note text mid-word instead
    of wrapping it. */
 .acct-head{display:flex;align-items:baseline;flex-wrap:wrap;gap:2px 9px;padding:11px 13px 0}
+/* [hidden] loses to this rule's own display:flex unless overridden right
+   here — same trap as .acct-slots/.acct-tabs/.fld below (Pavel, 2026-08-01,
+   local-mode toggle). */
+.acct-head[hidden]{display:none}
 /* color:var(--text) was missing here (Pavel, 2026-07-30, second report:
    "Choose a username" and "paolo" still dark-on-dark after the #intro
    token-scope fix). color is an inherited CSS property, but inheritance
@@ -530,6 +556,7 @@
 /* mode tabs */
 .acct-tabs{display:flex;gap:2px;margin-bottom:9px;background:var(--inset);
   border-radius:var(--r-ctl);padding:2px;width:fit-content}
+.acct-tabs[hidden]{display:none}
 .acct-tabs button{height:25px;padding:0 12px;font:inherit;font-size:11.5px;cursor:pointer;
   border:0;border-radius:calc(var(--r-ctl) - 1px);background:transparent;color:var(--text-3)}
 .acct-tabs button[aria-selected="true"]{background:var(--panel-solid);color:var(--text);
@@ -538,6 +565,7 @@
 /* the form itself */
 #dh-form{display:flex;flex-direction:column;gap:7px}
 .fld{position:relative;display:flex}
+.fld[hidden]{display:none}
 .fld input{flex:1;min-width:0;height:34px;padding:0 11px;font:inherit;font-size:13px;
   color:var(--text);background:var(--inset);border:1px solid var(--brd-2);
   border-radius:var(--r-ctl)}
@@ -621,9 +649,13 @@
 #dh-msg:empty{margin-top:0}`;
 
   const HTML = `
+<div class="acct-mode" role="tablist" aria-label="Where do saves live?">
+  <button type="button" id="dh-mode-cloud" role="tab" aria-selected="true">Play across devices</button>
+  <button type="button" id="dh-mode-local" role="tab" aria-selected="false">Play on this device only</button>
+</div>
 <div class="acct-slots" id="dh-slots" role="group" aria-label="Player profiles on this device"></div>
 <div class="acct" id="dh-acct">
-  <div class="acct-head">
+  <div class="acct-head" id="dh-head">
     <h5>Choose a username</h5>
     <span id="dh-head-note">Want to play across devices?</span>
   </div>
@@ -644,7 +676,7 @@
       <button type="submit" id="dh-quick-submit">Play as <span id="dh-quick-name2"></span></button>
     </form>
     <div id="dh-full">
-      <div class="acct-tabs" role="tablist">
+      <div class="acct-tabs" id="dh-tabs" role="tablist">
         <button type="button" id="dh-tab-in"  role="tab" aria-selected="true">Sign in</button>
         <button type="button" id="dh-tab-new" role="tab" aria-selected="false">Create account</button>
       </div>
@@ -653,7 +685,7 @@
           <input type="text" id="dh-username" placeholder="Username" maxlength="40"
                  autocomplete="username" aria-label="Username" required>
         </div>
-        <div class="fld pw">
+        <div class="fld pw" id="dh-pw-wrap">
           <input type="password" id="dh-pw" placeholder="Password"
                  autocomplete="current-password" aria-label="Password"
                  minlength="${MIN_PASSWORD}" required>
@@ -682,6 +714,12 @@
 
   /* 'login' or 'register' — one primary button, label follows the mode. */
   let mode = 'login';
+  /* 'cloud' or 'local' — the new top-level choice (Pavel, 2026-08-01).
+     'cloud' is the default: this whole card exists to offer an account.
+     Deliberately a separate variable from `mode` above — that one is about
+     WHICH cloud action (sign in vs create), this one is about whether
+     there's a cloud account in the picture at all. */
+  let playMode = 'cloud';
   const COPY = {
     login: {
       submit: 'Sign in',
@@ -753,12 +791,15 @@
      already repaints on an auth transition — a fresh sign-in hides it (the
      whole #dh-out block goes hidden), a sign-out brings it back (the
      remembered name survives doSignOut(), see LAST_USER_KEY above), and
-     "Switch account" forces the full form for the rest of this visit. */
+     "Switch account" forces the full form for the rest of this visit.
+     playMode==='local' always forces the full form regardless of any
+     remembered username — "Play on this device only" means exactly that,
+     not "resume whichever cloud account was last used here". */
   function paintQuick() {
     const q = $('dh-quick'), full = $('dh-full');
     if (!q || !full) return;
     const last = getLastUser();
-    const show = !!last && !signedIn;
+    const show = playMode === 'cloud' && !!last && !signedIn;
     q.hidden = !show;
     full.hidden = show;
     if (show) {
@@ -766,6 +807,49 @@
       $('dh-quick-name2').textContent = last;
       $('dh-quick-av').textContent = last.trim().charAt(0).toUpperCase() || '?';
     }
+  }
+
+  /* The top-level "Play across devices" / "Play on this device only" toggle.
+     Local mode collapses the whole card down to a bare name field: hides
+     the profile circles, the "Choose a username" head, the Sign-in/Create-
+     account tabs, the password field and the submit button, leaving just
+     the username input (relabelled) — that field is left ALONE rather than
+     duplicated, so deadhead.html's doSkip() (which reads #dh-username
+     verbatim) needs no changes at all.
+
+     #intro-skip is deadhead.html's, not this file's — this module reaches
+     across on purpose (the header comment's "self-contained" promise is
+     about cloud.js not NEEDING deadhead.html to know about it, not about
+     never touching deadhead.html's own DOM). It used to sit permanently
+     below this whole card as the one escape hatch; now it only shows once
+     "Play on this device only" is the selected mode, doubling as that
+     mode's single action button. A page with cloud.js deleted never runs
+     this function at all, so the button is simply left at its plain,
+     always-visible default — the guarantee in cloud.js's header comment
+     still holds. */
+  function paintPlayMode() {
+    const cloudBtn = $('dh-mode-cloud'), localBtn = $('dh-mode-local');
+    const isLocal = playMode === 'local';
+    if (cloudBtn) cloudBtn.setAttribute('aria-selected', String(!isLocal));
+    if (localBtn) localBtn.setAttribute('aria-selected', String(isLocal));
+    const slots = $('dh-slots'); if (slots) slots.hidden = isLocal;
+    const head = $('dh-head'); if (head) head.hidden = isLocal;
+    const tabs = $('dh-tabs'); if (tabs) tabs.hidden = isLocal;
+    const pwWrap = $('dh-pw-wrap'); if (pwWrap) pwWrap.hidden = isLocal;
+    const submit = $('dh-submit'); if (submit) submit.hidden = isLocal;
+    const hint = $('dh-hint'); if (hint) hint.hidden = isLocal;
+    const uname = $('dh-username');
+    if (uname) uname.placeholder = isLocal ? 'Your name' : 'Username';
+    const skipBtn = document.getElementById('intro-skip');
+    if (skipBtn) skipBtn.hidden = !isLocal;
+    paintQuick();       // playMode changed, so re-decide quick vs. full
+    if (isLocal && uname) uname.focus();
+  }
+
+  function setPlayMode(m) {
+    if (playMode === m) return;
+    playMode = m;
+    paintPlayMode();
   }
 
   /* The 4-circle profile row. Built with DOM calls rather than an innerHTML
@@ -1251,9 +1335,12 @@
         if (!b) return;
         switchToProfile(b.dataset.name || '');
       });
+      $('dh-mode-cloud').addEventListener('click', () => setPlayMode('cloud'));
+      $('dh-mode-local').addEventListener('click', () => setPlayMode('local'));
 
       paintMode();
       paintAuthState();
+      paintPlayMode();
       prefillUsername();
     }
 
