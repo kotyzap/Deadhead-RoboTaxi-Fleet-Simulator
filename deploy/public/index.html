@@ -556,7 +556,7 @@ body{
    #settings-pop (blur+saturate sheet, same z-index tier) so the two read
    as the same kind of control. */
 #city-pop{position:fixed;z-index:1320;min-width:180px;max-width:calc(100vw - 16px);
-  max-height:min(70vh,420px);overflow-y:auto;padding:6px;
+  max-height:min(70vh,420px);max-height:min(70svh,420px);overflow-y:auto;padding:6px;
   background:var(--sheet);border:1px solid var(--glass-brd);
   border-radius:var(--r-srf);box-shadow:0 22px 44px -18px var(--sheet-sh),var(--hi);
   backdrop-filter:blur(var(--blur)) saturate(var(--sat));
@@ -776,8 +776,16 @@ body{
   box-shadow:var(--elev),var(--hi);
   transition:box-shadow var(--dur-base) var(--ease),transform var(--dur-base) var(--ease);
 }
-.panel:hover{box-shadow:var(--elev-hi),var(--hi);transform:translateY(-2px)}
+.panel:hover{box-shadow:var(--elev-hi),var(--hi)}
 .panel.locked:hover{transform:none;box-shadow:var(--elev),var(--hi)}
+/* Hover-lift (translateY/scale) is gated to hover-capable pointers: on touch
+   devices the hover state sticks after a tap with no mouseout to clear it,
+   which would leave a panel permanently "lifted", and toggling transform on
+   a backdrop-filter surface forces a recomposite of the blurred layer on
+   exactly the device class documented above as fragile (--blur/--sat). */
+@media (hover:hover) and (pointer:fine){
+  .panel:hover{transform:translateY(-2px)}
+}
 /* Header tone. The band replaces the divider: the panel says what it is by
    hue, not by a rule. Neutral is the default; only three panels are typed. */
 .panel[data-tone="blue"]{--tone-rgb:62,106,225;--tone-txt:#2F55C4}
@@ -791,15 +799,19 @@ html[data-theme="night"] .panel[data-tone="amber"]{--tone-rgb:245,185,46;--tone-
 .p-head .ms{font-size:16px;color:var(--tone-txt)}
 .p-head h2{font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--tone-txt)}
 .p-head .tag{margin-left:auto;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-4)}
-/* The (i). Deliberately quiet until pointed at: it is an answer waiting to be
-   asked for, not a call to action. In a panel header it follows the tag, so it
-   always lands in the top-right corner whether the tag has text or not. */
+/* The (i). Used to sit at the far right, immediately before the collapse
+   chevron (.p-head::after, below) — on a phone the two ended up touching,
+   two small tap targets crammed against each other, and a tap meant for one
+   would land on the other (Pavel, 2026-08-01, screenshot). Moved to sit
+   right after the title instead: the tag's own margin-left:auto still pushes
+   IT (and the chevron after it) to the far right, so the (i) now has the
+   tag's whole width plus this gap of clearance from the chevron at every
+   breakpoint, not only on mobile. */
 .ihelp{flex:0 0 auto;width:15px;height:15px;padding:0;border:1px solid var(--brd-2);
   border-radius:50%;background:transparent;color:var(--text-4);
   font:inherit;font-size:9.5px;font-weight:600;line-height:1;cursor:help;
   display:grid;place-items:center;
   transition:color var(--dur-fast),border-color var(--dur-fast)}
-.p-head .tag+.ihelp{margin-left:7px}
 /* ---- dead-board alarm on Platforms (see render()) ----
    The same red the game already uses for a critical state (--s-crit, themed),
    and the same "look here" reading as the tutorial's spotlight ring — but
@@ -810,8 +822,16 @@ html[data-theme="night"] .panel[data-tone="amber"]{--tone-rgb:245,185,46;--tone-
 .p-head .tag.bad{color:var(--s-crit);font-weight:600}
 .sub.bad{color:var(--s-crit)}
 .sub.bad b{font-weight:600;color:var(--s-crit)}
-.p-head .ihelp:only-of-type{margin-left:auto}
 .ihelp:hover,.ihelp:focus-visible{color:var(--accent);border-color:var(--accent)}
+/* The 30px touch bump below (improve01210 #4) used to live only in the
+   <=1499px tier's media query, so a touch-capable device wider than that
+   (an iPad Pro on an external display, a touchscreen desktop) still got the
+   15px mouse-tier size for what is, for it, a tap target. Keyed on the
+   pointer, not the viewport, so it reaches every coarse-pointer device
+   regardless of width. */
+@media (pointer:coarse){
+  .ihelp{width:30px;height:30px;font-size:11px}
+}
 /* One shared tooltip, fixed so no overflow:hidden ancestor can clip it, and
    above everything including the tutorial scrim. */
 #tip{position:fixed;z-index:1300;max-width:290px;padding:9px 11px;
@@ -1130,7 +1150,8 @@ html[data-theme="night"] .console{background:rgba(39,44,51,.4);
 .t-apps{flex:0 0 74px;display:flex;align-items:center;justify-content:space-around;
   padding:0 6px;background:var(--c-bar);border-bottom:1px solid #000}
 .t-app{background:none;border:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;
-  gap:5px;padding:4px 2px;min-width:56px;color:#fff;font:inherit}
+  gap:5px;padding:4px 2px;min-width:56px;color:#fff;font:inherit;
+  touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .t-app .ring{width:38px;height:38px;border-radius:50%;border:1.5px solid rgba(255,255,255,.6);
   display:grid;place-items:center;transition:background var(--dur-base) var(--ease),border-color var(--dur-base)}
 .t-app .ring .ms{font-size:20px;color:#fff}
@@ -1195,6 +1216,7 @@ html[data-theme="night"] .console{background:rgba(39,44,51,.4);
    as #map-lock's label. */
 #dh-recenter{position:absolute;left:10px;bottom:12px;z-index:700;
   display:flex;align-items:center;gap:6px;padding:5px 11px 5px 9px;
+  touch-action:manipulation;-webkit-tap-highlight-color:transparent;
   border:1px solid rgba(255,255,255,.22);border-radius:20px;
   background:rgba(23,26,32,.82);color:#fff;font:inherit;font-size:10.5px;
   letter-spacing:.08em;text-transform:uppercase;cursor:pointer;
@@ -1225,6 +1247,7 @@ html[data-theme="night"] .console{background:rgba(39,44,51,.4);
    glance that you are in. */
 #dh-follow{position:absolute;left:10px;bottom:48px;z-index:700;
   display:flex;align-items:center;gap:6px;padding:5px 11px 5px 9px;
+  touch-action:manipulation;-webkit-tap-highlight-color:transparent;
   border:1px solid rgba(255,255,255,.22);border-radius:20px;
   background:rgba(23,26,32,.82);color:#fff;font:inherit;font-size:10.5px;
   letter-spacing:.08em;text-transform:uppercase;cursor:pointer;
@@ -1404,6 +1427,7 @@ html[data-theme="night"] .console{background:rgba(39,44,51,.4);
    something above it has gone unbounded, which is precisely when it should.
    The phone tier tightens this further (34vh); see that block. */
 .t-live{display:none;flex-direction:column;flex:1;min-height:0;max-height:52vh;
+  max-height:52svh;
   overflow-y:auto;
   padding:11px 14px;border-top:1px solid var(--card-div);scrollbar-width:thin}
 .t-live .lbl{color:var(--card-sub);margin-bottom:7px}
@@ -1627,7 +1651,7 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border:0;border-radiu
    smaller than the text next to it. */
 @container (min-width:620px){
   .t-cardbody{flex-direction:row}
-  .t-side{flex:0 0 min(340px,38cqi);border-left:1px solid #E6E8EB}
+  .t-side{flex:0 0 min(340px,38cqi);border-left:1px solid var(--card-div)}
   .t-split{border-top:0}
   .t-live{display:flex}
   .t-cta-row{margin-top:auto}
@@ -1893,20 +1917,14 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border:0;border-radiu
      (T5), where it genuinely must. */
   .brand{padding-right:10px}
   .brand span{display:none}       /* tagline: no room once it shares the line */
-  /* NOTE (found 2026-07-30, not fixed here — out of scope for the phone
-     topbar pass this comment belongs to, and changing it now risks
-     reshuffling the tablet tier without a screen to check it against):
-     this rule can never win. `.topbar .ghost:not(.units)>span` at the
-     1499px tier above is (0,3,1) — three classes, one of them the :not()
-     argument — against this rule's (0,2,1), and :not() adds the
-     specificity of its argument regardless of which selector's media
-     query is "more specific" or comes later in the file. Garage/Saves
-     have stayed icon-only from 1499px down through every tier below,
-     including here, the whole time this comment says they come back.
-     The phone tier's own note above .topbar .ghost (760px block) relies
-     on that actual (icon-only) behaviour being what ships, so leave this
-     alone until there is a real reason to touch the tablet tier. */
-  .topbar .ghost>span{display:inline}
+  /* improve01210 #16: `.topbar .ghost>span{display:inline}` used to live
+     here, dead on arrival — `.topbar .ghost:not(.units)>span` at the 1499px
+     tier above is (0,3,1) against this rule's (0,2,1), and :not() adds the
+     specificity of its argument regardless of media-query order, so it could
+     never win. Garage/Saves have stayed icon-only from 1499px down through
+     every tier below, including here, the whole time the deleted rule
+     claimed they came back — deleting it changes nothing real, since it was
+     never real. */
   .topbar .ghost{padding:0 12px;gap:7px}
   .topbar .seg button{min-width:42px}
 }
@@ -1971,6 +1989,23 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border:0;border-radiu
     overflow-y:visible}
   /* .console is height:auto here, so .t-live has no definite parent height
      to resolve flex:1 against — same reason the phone tier caps it. */
+  .t-live{flex:0 0 auto;max-height:36vh;max-height:36svh}
+  .wing>.panel:not(#panel-offers),.stack>.panel:not(#panel-offers){height:auto;flex:0 0 auto}
+  #panel-offers{height:340px;flex:0 0 auto;min-height:0}
+}
+
+/* Landscape phones (improve01210 #12): an iPhone Pro Max etc. in landscape is
+   ~901-1499px wide, which is the two-column tablet tier above (a fixed 440px
+   wing beside whatever's left of the console) — but well under 500px tall,
+   so both columns get squeezed into unusable slivers instead of stacking.
+   Height is the real constraint at this width, not the viewport's raw
+   width, so this repeats the same stacking rules keyed on height. */
+@media (max-height:500px) and (max-width:1000px){
+  .ops{gap:8px;grid-template-columns:1fr;grid-template-rows:none;
+    overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+  .console{grid-column:1;grid-row:auto;order:-1;height:auto}
+  .wing:first-of-type,.wing:last-of-type{grid-column:1;grid-row:auto;
+    overflow-y:visible}
   .t-live{flex:0 0 auto;max-height:36vh;max-height:36svh}
   .wing>.panel:not(#panel-offers),.stack>.panel:not(#panel-offers){height:auto;flex:0 0 auto}
   #panel-offers{height:340px;flex:0 0 auto;min-height:0}
@@ -2134,6 +2169,26 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border:0;border-radiu
   #map-lock span{background:rgba(23,26,32,.82);color:#fff;border-radius:20px;
     padding:5px 13px;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;
     box-shadow:0 1px 6px rgba(0,0,0,.28)}
+
+  /* Touch targets under ~40px are hard to hit reliably on a phone (improve01210
+     #10). Bumping height only at this tier keeps the compact desktop/tablet
+     chrome untouched. */
+  .topbar .ghost{height:38px}
+  .topbar .seg button{height:38px}
+  .sv-danger button{height:36px;padding:0 12px}
+  #dh-cp-close{width:36px;height:36px}
+  .dh-close{padding:8px 10px}
+  .dodge-back{height:40px}
+  #dh-recenter,#dh-follow{padding-top:9px;padding-bottom:9px}
+  #dh-follow{bottom:58px}
+
+  /* Blur budget (improve01210 #13): --blur/--sat are deliberately NOT
+     redeclared per-theme (see the note above :root) because that recompute
+     froze iPhone Safari on toggle. This redeclare is scoped to the phone
+     viewport width, not to a theme flip, so it cannot reintroduce that bug —
+     it just lowers the steady-state GPU cost of ~15 stacked blurred layers
+     on the devices that feel it most. */
+  :root{--blur:16px}
 }
 
 
@@ -2184,7 +2239,7 @@ tr[data-car].on td{background:var(--inset)}
    inside it are drawn on var(--inset), which at night is a 5% WHITE wash meant
    to sit on a dark ground. White sheet plus white wash is why the garage was
    the ugliest thing in dark mode. */
-.rep{width:520px;max-width:calc(100vw - 20px);max-height:86vh;overflow:auto;background:var(--sheet);
+.rep{width:520px;max-width:calc(100vw - 20px);max-height:86vh;max-height:86svh;overflow:auto;background:var(--sheet);
   border:1px solid var(--glass-brd);border-radius:var(--r-srf);padding:24px;
   box-shadow:0 30px 60px -24px var(--sheet-sh),var(--hi);
   backdrop-filter:blur(var(--blur)) saturate(var(--sat));-webkit-backdrop-filter:blur(var(--blur)) saturate(var(--sat))}
@@ -2325,7 +2380,7 @@ tr[data-car].on td{background:var(--inset)}
    reads as a received bubble (grey, tail bottom-left) under a contact
    header, with the actions as a chip row below — not as a dialog box. */
 #ray{position:fixed;left:18px;bottom:122px;z-index:70;width:330px;
-  max-height:calc(100vh - 40px);overflow-y:auto;
+  max-height:calc(100vh - 40px);max-height:calc(100svh - 40px);overflow-y:auto;
   background:var(--panel-solid);border:1px solid var(--glass-brd);border-radius:var(--r-srf);
   padding:16px 16px 14px;box-shadow:0 24px 50px -22px rgba(23,26,32,.42),var(--hi);
   backdrop-filter:blur(var(--blur)) saturate(var(--sat));-webkit-backdrop-filter:blur(var(--blur)) saturate(var(--sat))}
@@ -2342,6 +2397,23 @@ tr[data-car].on td{background:var(--inset)}
 #ray #ray-pic[hidden]{display:none}
 #ray #ray-pic img{display:block;width:164px;height:164px;border-radius:12px;
   background:#fff;image-rendering:pixelated}
+/* PHOTO MODE. The rules above were written for the ko-fi QR code and they are
+   right for it: a square, on white, with `pixelated` so a 164px render of a
+   QR keeps its hard module edges instead of being blurred into something a
+   camera might not read.
+   Every one of those three is wrong for a photograph, and the job-ad cards
+   (rayAppOffer1/2) have been quietly inheriting all of them — a downscaled
+   photo under image-rendering:pixelated is visibly crunchy. Rather than
+   change the QR path, photographs opt in: rayPhoto() adds .photo, and this
+   block undoes the QR-specific parts and switches to a 3:4 portrait crop,
+   because what these carry now is a person. object-position keeps the face
+   in frame when a 900x1200 source is cropped. */
+#ray #ray-pic.photo img{
+  width:164px;height:auto;aspect-ratio:3/4;
+  object-fit:cover;object-position:50% 22%;
+  image-rendering:auto;background:rgba(23,26,32,.06);
+}
+html[data-theme="night"] #ray #ray-pic.photo img{background:rgba(255,255,255,.06)}
 #ray #ray-pic .cap{display:block;padding:6px 3px 1px;font-size:10.5px;
   line-height:1.45;color:#5C5E62;font-variant-numeric:tabular-nums}
 #ray #ray-pic .cap a{color:var(--accent);text-decoration:underline;
@@ -3095,7 +3167,10 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
   display:flex;align-items:center;justify-content:center;cursor:pointer;
   transition:background .15s,transform .15s}
 .intro-video-play svg{width:24px;height:24px;margin-left:2px}
-.intro-video-play:hover{background:rgba(10,12,16,.8);transform:scale(1.07)}
+.intro-video-play:hover{background:rgba(10,12,16,.8)}
+@media (hover:hover) and (pointer:fine){
+  .intro-video-play:hover{transform:scale(1.07)}
+}
 .intro-video-play[hidden]{display:none}
 .intro-btns{display:flex;gap:10px}
 #intro-skip,#intro-start{height:38px;padding:0 18px;border:1px solid rgba(255,255,255,.28);
@@ -3453,7 +3528,12 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
 .dh-close:hover{color:#fff}
 #dodge-cv{flex:1;display:block;width:100%;min-height:0}
 .dodge-pad{display:flex;gap:10px;padding:8px 12px 0}
+/* Rapid repeat-tapping is the core input here, so it needs the same touch
+   hardening as any fast-tap control: manipulation skips the ~300ms tap delay
+   and stops iOS from escalating quick taps into text selection/dwell-zoom
+   (improve01210 #11). */
 .dodge-pad button{flex:1;height:38px;font-size:17px;cursor:pointer;
+  touch-action:manipulation;user-select:none;-webkit-tap-highlight-color:transparent;
   border:1px solid rgba(255,255,255,.22);border-radius:var(--r-ctl);
   background:rgba(255,255,255,.07);color:#fff}
 .dodge-pad button:hover{border-color:#fff}
@@ -3476,7 +3556,10 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
   display:flex;flex-direction:column;overflow:hidden;
   box-shadow:0 10px 24px -14px rgba(23,26,32,.34),var(--hi-1);
   transition:transform var(--dur-base) var(--ease),box-shadow var(--dur-base) var(--ease)}
-.card:hover{transform:translateY(-2px);box-shadow:0 16px 32px -14px rgba(23,26,32,.4),var(--hi-1)}
+.card:hover{box-shadow:0 16px 32px -14px rgba(23,26,32,.4),var(--hi-1)}
+@media (hover:hover) and (pointer:fine){
+  .card:hover{transform:translateY(-2px)}
+}
 .card.owned{border-color:var(--s-charge)}
 /* "Your car" — northstarplan.md §2.2. Accent, not the "owned" green: this
    card is a decision the player hasn't made yet (unlike .owned, which marks
@@ -3818,7 +3901,7 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
     <div class="wing" id="wing-left">
 
       <section class="panel" data-tone="blue" id="panel-fleet">
-        <div class="p-head"><svg class="ms"><use href="#i-car"/></svg><h2>Fleet roster</h2><span class="tag" id="fleet-count">&mdash;</span><button class="ihelp" data-help="panel-fleet" tabindex="0" aria-label="What is this section?">i</button></div>
+        <div class="p-head"><svg class="ms"><use href="#i-car"/></svg><h2>Fleet roster</h2><button class="ihelp" data-help="panel-fleet" tabindex="0" aria-label="What is this section?">i</button><span class="tag" id="fleet-count">&mdash;</span></div>
         <div class="p-body" id="pb-fleet">
           <div class="metrics c3">
             <div class="metric"><span class="lbl">Earning</span><b id="m-earn">0</b></div>
@@ -3854,7 +3937,7 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
       <!-- id'd so Platforms can be sized to its content: see #stack-left. -->
       <div class="stack" id="stack-left">
         <section class="panel" id="panel-platforms">
-          <div class="p-head"><svg class="ms"><use href="#i-groups"/></svg><h2>Platforms</h2><span class="tag" id="ops-tag">&mdash;</span><button class="ihelp" data-help="panel-platforms" tabindex="0" aria-label="What is this section?">i</button></div>
+          <div class="p-head"><svg class="ms"><use href="#i-groups"/></svg><h2>Platforms</h2><button class="ihelp" data-help="panel-platforms" tabindex="0" aria-label="What is this section?">i</button><span class="tag" id="ops-tag">&mdash;</span></div>
           <div class="p-body" id="pb-ops">
             <div id="plat-rows"></div>
             <div class="sub" id="plat-note"></div>
@@ -3862,7 +3945,7 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
         </section>
 
         <section class="panel" data-tone="green" id="panel-rapid">
-          <div class="p-head"><svg class="ms"><use href="#i-station"/></svg><h2>Rapid network</h2><span class="tag" id="rapid-tag">&mdash;</span><button class="ihelp" data-help="panel-rapid" tabindex="0" aria-label="What is this section?">i</button></div>
+          <div class="p-head"><svg class="ms"><use href="#i-station"/></svg><h2>Rapid network</h2><button class="ihelp" data-help="panel-rapid" tabindex="0" aria-label="What is this section?">i</button><span class="tag" id="rapid-tag">&mdash;</span></div>
           <div class="p-body" id="pb-rapid">
             <div class="metrics c2">
               <div class="metric"><span class="lbl">Now</span><b id="rapid-now">&mdash;</b></div>
@@ -4149,7 +4232,7 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
     <!-- ---------- RIGHT WING ---------- -->
     <div class="wing" id="wing-right">
       <section class="panel" id="panel-books">
-        <div class="p-head"><svg class="ms"><use href="#i-receipt"/></svg><h2>Books</h2><span class="tag">today</span><button class="ihelp" data-help="panel-books" tabindex="0" aria-label="What is this section?">i</button></div>
+        <div class="p-head"><svg class="ms"><use href="#i-receipt"/></svg><h2>Books</h2><button class="ihelp" data-help="panel-books" tabindex="0" aria-label="What is this section?">i</button><span class="tag">today</span></div>
         <div class="p-body" id="pb-books">
           <!-- c2, not c3: this is four metrics now (deadhead % joined them),
                and 4-in-a-3-track grid strands one alone on a second row. Two
@@ -4168,12 +4251,12 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
 
       <div class="stack" id="stack-right">
         <section class="panel" data-tone="amber" id="panel-incidents">
-          <div class="p-head"><svg class="ms"><use href="#i-warning"/></svg><h2>Incidents</h2><span class="tag" id="inc-tag">0 open</span><button class="ihelp" data-help="panel-incidents" tabindex="0" aria-label="What is this section?">i</button></div>
+          <div class="p-head"><svg class="ms"><use href="#i-warning"/></svg><h2>Incidents</h2><button class="ihelp" data-help="panel-incidents" tabindex="0" aria-label="What is this section?">i</button><span class="tag" id="inc-tag">0 open</span></div>
           <div class="p-body" id="pb-inc"><div id="inc-list"></div></div>
         </section>
 
         <section class="panel" id="panel-comms">
-          <div class="p-head"><svg class="ms"><use href="#i-call"/></svg><h2>Messages</h2><span class="tag" id="msg-tag">0</span><button class="ihelp" data-help="panel-comms" tabindex="0" aria-label="What is this section?">i</button></div>
+          <div class="p-head"><svg class="ms"><use href="#i-call"/></svg><h2>Messages</h2><button class="ihelp" data-help="panel-comms" tabindex="0" aria-label="What is this section?">i</button><span class="tag" id="msg-tag">0</span></div>
           <div class="p-body" id="pb-msg"><div id="msg-list"></div></div>
         </section>
 
@@ -4183,7 +4266,7 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
              Fleet/Energy/Books/Ops/Comms — this is its natural "home" slot
              while not reparented into the console. -->
         <section class="panel" id="panel-application">
-          <div class="p-head"><svg class="ms"><use href="#i-briefcase"/></svg><h2>Application</h2><span class="tag" id="app-tag">0/9</span><button class="ihelp" data-help="panel-application" tabindex="0" aria-label="What is this section?">i</button></div>
+          <div class="p-head"><svg class="ms"><use href="#i-briefcase"/></svg><h2>Application</h2><button class="ihelp" data-help="panel-application" tabindex="0" aria-label="What is this section?">i</button><span class="tag" id="app-tag">0/9</span></div>
           <div class="p-body" id="pb-app">
             <div id="app-list"></div>
             <!-- The player who clicked "I'll think about it" on Paolo's ad
@@ -4197,7 +4280,7 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
         </section>
 
         <section class="panel" data-tone="blue" id="panel-offers">
-          <div class="p-head"><svg class="ms"><use href="#i-route"/></svg><h2>Offers</h2><span class="tag" id="rq-tag">0 waiting</span><button class="ihelp" data-help="panel-offers" tabindex="0" aria-label="What is this section?">i</button></div>
+          <div class="p-head"><svg class="ms"><use href="#i-route"/></svg><h2>Offers</h2><button class="ihelp" data-help="panel-offers" tabindex="0" aria-label="What is this section?">i</button><span class="tag" id="rq-tag">0 waiting</span></div>
           <div class="p-body" id="pb-rq">
             <div class="chips" id="zone-chips"></div>
             <div class="zrate" id="rq-rate"></div>
@@ -6751,6 +6834,13 @@ function offerDecideSecFor(speed){
    free in the moment and expensive over a window, which is what stops
    "cherry-pick the good fares" from being a free lunch. */
 function offerNet(o){ return o.fare*(1-platform(o.plat).cut) }
+/* improve01210 #14: the highest-net offer used to be re-sorted separately in
+   render() (for the CTA) and in both the Accept and Decline click handlers —
+   three identical sorts of the same array, and a real (if narrow) risk that
+   a click handler's fresh sort could pick a different offer than whatever
+   the CTA was showing the instant before the click. One helper, one answer,
+   always in sync with what's on screen. */
+function bestOffer(){ return S.offers.slice().sort(function(a,b){return offerNet(b)-offerNet(a)})[0] }
 /* The offer row's deadhead figure, and now also WHICH car it belongs to.
    Delegates to pickCar() rather than re-deriving it: this function used to
    scan for the nearest idle car while ignoring chQueue and the SOC reserve,
@@ -7758,7 +7848,17 @@ const RAY=[
      "{ITOLD}<br><br>{CASH} and the car you already own. "+
      "Register that one and it costs nothing — or rent or finance something "+
      "else instead, if you'd rather. Either way, something needs to be "+
-     "earning by tonight."},
+     "earning by tonight.",
+   /* v0.123.0: the first beat now carries his portrait. Every other city gets
+      a Paolo photograph on arrival (CITY_PAOLO_PHOTO / showCityArrival), and
+      Austin — the one city where you actually MEET him — got none, because
+      Austin is gated out of the arrival screen in favour of this scripted
+      tutorial. He introduces himself by name in this very line and the player
+      had no idea what he looked like until Dallas. Names the table key, not a
+      filename; see rayShow(). */
+   pic:'austin',
+   picAlt:'Paolo Cortez, in a work shirt with his hack licence badge, beside a '+
+     'robotaxi on Congress Avenue in Austin'},
   {n:2, spot:'tb-cash-box',
    t:"Whatever you pick, {FLOOR} a day is the floor — before rent, before "+
      "finance, before a wheel turns.<br><br>Do the arithmetic before you sign, "+
@@ -8367,9 +8467,34 @@ function rayCheck(){
 function rayFoot(go, skip, count){
   /* No mode carries a picture unless it asks for one straight afterwards. */
   $('ray-pic').hidden=true;
+  /* ...and none inherits the previous card's PHOTO mode either. rayFoot() is
+     already the one choke point every mode passes through to reset the pic
+     slot, so the class comes off here rather than at each caller — otherwise
+     the ko-fi QR would render under a photograph's 3:4 crop the first time it
+     opened after the finale. */
+  $('ray-pic').classList.remove('photo');
   $('ray-go').innerHTML=go+' <small id="ray-count"></small>';
   $('ray-count').textContent=count||'';
   $('ray-skip').textContent=skip;
+}
+
+/* One way in for a PHOTOGRAPH in the pic slot, as opposed to the ko-fi QR.
+   Call it AFTER rayFoot() — rayFoot() resets the slot, so calling it before
+   would be silently undone (the same ordering the job-ad cards already
+   depend on).
+
+   `p` is a {src,cap} straight out of CITY_PAOLO_PHOTO. alt is separate and
+   required: the caption is Paolo's voice ("He drove out.") and would be a
+   useless alt text, which is exactly the trap of reusing one string for
+   both. */
+function rayPhoto(p, alt){
+  if(!p||!p.src) return;
+  const slot=$('ray-pic');
+  $('ray-pic-img').src=p.src;
+  $('ray-pic-img').alt=alt||'';
+  $('ray-pic-cap').textContent=p.cap||'';
+  slot.classList.add('photo');
+  slot.hidden=false;
 }
 
 /* ---- GENERIC YES/NO CARD ---------------------------------------------------
@@ -8436,7 +8561,11 @@ function tutShow(){
   S.ray.cur='tutorial';
   $('ray-text').innerHTML=rayFill(b.t);
   rayFoot(TUT_I<RAY.length-1?'Next':'Done','Close',(TUT_I+1)+' of '+RAY.length);
-  $('ray-pic').hidden=true;
+  /* The replay must show the same beat the player saw the first time,
+     photograph included — a replay that silently drops beat 1's portrait is a
+     different beat. Mirrors rayShow() deliberately; if a second beat ever
+     gains a `pic`, both paths already handle it. */
+  if(b.pic) rayPhoto(CITY_PAOLO_PHOTO[b.pic], b.picAlt);
   $('ray').hidden=false;
   raySpot(b.spot);
   rayPause();
@@ -8999,17 +9128,33 @@ function rayGarageWelcome(){
    the whole story — rather than duplicating the city tab strip the player
    can already see.
 
-   PER-CITY PORTRAITS, WITH A FALLBACK (Pavel's call): CITY_PAOLO_PHOTO holds
-   Dallas, Miami, Orlando, and (added v0.112.0) Tampa today, because those are
-   the only four that exist. A city with no entry falls back to
+   PER-CITY PORTRAITS, WITH A FALLBACK (Pavel's call): CITY_PAOLO_PHOTO held
+   Dallas, Miami, Orlando, and (added v0.112.0) Tampa, because those were the
+   only four that existed. A city with no entry falls back to
    prologueOfficeArt() — the same SF office day/night pair the prologue
    already uses — so the screen never has a hole waiting for more art, and
-   upgrades quietly the moment a new portrait is added here. */
+   upgrades quietly the moment a new portrait is added here.
+
+   v0.123.0: Austin and San Francisco added, completing the set — and they are
+   the two cities showCityArrival() is explicitly gated OUT of (Austin has its
+   own scripted opener, SF is the finale). So these two entries are NOT read by
+   the arrival screen and never will be. They are here because this is the
+   registry of "Paolo's portrait for city X", and the two new call sites — RAY
+   beat 1, where you meet him for the first time in the Austin garage, and
+   rayFinale(), where he is standing in San Francisco having driven out to
+   watch you sign — should read from the same table as everything else rather
+   than hardcoding a filename each. If the arrival gate ever changes, both
+   already work.
+
+   Their captions are written for those two moments, not for an arrival card:
+   beat 1's says who he is, the finale's says he is *there*. */
 const CITY_PAOLO_PHOTO={
+  austin:{src:'paolo-austin.jpg', cap:'Paolo Cortez. Forty-one years, and not one of them in this seat.'},
   dallas:{src:'paolo-dallas.jpg', cap:'Dallas. Same badge, same car, different skyline.'},
   miami:{src:'paolo-miami.jpg', cap:'Miami. Ocean Drive, if the shift ever gets that far south.'},
   orlando:{src:'paolo-orlando.jpg', cap:'Orlando. Lake Eola on a good afternoon.'},
-  tampa:{src:'paolo-tampa.jpg', cap:'Tampa. Ybor City is a few blocks that way.'}
+  tampa:{src:'paolo-tampa.jpg', cap:'Tampa. Ybor City is a few blocks that way.'},
+  sf:{src:'paolo-sf.jpg', cap:'He drove out. That is him, outside, waiting.'}
 };
 function cityArrivalArt(cityId){
   const p=CITY_PAOLO_PHOTO[cityId];
@@ -9074,9 +9219,16 @@ function showCityArrival(cityId,next){
   btn.addEventListener('click',finish);
   decline.addEventListener('click',finish);
 
-  /* Single message, arrives after the same short pause the prologue uses for
-     its very first line — this is one card, not a script, so there is
-     nothing to tap through. */
+  /* Photo, then text, as two separate beats — not one card dumped at once.
+     They used to land together after a single pause, which meant the
+     immediate atBottom() scrolled straight past the photo the instant it
+     appeared: the text bubble was taller than the visible thread, so the
+     photo was pushed off the top of the screen before it was ever seen
+     (Pavel, 2026-08-01 — "Dallas opened and I do not see the photo").
+     The photo now gets its own beat on screen; the three-dot .pro-typing
+     bubble (styled, previously unused — the game already "types" everywhere
+     else) stands in for Paolo while the text is still coming, then is
+     swapped for the real message. */
   sub.textContent='typing…';
   setTimeout(function(){
     if(done) return;
@@ -9086,12 +9238,28 @@ function showCityArrival(cityId,next){
     shot.className='pro-shot'+(art.wide?' wide':'');
     shot.innerHTML='<img alt="" src="'+art.src+'"><small>'+escapeHtml(art.cap)+'</small>';
     thread.appendChild(shot);
-    const bubble=document.createElement('div');
-    bubble.className='pro-msg';
-    bubble.innerHTML=rayFill(cityArrivalHtml(cityId));
-    thread.appendChild(bubble);
     atBottom();
     sndMsg();
+    /* Held here rather than dismissable mid-beat — Continue re-enables once
+       the text actually lands, same as the button lock advance() already
+       uses for every scripted prologue beat. */
+    btn.disabled=true;
+    const typing=document.createElement('div');
+    typing.className='pro-typing';
+    typing.innerHTML='<i></i><i></i><i></i>';
+    thread.appendChild(typing);
+    atBottom();
+    setTimeout(function(){
+      if(done) return;
+      typing.remove();
+      const bubble=document.createElement('div');
+      bubble.className='pro-msg';
+      bubble.innerHTML=rayFill(cityArrivalHtml(cityId));
+      thread.appendChild(bubble);
+      atBottom();
+      sndMsg();
+      btn.disabled=false;
+    },1500);
   },260);
 }
 /* ============================================================
@@ -9289,7 +9457,14 @@ function rayFinale(){
     contractHtml()+
     finaleSummaryHtml();
   rayFoot('Thanks, Paolo','','');
-  $('ray-pic').hidden=true;
+  /* v0.123.0: "I drove out here" was, until now, a claim with nothing behind
+     it — the card showed the contract and the record and no sign of the man
+     saying it. His San Francisco portrait is the evidence for the one line in
+     this card that is about him rather than about you. After rayFoot(), which
+     resets the slot; .photo mode because this is a person, not the QR. */
+  rayPhoto(CITY_PAOLO_PHOTO.sf,
+    'Paolo Cortez beside a robotaxi on a San Francisco hill, the Golden Gate '+
+    'Bridge behind him');
   $('ray').hidden=false;
   rayRecord();
   rayPause();
@@ -9422,6 +9597,11 @@ function rayShow(n){
   S.ray.cur=n;
   $('ray-text').innerHTML=rayFill(b.t);
   rayFoot('Got it','Skip',n+' of '+RAY.length);
+  /* A beat may carry a photo (beat 1 does, and only beat 1 today). After
+     rayFoot(), which resets the slot. `pic` names a CITY_PAOLO_PHOTO key
+     rather than a filename so the portrait table stays the one place a
+     path is written down. */
+  if(b.pic) rayPhoto(CITY_PAOLO_PHOTO[b.pic], b.picAlt);
   $('ray').hidden=false;
   raySpot(b.spot);
   rayRecord();
@@ -11868,6 +12048,16 @@ function updateWxOverlay(){
 function wxIdle(){
   return document.hidden||S.speed===0||(typeof DODGE!=='undefined'&&DODGE&&DODGE.alive);
 }
+/* improve01210 #9: the cloud veil used to call createRadialGradient() x3
+   every single rAF frame (up to 60/sec) purely to redraw three blobs that
+   only actually move via `drift`, a 40-SECOND cycle — recomputing them at
+   60fps buys nothing visible. Baked to an offscreen canvas instead, redrawn
+   onto the real canvas with drawImage() every frame (cheap) and only
+   re-baked (the expensive part) at most 10x/sec or when the canvas size or
+   storm/no-storm colour changes. globalAlpha is still applied fresh every
+   frame at draw time, so the cloud-cover ramp stays exactly as smooth as
+   before — only the gradient geometry is throttled. */
+let _wxVeilCv=null, _wxVeilCtx=null, _wxVeilKey='', _wxVeilBakeTs=-1e9;
 let wxAwake=false;
 function wxWake(){
   if(wxAwake||!wxCtx) return;
@@ -11896,18 +12086,30 @@ function wxFrame(ts){
        without making the map look switched off. */
     const t=(WXOV.cloud-WX_CLOUD_MIN)/(1-WX_CLOUD_MIN);
     const rgb=WXOV.storm?WX_VEIL_STORM:WX_VEIL;
+    const veilKey=cv.width+'x'+cv.height+'|'+rgb;
+    if(!_wxVeilCv||_wxVeilCv.width!==cv.width||_wxVeilCv.height!==cv.height){
+      _wxVeilCv=document.createElement('canvas');
+      _wxVeilCv.width=cv.width; _wxVeilCv.height=cv.height;
+      _wxVeilCtx=_wxVeilCv.getContext('2d');
+      _wxVeilKey=''; /* force a re-bake below — new canvas is blank */
+    }
+    if(_wxVeilKey!==veilKey||ts-_wxVeilBakeTs>100){
+      _wxVeilKey=veilKey; _wxVeilBakeTs=ts;
+      _wxVeilCtx.clearRect(0,0,cv.width,cv.height);
+      const drift=(ts/40000)%1;
+      for(let i=0;i<3;i++){
+        const cx=cv.width*((drift+i/3)%1), cy=cv.height*0.22+i*cv.height*0.18;
+        const r=Math.max(cv.width,cv.height)*0.5;
+        const g=_wxVeilCtx.createRadialGradient(cx,cy,0,cx,cy,r);
+        g.addColorStop(0,'rgba('+rgb+',0.9)');
+        g.addColorStop(1,'rgba('+rgb+',0)');
+        _wxVeilCtx.fillStyle=g;
+        _wxVeilCtx.fillRect(0,0,cv.width,cv.height);
+      }
+    }
     wxCtx.save();
     wxCtx.globalAlpha=Math.min(t*0.085,0.085);
-    const drift=(ts/40000)%1;
-    for(let i=0;i<3;i++){
-      const cx=cv.width*((drift+i/3)%1), cy=cv.height*0.22+i*cv.height*0.18;
-      const r=Math.max(cv.width,cv.height)*0.5;
-      const g=wxCtx.createRadialGradient(cx,cy,0,cx,cy,r);
-      g.addColorStop(0,'rgba('+rgb+',0.9)');
-      g.addColorStop(1,'rgba('+rgb+',0)');
-      wxCtx.fillStyle=g;
-      wxCtx.fillRect(0,0,cv.width,cv.height);
-    }
+    wxCtx.drawImage(_wxVeilCv,0,0);
     wxCtx.restore();
   }
   if(WXOV.precip>0.05&&wxParticles.length){
@@ -11965,10 +12167,18 @@ function drawMap(){
     const fix=roadFix(c);
     m.setLatLng(fix?fix.pt:[c.lat,c.lng]);
     /* The DOM element only exists once Leaflet has laid the marker out, so
-       every paint is guarded rather than assumed. */
-    const el=m.getElement();
+       every paint is guarded rather than assumed. improve01210 #7: once
+       found, el/rot/body are cached on the marker itself (m._elRef etc) —
+       Leaflet keeps the same nodes for the marker's whole lifetime, so
+       getElement()/querySelector() were re-walking the same subtree on
+       every car on every ~200ms tick for nothing. */
+    if(!m._elRef){
+      const foundEl=m.getElement();
+      if(foundEl){ m._elRef=foundEl; m._rotEl=foundEl.firstElementChild; m._bodyEl=foundEl.querySelector('.dh-cpbody') }
+    }
+    const el=m._elRef;
     if(el){
-      const rot=el.firstElementChild, body=el.querySelector('.dh-cpbody');
+      const rot=m._rotEl, body=m._bodyEl;
       if(rot){
         /* carHeading() returns a compass bearing wrapped to 0-360, but the
            CSS transition on .cp-rot animates the raw number it is given. Set
@@ -11988,10 +12198,20 @@ function drawMap(){
         m._hdg=cur;
         rot.style.transform='rotate('+cur.toFixed(1)+'deg)';
       }
-      if(body) body.setAttribute('fill',C[c.state]);
-      el.classList.toggle('on',c.id===S.sel);
+      /* setAttribute/classList.toggle only when the underlying value actually
+         changed, not on every tick regardless. */
+      if(body&&m._lastState!==c.state){ body.setAttribute('fill',C[c.state]); m._lastState=c.state }
+      const isSel=c.id===S.sel;
+      if(m._lastSel!==isSel){ el.classList.toggle('on',isSel); m._lastSel=isSel }
     }
-    m.setTooltipContent('<b>'+escapeHtml(c.id)+'</b> · '+LABEL[c.state]+' · '+pct(c.soc));
+    /* setTooltipContent rebuilds the tooltip's own DOM — skip it unless the
+       state or the rounded (displayed) SoC actually changed, same discipline
+       as every guarded list in render(). */
+    const ttSig=c.state+'|'+Math.round(c.soc);
+    if(m._ttSig!==ttSig){
+      m.setTooltipContent('<b>'+escapeHtml(c.id)+'</b> · '+LABEL[c.state]+' · '+pct(c.soc));
+      m._ttSig=ttSig;
+    }
   });
   /* Zone shading by hour. The DIVISOR and the FLOOR both moved on
      2026-07-30 (Pavel: "make all circles more visible. some are really
@@ -12515,6 +12735,18 @@ let lastPlatSig=null, lastOfferSig=null;
    cache, or the guard buys nothing. */
 let lastFleetSig=null, lastRapidSig=null, lastBkLinesSig=null, lastBkLiabSig=null,
     lastIncSig=null, lastWaitSig=null, lastZoneSig=null, lastLiveSig=null;
+/* improve01210 #2: zcEl.offsetParent (below) forces a synchronous reflow —
+   it's read right after this same frame's DOM writes, on the hottest
+   function in the game (~5x/second). Offers-panel visibility changes only
+   on a deliberate user action (city tab switch, panel collapse), never
+   mid-tick, so it doesn't need re-measuring every render() — caching it for
+   up to a second turns 5 forced layouts/sec into at most 1. */
+let _offersVisCache=null, _offersVisAt=0;
+/* improve01210 #14: these three re-select the same static nodes every
+   render() tick instead of once. .dots i, the charge-pill label, and the
+   sell-button label are all fixed markup — cx.querySelector() on the same
+   subtree ~5x/second for a reference that never moves is pure waste. */
+let _dotsEls=null, _cb2El=null, _cbLEl=null, _sbEl=null, _sbLEl=null;
 /* improvements.md P3-24: every dirty-check guard above (and a few more
    scattered through the map/lock code — lastMsgSeenCount, lastLocksSig,
    lastZoneStyleSig, _roadPathCache) is keyed off a signature of the
@@ -12536,6 +12768,7 @@ function resetRenderCaches(){
   lastLocksSig=null;
   lastZoneStyleSig=null;
   _roadPathCache.clear();
+  _offersVisCache=null; _offersVisAt=0;
 }
 function render(){
   const h=hour();
@@ -12726,33 +12959,37 @@ function render(){
   /* incidents */
   const blocked=S.cars.filter(function(c){return c.state==='blocked'});
   $('inc-tag').textContent=blocked.length+' open';
-  let inc=blocked.map(function(c){
-    const left=Math.max(0,c.needs-c.blocked);
-    return '<div class="alert blocked'+(c.blocked>CFG.cancelAt*0.7?' crit':'')+'" data-car="'+escapeHtml(c.id)+'">'+
-      '<div class="top"><svg class="ms"><use href="#i-report"/></svg><b>'+escapeHtml(c.id)+
-      ' blocked</b><span class="clock">'+Math.round(c.blocked)+'s</span></div>'+
-      '<p>Operator arriving in '+Math.round(left)+'s. Rider cancels at '+CFG.cancelAt+
-      's.<span class="take">Take control &rarr;</span></p></div>';
-  }).join('');
-  if(S.safety<75) inc+='<div class="alert'+(S.safety<65?' crit':'')+'">'+
-    '<div class="top"><svg class="ms"><use href="#i-gavel"/></svg><b>Safety score</b>'+
-    '<span class="clock">'+Math.round(S.safety)+'</span></div>'+
-    '<p>'+(S.permit==='Under review'
-      ?'Permit under review — platforms are sending you less work. A clean shift rebuilds it.'
-      :'Unsupervised permit review at 65. '+d.cancels+' cancellations today.')+'</p></div>';
-  /* With no operators on payroll the response time is the player's own, so
-     quoting a computed number would be a lie (GameMechanics §3.3). */
-  if(!inc) inc='<div class="empty">No open incidents. '+(S.ops.length
-    ? 'Latency '+Math.round(lat)+'s.'
-    : 'You are the only operator.')+'</div>';
   /* Elevated risk is stated, never merely applied — see incidentRiskNote(). */
   const irn=incidentRiskNote();
-  if(irn) inc+='<div class="empty">'+escapeHtml(irn)+'</div>';
+  /* improve01210 #8: signature computed BEFORE building the HTML string, not
+     after — every other guarded list in render() already does it this way.
+     The full inc markup (blocked-car cards + safety card + risk note) is now
+     only built on an actual signature change instead of every tick. */
   const incSig=blocked.map(function(c){return c.id+':'+Math.round(c.blocked)}).join(',')+
     '|safety:'+Math.round(S.safety)+'|permit:'+S.permit+'|cancels:'+d.cancels+
     '|ops:'+S.ops.length+'|lat:'+Math.round(lat)+'|irn:'+(irn||'');
   if(incSig!==lastIncSig){
     lastIncSig=incSig;
+    let inc=blocked.map(function(c){
+      const left=Math.max(0,c.needs-c.blocked);
+      return '<div class="alert blocked'+(c.blocked>CFG.cancelAt*0.7?' crit':'')+'" data-car="'+escapeHtml(c.id)+'">'+
+        '<div class="top"><svg class="ms"><use href="#i-report"/></svg><b>'+escapeHtml(c.id)+
+        ' blocked</b><span class="clock">'+Math.round(c.blocked)+'s</span></div>'+
+        '<p>Operator arriving in '+Math.round(left)+'s. Rider cancels at '+CFG.cancelAt+
+        's.<span class="take">Take control &rarr;</span></p></div>';
+    }).join('');
+    if(S.safety<75) inc+='<div class="alert'+(S.safety<65?' crit':'')+'">'+
+      '<div class="top"><svg class="ms"><use href="#i-gavel"/></svg><b>Safety score</b>'+
+      '<span class="clock">'+Math.round(S.safety)+'</span></div>'+
+      '<p>'+(S.permit==='Under review'
+        ?'Permit under review — platforms are sending you less work. A clean shift rebuilds it.'
+        :'Unsupervised permit review at 65. '+d.cancels+' cancellations today.')+'</p></div>';
+    /* With no operators on payroll the response time is the player's own, so
+       quoting a computed number would be a lie (GameMechanics §3.3). */
+    if(!inc) inc='<div class="empty">No open incidents. '+(S.ops.length
+      ? 'Latency '+Math.round(lat)+'s.'
+      : 'You are the only operator.')+'</div>';
+    if(irn) inc+='<div class="empty">'+escapeHtml(irn)+'</div>';
     $('inc-list').innerHTML=inc;
   }
 
@@ -12947,7 +13184,9 @@ function render(){
      raySpotEl() uses), since previewDeadhead() is an O(zones*cars) scan
      nobody needs to pay for behind a collapsed/hidden panel. */
   const zcEl=$('zone-chips');
-  if(zcEl&&zcEl.offsetParent){
+  const _tNow=(typeof performance!=='undefined'?performance.now():Date.now());
+  if(_tNow-_offersVisAt>1000){ _offersVisCache=!!(zcEl&&zcEl.offsetParent); _offersVisAt=_tNow; }
+  if(zcEl&&_offersVisCache){
     const span=maxZoneSpan();
     Array.prototype.forEach.call(zcEl.children,function(chip){
       const z=ZONES[+chip.dataset.zone];
@@ -13000,7 +13239,8 @@ function render(){
      tariff it would be buying at, because the price is the decision. */
   /* cbL is the label span. Writing cb2.textContent would destroy the note
      span living inside the button — the whole point of the one-line layout. */
-  const cb2=$('sel-charge'), cbL=cb2.querySelector('.lb'), cn=$('sel-charge-note');
+  if(!_cb2El){ _cb2El=$('sel-charge'); _cbLEl=_cb2El.querySelector('.lb') }
+  const cb2=_cb2El, cbL=_cbLEl, cn=$('sel-charge-note');
   /* The Charge pill always shows state of charge, in the same shape/size as
      the Status pill above it (Pavel's ask, 0.48.2 — the two rows used to
      misalign: a ring plus caption made the Charge row taller than the plain
@@ -13086,7 +13326,8 @@ function render(){
      "Sell for $27,000", not shortened to just "Sell"); only the odometer/
      owed detail moved, from a second visible line to sb.title, since a
      header-row button has no room for both. */
-  const sb=$('sel-sell'), sbL=sb.querySelector('.lb');
+  if(!_sbEl){ _sbEl=$('sel-sell'); _sbLEl=_sbEl.querySelector('.lb') }
+  const sb=_sbEl, sbL=_sbLEl;
   if(!sel){
     sb.disabled=true; sbL.textContent='Sell vehicle'; sb.title='';
   } else if(sel.hold==='rent'){
@@ -13114,7 +13355,7 @@ function render(){
   const task=nextTask();
   $('now-text').textContent=task.now;
   $('t-now').dataset.spot=task.spot||'';
-  const top=S.offers.slice().sort(function(a,b){return offerNet(b)-offerNet(a)})[0];
+  const top=bestOffer();
   /* Off-shift, the CTA is the fastest way back on — red, and clickable
      straight into clockOn() (see the click handler below) — rather than an
      inert grey label nobody can act on. */
@@ -13203,7 +13444,8 @@ function render(){
   /* Speed dots were pure decoration (always "on on hot"); drive them from
      the actual selected level instead. */
   const spIdx=CFG.speeds.indexOf(S.speed);
-  document.querySelectorAll('.dots i').forEach(function(dot,i){
+  if(!_dotsEls) _dotsEls=Array.prototype.slice.call(document.querySelectorAll('.dots i'));
+  _dotsEls.forEach(function(dot,i){
     if(S.speed===0||i>spIdx){ dot.className=''; return }
     dot.className=(spIdx===CFG.speeds.length-1&&i===spIdx)?'hot':'on';
   });
@@ -13276,7 +13518,7 @@ const HELP={
     'The car\'s own centre display: the live map, or the camera feed of a car '+
     'you have taken control of.'
 };
-let tipEl=null;
+let tipEl=null, tipShownFor=null;
 function tipShow(btn){
   const key=btn.getAttribute('data-help'), txt=HELP[key];
   if(!txt) return;
@@ -13297,8 +13539,9 @@ function tipShow(btn){
   top=Math.max(m,top);
   tipEl.style.left=Math.round(left)+'px';
   tipEl.style.top=Math.round(top)+'px';
+  tipShownFor=btn;
 }
-function tipHide(){ if(tipEl) tipEl.hidden=true }
+function tipHide(){ if(tipEl) tipEl.hidden=true; tipShownFor=null }
 /* Delegated, so help buttons inside re-rendered markup keep working. */
 document.addEventListener('mouseover',function(e){
   const b=e.target.closest&&e.target.closest('.ihelp');
@@ -13315,6 +13558,17 @@ document.addEventListener('focusin',function(e){
 document.addEventListener('focusout',function(e){
   const b=e.target.closest&&e.target.closest('.ihelp');
   if(b) tipHide();
+});
+/* improve01210 #4: touch devices have no hover, and iOS Safari doesn't focus
+   a tapped button either, so the mouseover/focusin path above never fires
+   from a tap — the tooltip was unreachable on phones. Explicit tap toggle:
+   the same button tapped again closes it, a different button's tap swaps
+   the tip to it, matching the show/hide semantics hover already has. */
+document.addEventListener('click',function(e){
+  const b=e.target.closest&&e.target.closest('.ihelp');
+  if(!b) return;
+  if(tipShownFor===b&&tipEl&&!tipEl.hidden) tipHide();
+  else tipShow(b);
 });
 
 /* ---- collapsible sidebar panels (tablet, <=1499px — Pavel's ask, 2026-07-30) ----
@@ -13495,7 +13749,7 @@ $('zone-chips').addEventListener('click',function(e){
    clocks on instead (clockOn() itself already renders). */
 $('cta').addEventListener('click',function(){
   if(!S.onClock){ clockOn(); return }
-  const best=S.offers.slice().sort(function(a,b){return offerNet(b)-offerNet(a)})[0];
+  const best=bestOffer();
   if(best) acceptOffer(best.id);
 });
 /* The X refuses the offer the CTA is naming. Same sort, same offer — kept as
@@ -13504,7 +13758,7 @@ $('cta').addEventListener('click',function(){
    declineOffer() renders, logs, docks the acceptance rate and fires Paolo's
    first-decline beat, so there is nothing to duplicate here. */
 $('cta-dec').addEventListener('click',function(){
-  const best=S.offers.slice().sort(function(a,b){return offerNet(b)-offerNet(a)})[0];
+  const best=bestOffer();
   if(best) declineOffer(best.id);
 });
 /* See rayClockOffWarn() above for why this checks livePlatforms() before
@@ -13850,7 +14104,7 @@ const SLOTS=['slot1','slot2','slot3'];
    SAVE_V above is the STATE SHAPE version and moves only when the
    snapshot format changes — the two are deliberately independent, so
    shipping 0.9.0 does not invalidate 0.8.0 saves. */
-const VERSION='0.121.1';
+const VERSION='0.123.1';
 
 function snapshot(){
   return {
@@ -17795,7 +18049,14 @@ window.addEventListener('beforeunload',function(){
 });
 document.addEventListener('visibilitychange',function(){
   if(document.visibilityState==='hidden') autosave('hidden');
-  else wxWake();
+  else{
+    wxWake();
+    /* The main tick skips render()/drawMap() entirely while hidden
+       (improve01210 #1) — paint once immediately on return so the view
+       reflects however much sim time passed instead of sitting stale until
+       the next 200ms tick boundary. */
+    render(); drawMap();
+  }
 });
 $('rp-go').addEventListener('click',function(){ autosave('day-end') });
 
@@ -18518,6 +18779,14 @@ $('dh-recenter').addEventListener('click',function(){
   if(!recenterMap()) centerCity();   /* nothing to fit: fall back on the city */
 });
 let acc=0;
+/* improve01210 #15: noFeedTick() used to assume every tick was exactly
+   CFG.tickMs apart. Background/low-power timer throttling can stretch that
+   to ~1s between fires, so a constant would under-count real elapsed time —
+   the "10 real seconds" nudge would take longer than 10 real seconds while
+   throttled. Measuring the actual gap with performance.now() keeps the
+   wall-clock nudge honest regardless of how late the browser ran the tick;
+   it collapses to ~CFG.tickMs/1000 anyway whenever ticks fire on schedule. */
+let _lastTickTs=performance.now();
 setInterval(function(){
   /* startFastForward() now runs the whole overnight gap synchronously and
      clears S.ffwd before returning, so this branch never actually fires —
@@ -18542,9 +18811,19 @@ setInterval(function(){
   /* OUTSIDE the branches above, deliberately. This is a wall-clock nudge about
      the player's own setup, not a world event: it has to keep counting while
      the sim is paused (S.speed 0 skips step() entirely) and must not run
-     faster at 20x. CFG.tickMs is the real interval, so this is real seconds. */
-  noFeedTick(CFG.tickMs/1000);
-  if(acc>=200||!S.running){ acc=0; render(); drawMap() }
+     faster at 20x. Real measured gap, not the nominal CFG.tickMs — see the
+     comment above _lastTickTs. */
+  const _nowTs=performance.now();
+  noFeedTick((_nowTs-_lastTickTs)/1000);
+  _lastTickTs=_nowTs;
+  /* Skip the paint while the tab is hidden (improve01210 #1) — step() above
+     still runs so the sim keeps real time, but render()'s dozens of
+     textContent/classList writes and drawMap()'s per-car setLatLng/tooltip
+     work have no viewer and were previously the one part of the tick that
+     did NOT respect document.hidden (the wx canvas, recenter heartbeat and
+     weather poll all already do). visibilitychange below forces one
+     render()/drawMap() back on so the view is never stale on return. */
+  if((acc>=200||!S.running)&&!document.hidden){ acc=0; render(); drawMap() }
 },CFG.tickMs);
 
 /* Offer the autosave before the player invests any time in a fresh
