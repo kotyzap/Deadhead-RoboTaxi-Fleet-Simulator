@@ -24,6 +24,7 @@
     me: '/api/me',
     saves: '/api/saves',
     save: (slot) => '/api/save/' + encodeURIComponent(slot),
+    accountReset: '/api/account/reset',
   };
 
   /* Cloud writes for the 30-second autosave are coalesced to this
@@ -86,6 +87,55 @@
       if (name) localStorage.setItem(LAST_USER_KEY, name);
       else localStorage.removeItem(LAST_USER_KEY);
     } catch { /* private mode / storage disabled */ }
+  }
+
+  /* Pavel, 2026-08-01: "circles above the login form, one per known
+     profile, up to 4, empty ones a glassy +". LAST_USER_KEY above only ever
+     remembers ONE username; this is the small list of every username that
+     has successfully signed in on THIS BROWSER, most-recent-first, capped
+     at 4 — a device profile picker, not a second source of truth for who
+     is actually authenticated (the dh_session cookie still owns that).
+     No password is ever stored here, only names: picking a filled circle
+     pre-fills the username and asks for a password the same as typing it
+     ever did, it just saves the typing. */
+  const KNOWN_KEY = 'dh_known_users';
+  const MAX_PROFILES = 4;
+  function getKnownUsers() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(KNOWN_KEY) || '[]');
+      const arr = Array.isArray(raw) ? raw.filter((n) => typeof n === 'string' && n) : [];
+      /* Migration: a browser that signed in before this list existed has
+         LAST_USER_KEY set but nothing here yet. Seed from it (read-only —
+         nothing is written until the next real sign-in) so that player's
+         one profile shows as a filled circle immediately rather than only
+         after signing in again. */
+      if (!arr.length) {
+        const last = getLastUser();
+        if (last) return [last];
+      }
+      return arr;
+    } catch { return [] }
+  }
+  function addKnownUser(name) {
+    if (!name) return;
+    try {
+      const rest = getKnownUsers().filter((n) => n.toLowerCase() !== name.toLowerCase());
+      localStorage.setItem(KNOWN_KEY, JSON.stringify([name, ...rest].slice(0, MAX_PROFILES)));
+    } catch { /* private mode / storage disabled */ }
+  }
+  /* A small fixed, theme-agnostic palette rather than an arbitrary hash-to-
+     hue formula — hues picked to read clearly against both the light and
+     dark glass surfaces (see CFG's tone colours in deadhead.html for the
+     same reasoning applied to city badges). Deterministic per name so the
+     same player's circle is always the same colour on this device, without
+     storing a colour choice anywhere. */
+  const AVATAR_PALETTE =
+    ['#3E6AE1', '#B0722A', '#C0398B', '#1D8E9E', '#7A5AC4', '#187A4A'];
+  function avatarColor(name) {
+    let h = 0;
+    const s = (name || '').toLowerCase();
+    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+    return AVATAR_PALETTE[h % AVATAR_PALETTE.length];
   }
 
   let kdfIters = 250000;          // replaced by /api/params before first use
@@ -414,6 +464,24 @@
        since it is still how you sign back in on another device.
   */
   const CSS = `
+/* The profile-slot row — up to 4 circles above the card. A FILLED circle
+   is a remembered username on this device (deterministic colour, see
+   avatarColor()); an EMPTY one is a glassy "+" — the same --glass/--blur/
+   --sat tokens ~15 other panels already use, so it reads as an open slot
+   rather than a broken button. The current profile gets a ring, not a
+   different shape, so the row's rhythm (4 same-size circles) never shifts
+   as slots fill in. */
+.acct-slots{display:flex;gap:10px;margin:0 0 10px;padding:0 1px}
+.acct-slot{width:40px;height:40px;border-radius:50%;border:0;cursor:pointer;
+  display:grid;place-items:center;color:#fff;font-size:15px;font-weight:600;
+  flex:0 0 auto;box-shadow:0 0 0 2px transparent;transition:box-shadow .15s}
+.acct-slot:hover{filter:brightness(1.08)}
+.acct-slot.active{box-shadow:0 0 0 2px var(--c-card),0 0 0 4px var(--accent)}
+.acct-slot.add{background:var(--glass);backdrop-filter:blur(var(--blur)) saturate(var(--sat));
+  -webkit-backdrop-filter:blur(var(--blur)) saturate(var(--sat));
+  border:1px dashed var(--brd-2);color:var(--text-3);font-weight:400;font-size:18px}
+.acct-slot.add:hover{border-color:var(--accent);color:var(--accent);filter:none}
+
 .acct{padding:0;border:1px solid var(--brd);border-radius:9px;
   background:var(--c-card);margin:2px 0 4px;overflow:hidden}
 /* flex-wrap:wrap, not just the viewport media query below (2026-07-30):
@@ -553,6 +621,7 @@
 #dh-msg:empty{margin-top:0}`;
 
   const HTML = `
+<div class="acct-slots" id="dh-slots" role="group" aria-label="Player profiles on this device"></div>
 <div class="acct" id="dh-acct">
   <div class="acct-head">
     <h5>Choose a username</h5>
@@ -699,6 +768,66 @@
     }
   }
 
+  /* The 4-circle profile row. Built with DOM calls rather than an innerHTML
+     string — a username is free text with no format restriction (same rule
+     as the display name it's prefilled from), so it goes through
+     .textContent like every other user-controlled string in this file
+     rather than getting interpolated into markup. Re-painted from
+     paintAuthState() so it always agrees with signedIn/getLastUser() —
+     there is no separate "selected" state to fall out of sync. */
+  function paintSlots() {
+    const wrap = $('dh-slots');
+    if (!wrap) return;
+    const known = getKnownUsers().slice(0, MAX_PROFILES);
+    const active = signedIn || getLastUser();
+    wrap.innerHTML = '';
+    for (let i = 0; i < MAX_PROFILES; i++) {
+      const name = known[i];
+      const b = document.createElement('button');
+      b.type = 'button';
+      if (name) {
+        const isActive = !!active && name.toLowerCase() === active.toLowerCase();
+        b.className = 'acct-slot' + (isActive ? ' active' : '');
+        b.style.background = avatarColor(name);
+        b.textContent = name.trim().charAt(0).toUpperCase() || '?';
+        b.dataset.name = name;
+        const label = (isActive ? 'Playing as ' : 'Switch to ') + name;
+        b.title = label;
+        b.setAttribute('aria-label', label);
+      } else {
+        b.className = 'acct-slot add';
+        b.textContent = '+';
+        b.title = 'Add another player';
+        b.setAttribute('aria-label', 'Add another player');
+      }
+      wrap.appendChild(b);
+    }
+  }
+
+  /* Picking a circle. name === '' means the "+" slot: always a blank form,
+     whether or not this browser has ever seen an account. Otherwise it's a
+     remembered username — same one-field resume quickSubmit() already
+     offers, just reached from a circle instead of "Play as <name>".
+     Switching AWAY from whoever is currently signed in has to end that
+     session first (doSignOut(), which also flushes any queued cloud
+     writes) — there is only ever one dh_session cookie, so a second
+     profile cannot be "also" signed in underneath it. Picking the profile
+     that is already active is a no-op; there is nothing to switch to. */
+  async function switchToProfile(name) {
+    if (signedIn) {
+      if (name && signedIn.toLowerCase() === name.toLowerCase()) return;
+      await doSignOut();
+    }
+    setLastUser(name || '');
+    const qpw = $('dh-quick-pw');
+    if (qpw) qpw.value = '';
+    setMode('login');
+    paintQuick();
+    paintSlots();
+    const target = name ? $('dh-quick-pw') : $('dh-username');
+    if (target) target.focus();
+  }
+
   function paintAuthState() {
     paintSavemgrStatus();
     const out = $('dh-out'), inn = $('dh-in');
@@ -706,6 +835,7 @@
     out.hidden = !!signedIn;
     inn.hidden = !signedIn;
     paintQuick();
+    paintSlots();
     const note = $('dh-head-note');
     /* "Syncing" read as a progress state — as if something were happening right
        now. It is a standing fact about the account, so say what it means.
@@ -768,6 +898,7 @@
     window.DH_REMOTE = RemoteStore;
     setAccountMarker(true);
     setLastUser(username);
+    addKnownUser(username);
     paintAuthState();
     setSyncNote('');
     if (window.DH_SAVE && window.DH_SAVE.refresh) window.DH_SAVE.refresh();
@@ -948,6 +1079,94 @@
     busy(false);
   }
 
+  /* "Reset everything" — #sv-reset-all, always visible in the Saved-fleets
+     dialog (2026-07-31: Pavel noticed that deleting one save row, e.g. the
+     Auto slot, only ever clears THIS city's autosave key — physKey()
+     rewrites the logical 'auto' key to 'auto:<city>' per city, so every
+     OTHER city's autosave survives, along with progress/profile/history —
+     and asked for a genuine "delete everything, start over" door). This
+     function already did exactly that; it was just wired to a button
+     (#acct-status-reset) that only existed once signed in. #sv-reset-all
+     is the same door, open to a signed-out/guest player too — the
+     `if (signedIn)` branch below already skips the server DELETE
+     correctly when there is no account to erase.
+
+     Irreversible, so it is gated on window.confirm() first, the same
+     discipline deadhead.html already uses for sell/return-car/repossession
+     (see the "This cannot be undone" confirms around #sel-sell/#sel-charge
+     in deadhead.html) rather than inventing a new confirmation pattern here.
+
+     Order matters: server delete FIRST (while the session cookie is still
+     valid — /api/account/reset needs it), THEN the local IndexedDB wipe,
+     THEN sign-out, THEN reload. A failed server call does not block the
+     rest: the player asked for everything gone, and a network blip should
+     not leave them thinking the reset "didn't work" when their local copy
+     is in fact already gone — but it must not be silent either, so a
+     failure is surfaced via the Saves modal's own toast (window.DH_SAVE.toast,
+     the #sv-toast readout — #dh-msg is not visible from here, since the
+     account FORM it belongs to only lives on the intro screen) and the
+     reload is delayed just long enough for that message to be readable. */
+  const RESET_BTN_IDS = ['acct-status-out', 'sv-reset-all'];
+  async function doAccountReset() {
+    /* Two different truths, not one glossed-over message: a signed-in
+       player also loses the cloud copy and gets signed out; a guest never
+       had one, and "and signs you out" would be a lie told to someone who
+       was never signed in. */
+    const confirmMsg = signedIn
+      ? ('Reset ' + signedIn + '? This permanently deletes every saved fleet — ' +
+         'autosave, all manual slots, unlocked cities and achievements — ' +
+         'both in the cloud and in this browser, and signs you out. ' +
+         'This cannot be undone.')
+      : ('Reset everything? This permanently deletes every saved fleet in ' +
+         'this browser — autosave, all manual slots, unlocked cities and ' +
+         'achievements. This cannot be undone.');
+    if (!window.confirm(confirmMsg)) return;
+
+    RESET_BTN_IDS.forEach((id) => { const b = document.getElementById(id); if (b) b.disabled = true });
+
+    let serverOk = true;
+    let serverErrMsg = '';
+    if (signedIn) {
+      // Nothing queued in pendingByKey is worth flushing — it would only
+      // write back into the account this same click is about to erase.
+      try {
+        await req(API.accountReset, { method: 'DELETE' });
+      } catch (e) {
+        serverOk = false;
+        serverErrMsg = (e && e.message) || 'network error';
+      }
+    }
+
+    pendingByKey.clear();
+    if (retryTimer) { clearTimeout(retryTimer); retryTimer = null }
+    retryDelay = RETRY_MIN_MS;
+
+    let localOk = true;
+    let localErrMsg = '';
+    try {
+      if (window.DH_SAVE && window.DH_SAVE.wipeLocal) await window.DH_SAVE.wipeLocal();
+    } catch (e) {
+      localOk = false;
+      localErrMsg = (e && e.message) || 'unknown error';
+    }
+
+    try { await req(API.logout, { method: 'POST' }) } catch { /* cookie may already be gone */ }
+    signOutLocally();
+
+    if (!serverOk || !localOk) {
+      const parts = [];
+      if (!serverOk) parts.push('cloud saves could not be cleared (' + serverErrMsg + ')');
+      if (!localOk) parts.push('local saves could not be fully cleared (' + localErrMsg + ')');
+      if (window.DH_SAVE && window.DH_SAVE.toast) {
+        window.DH_SAVE.toast('Reset incomplete — ' + parts.join('; ') + '. Reloading anyway.', true);
+      }
+      setTimeout(() => location.reload(), 2000);
+      return;
+    }
+
+    location.reload();
+  }
+
   /* The signed-in-only status readout left behind in the Saved-fleets
      dialog now that the actual Sign in/Create account FORM lives only on
      the intro screen (#intro-acct) — see mount() below. Never shows the
@@ -959,14 +1178,21 @@
   function paintSavemgrStatus() {
     const box = document.getElementById('acct-status');
     const who = document.getElementById('acct-status-who');
+    /* #sv-reset-all lives outside #acct-status now — always in the DOM,
+       never hidden — so it is wired unconditionally below, independent of
+       whether the signed-in status box itself exists on this page. */
+    if (!statusWired) {
+      const resetAllBtn = document.getElementById('sv-reset-all');
+      if (resetAllBtn) resetAllBtn.addEventListener('click', doAccountReset);
+      if (box && who) {
+        const btn = document.getElementById('acct-status-out');
+        if (btn) btn.addEventListener('click', doSignOut);
+      }
+      statusWired = true;
+    }
     if (!box || !who) return;
     box.hidden = !signedIn;
     if (signedIn) who.textContent = signedIn;
-    if (!statusWired) {
-      const btn = document.getElementById('acct-status-out');
-      if (btn) btn.addEventListener('click', doSignOut);
-      statusWired = true;
-    }
   }
 
   /* ---------------- boot ---------------- */
@@ -1015,6 +1241,16 @@
       $('dh-quick').addEventListener('submit', (e) => { e.preventDefault(); quickSubmit() });
       $('dh-quick-peek').addEventListener('click', togglePeekQuick);
       $('dh-quick-switch').addEventListener('click', quickSwitch);
+
+      /* Delegated, not one listener per circle: paintSlots() rebuilds
+         #dh-slots' children on every auth-state change (sign in/out,
+         switch), so per-button listeners would need re-wiring every time
+         too. One listener on the (stable) container avoids that entirely. */
+      $('dh-slots').addEventListener('click', (e) => {
+        const b = e.target.closest('.acct-slot');
+        if (!b) return;
+        switchToProfile(b.dataset.name || '');
+      });
 
       paintMode();
       paintAuthState();
