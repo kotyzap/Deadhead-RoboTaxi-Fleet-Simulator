@@ -13613,7 +13613,7 @@ const SLOTS=['slot1','slot2','slot3'];
    SAVE_V above is the STATE SHAPE version and moves only when the
    snapshot format changes — the two are deliberately independent, so
    shipping 0.9.0 does not invalidate 0.8.0 saves. */
-const VERSION='0.112.0';
+const VERSION='0.113.0';
 
 function snapshot(){
   return {
@@ -17679,15 +17679,32 @@ function prologueBeats(){
        "put these on poles all over town."},
     {pic:'northstar-ad-poster.jpg', ar:'4/3',
      cap:'NOW HIRING — Supervising Driver. Robotaxi Operations Center, San Francisco.'},
-    {t:"Nine requirements. You meet none of them today, and neither did I. "+
-       "They are not asking whether you are clever. They are asking whether "+
-       "you are still there in a year."},
+    /* Pavel, 2026-08-01, rewriting this line: "10 simple requirements. You
+       meet one of them today already. You own a self-driving car." and
+       "They are not asking..." -> "I am not asking...", since by this line
+       Paolo has stopped quoting the poster and started speaking for himself
+       about the job he is personally offering.
+       DELIBERATELY NOT wired to REQS.length/appMetList() — Pavel's own call
+       (2026-08-01): "It can be still 9 rows. This is just a motivational
+       boost for the player. I believe no change in application needed."
+       The real application stays at 9 requirements (see REQS below,
+       unchanged); this "10"/"one already" is Paolo's own rhetorical framing
+       in a cutscene the player can't inspect against a panel yet, not a
+       claim the app system has to honor later. Do not "fix" this to read
+       REQS.length — that would be solving a problem Pavel explicitly said
+       does not exist. */
+    {t:"10 simple requirements. You meet one of them today already. You "+
+       "own a self-driving car.<br><br>And regarding the position I am "+
+       "offering. I am not asking whether you are clever. I am asking "+
+       "whether you are still there in a year."},
     {art:true},
     {t:"I am already on that crew. What I want is a good one — people who "+
        "stay, paid properly, everybody happy. Your father is a good "+
        "reference, so you are the first call I made."},
-    {t:"And you have the car sitting there. Electric, drives itself, already "+
-       "yours. That is the whole starting position: a car, and no boss."},
+    /* Pavel, 2026-08-01: "send the photo before the message" — the photo and
+       its caption line swapped places (was text-then-photo) so Fox's
+       forwarded picture arrives as the surprise, and Paolo's line reads as a
+       comment on something the player just saw rather than a preview of it. */
     /* Pavel, 2026-07-31: "Add a photo of the car as father Fox send it to Paolo
        if it is eligible."
        A FORWARDED photograph, and the framing does real work. Fox sending
@@ -17700,8 +17717,16 @@ function prologueBeats(){
        artHtml(), so the picture can never drift from the card. */
     {car:'saloon',
      cap:'Forwarded from Fox — “this is his. Barely driven since the layoff.”'},
-    {t:"So. Austin, tonight. Get one shift finished and see a real check with "+
-       "your name on it, and then we will talk about the list."}
+    {t:"And you have the car sitting there. Electric, drives itself, already "+
+       "yours. That is the whole starting position: a car, and no boss."},
+    /* Pavel, 2026-08-01: more motivating and concrete than "a real check with
+       your name on it" — names the actual mechanic (instant payout after a
+       shift) and the actual stakes (a six-figure San Francisco job), and
+       leaves the door open rather than ending on a flat sign-off. */
+    {t:"So. Austin, tonight! Get one robotaxi shift finished and see an "+
+       "instant money transfer from me after shift, and then we will talk "+
+       "about the list of requirements to land a six-figure job in San "+
+       "Francisco.<br><br>If you have questions, ask me."}
   ];
 }
 
