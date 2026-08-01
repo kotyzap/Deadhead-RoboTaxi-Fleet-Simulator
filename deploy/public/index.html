@@ -2766,8 +2766,25 @@ html[data-theme="night"] .nav-highlight{animation-name:nav-flash-night}
    not one yet — §3.2's fork is where two answers genuinely weigh the same. */
 .pro-foot{padding:11px 6px 2px;display:flex;flex-direction:row;gap:8px;
   align-items:stretch}
-.pro-foot .pro-btn{flex:1 1 auto;min-width:0}
-.pro-foot .pro-btn-alt{flex:0 0 auto;padding:0 16px}
+/* THE READ BUTTON LOOKED UNSTYLED (Pavel, live 0.109 screenshot). Real bug,
+   and worth spelling out because it is a general flexbox trap:
+   `.pro-btn{width:100%}` two rules down was written for the ORIGINAL
+   single-button layout, where .pro-foot was a column and one full-width
+   button was the only child. flex-basis:auto — which `flex:1 1 auto` and
+   `flex:0 0 auto` both specify — resolves from the item's own `width`
+   property when one is set. So BOTH buttons had a flex-basis of 100% of the
+   row, not of their intended share of it.
+   Decline additionally has flex-shrink:0, so it refused to give any of that
+   100%-basis back — it claimed most of the row. Read has flex-shrink:1, so
+   it absorbed the entire overflow and was squeezed to a sliver, which is why
+   its accent-blue fill was too narrow to read as a button at all.
+   Fixed by overriding width:auto here, so flex-basis falls back to
+   content-based sizing (0 for Read via an explicit 0% basis, shrink-to-fit
+   for Decline) — the actual layout intent from the very first version of
+   this row, which `.pro-btn`'s older width:100% quietly poisoned the moment
+   a second button joined it. */
+.pro-foot .pro-btn{flex:1 1 0%;width:auto;min-width:0}
+.pro-foot .pro-btn-alt{flex:0 0 auto;width:auto;padding:0 16px}
 .pro-btn{width:100%;height:40px;border:0;border-radius:20px;cursor:pointer;
   font:inherit;font-size:13px;font-weight:500;
   background:var(--accent);color:#fff;transition:opacity .15s var(--ease)}
@@ -8769,6 +8786,125 @@ function rayGarageWelcome(){
   rayPause();
 }
 /* ============================================================
+   THE CITY-ARRIVAL PHONE — reuses the prologue's handset for a second job.
+
+   Pavel, 2026-07-31, having just seen the prologue render: "I love these
+   screens, can we use them e.g. in between the Cities... It is nice
+   transition, and it can be 1/9 2/9 etc." Then, unprompted, two portraits —
+   Paolo standing beside the badged car in Miami and in Dallas — with: "Great
+   for in between cities messages and player motivation."
+
+   REPLACES rayGarageWelcome() rather than running alongside it (Pavel's
+   choice, of the three offered): one Paolo moment per arrival, on the nicer
+   screen, not two back to back. It keeps rayGarageWelcome()'s own trigger
+   condition VERBATIM (see openGarage() below) — same cities excluded (Austin
+   has its own opener, SF is the finale), same S.ray.skipped guard, same
+   markGarageWelcomed() latch — so nothing about WHEN this fires had to be
+   re-derived, only WHAT is shown.
+
+   THE COUNTER IS THE APPLICATION, not a city count (Pavel's call): n of
+   REQS.length, read live off appMetList() so it can never rot the way a
+   hardcoded city list has before (the achievements funnel bug). This ties
+   every arrival back to the Supervising Driver application — the spine of
+   the whole story — rather than duplicating the city tab strip the player
+   can already see.
+
+   PER-CITY PORTRAITS, WITH A FALLBACK (Pavel's call): CITY_PAOLO_PHOTO holds
+   Dallas, Miami, Orlando, and (added v0.112.0) Tampa today, because those are
+   the only four that exist. A city with no entry falls back to
+   prologueOfficeArt() — the same SF office day/night pair the prologue
+   already uses — so the screen never has a hole waiting for more art, and
+   upgrades quietly the moment a new portrait is added here. */
+const CITY_PAOLO_PHOTO={
+  dallas:{src:'paolo-dallas.jpg', cap:'Dallas. Same badge, same car, different skyline.'},
+  miami:{src:'paolo-miami.jpg', cap:'Miami. Ocean Drive, if the shift ever gets that far south.'},
+  orlando:{src:'paolo-orlando.jpg', cap:'Orlando. Lake Eola on a good afternoon.'},
+  tampa:{src:'paolo-tampa.jpg', cap:'Tampa. Ybor City is a few blocks that way.'}
+};
+function cityArrivalArt(cityId){
+  const p=CITY_PAOLO_PHOTO[cityId];
+  if(p) return {src:p.src, cap:p.cap, wide:false};
+  const o=prologueOfficeArt();
+  return {src:o.src, cap:o.cap, wide:true};
+}
+/* One line of Paolo's own voice for this city, then the application count,
+   then whatever garageWelcomeHtml() already said about the requirement and
+   the manufacturer deal — reused rather than rewritten, so the exp-<city>
+   name and the competency deal can never drift between the two screens. */
+function cityArrivalHtml(cityId){
+  const held=appMetList().length, total=REQS.length;
+  return '<b>'+escapeHtml(CITIES[cityId].name)+'.</b> '+held+' of '+total+
+    ' on the application now.<br><br>'+garageWelcomeHtml(cityId);
+}
+function showCityArrival(cityId,next){
+  const el=$('prologue'), thread=$('pro-thread'), btn=$('pro-next'),
+        decline=$('pro-decline'), sub=$('pro-sub'), clock=$('pro-clock');
+  let done=false;
+
+  function paintClock(){
+    const d=new Date();
+    clock.textContent=String(d.getHours()).padStart(2,'0')+':'+
+                      String(d.getMinutes()).padStart(2,'0');
+    const wx=$('pro-wx');
+    if(wx) wx.textContent=(WX&&typeof WX.temp==='number')?uTemp(WX.temp):'';
+  }
+  function atBottom(){ thread.scrollTop=thread.scrollHeight }
+  function finish(){
+    if(done) return;
+    done=true;
+    clearInterval(clockT);
+    el.hidden=true;
+    el.classList.remove('pro-max');
+    btn.removeEventListener('click',finish);
+    decline.removeEventListener('click',finish);
+    if(phone) phone.removeEventListener('dblclick',toggleBig);
+    splashHide();
+    next();
+  }
+  function toggleBig(e){
+    if(e.target.closest&&e.target.closest('.pro-shot')) return;
+    el.classList.toggle('pro-max');
+    atBottom();
+  }
+  const phone=el.querySelector('.pro-phone');
+
+  el.hidden=false;
+  el.classList.remove('pro-max');
+  thread.innerHTML='';
+  btn.textContent='Continue';
+  btn.disabled=false;
+  /* Decline reads "Got it" here rather than the prologue's "Decline" — there
+     is nothing to decline once the player has already accepted the job by
+     playing this far; both buttons do the identical thing (dismiss), the
+     label just has to stop implying a choice that no longer exists. */
+  decline.textContent='Got it';
+  paintClock(); const clockT=setInterval(paintClock,5000);
+  if(splashLoading) el.classList.add('intro-onsplash'); else splashBackdrop();
+  if(phone){ phone.addEventListener('dblclick',toggleBig); phone.title='Double-click to enlarge' }
+  btn.addEventListener('click',finish);
+  decline.addEventListener('click',finish);
+
+  /* Single message, arrives after the same short pause the prologue uses for
+     its very first line — this is one card, not a script, so there is
+     nothing to tap through. */
+  sub.textContent='typing…';
+  setTimeout(function(){
+    if(done) return;
+    sub.textContent='online';
+    const art=cityArrivalArt(cityId);
+    const shot=document.createElement('div');
+    shot.className='pro-shot'+(art.wide?' wide':'');
+    shot.innerHTML='<img alt="" src="'+art.src+'"><small>'+escapeHtml(art.cap)+'</small>';
+    thread.appendChild(shot);
+    const bubble=document.createElement('div');
+    bubble.className='pro-msg';
+    bubble.innerHTML=rayFill(cityArrivalHtml(cityId));
+    thread.appendChild(bubble);
+    atBottom();
+    sndMsg();
+  },260);
+}
+/* ============================================================
    THE JOB AD — northstarplan.md §2.1/§5.
 
    Fires exactly once, chained onto the very FIRST city-unlock card a
@@ -13477,7 +13613,7 @@ const SLOTS=['slot1','slot2','slot3'];
    SAVE_V above is the STATE SHAPE version and moves only when the
    snapshot format changes — the two are deliberately independent, so
    shipping 0.9.0 does not invalidate 0.8.0 saves. */
-const VERSION='0.109.0';
+const VERSION='0.112.0';
 
 function snapshot(){
   return {
@@ -16664,10 +16800,18 @@ function openGarage(){
      the scripted tutorial. See THE GARAGE WELCOME, above rayCityUnlocked(),
      for the real per-city replacement below. */
   if(!raySeen(1)&&!raySkippedEver()&&S.ray.guided&&!S.cars.length) rayShow(1);
+  /* v0.110.0: the phone REPLACES rayGarageWelcome() here (Pavel's choice of
+     the three offered — one Paolo moment per arrival, not two). Condition is
+     copied verbatim from the code it replaces: same cities excluded, same
+     skip guard, same once-per-city latch. rayGarageWelcome()/garageWelcomeHtml()
+     are kept, unreachable from here but still called BY cityArrivalHtml()
+     above and by garage-welcome.test.js, which is deliberately left in place
+     as a live check that the requirement/competency copy those two screens
+     share has not drifted. */
   else if(S.city!=='austin'&&S.city!=='sf'&&!S.cars.length&&!raySkippedEver()&&
           !garageWelcomed(S.city)){
     markGarageWelcomed(S.city);
-    rayGarageWelcome();
+    showCityArrival(S.city,function(){});
   }
 }
 /* transferplan.md §4.2: fires once per city, and only if the player leaves
@@ -18199,6 +18343,9 @@ window.DH_ACT1={
   prologueOfficeArt:prologueOfficeArt,prologueSeen:prologueSeen,
   timeGreeting:timeGreeting,playerNamed:playerNamed,
   markPrologueSeen:markPrologueSeen,
+  /* city-arrival.test.js */
+  showCityArrival:showCityArrival,cityArrivalArt:cityArrivalArt,
+  cityArrivalHtml:cityArrivalHtml,CITY_PAOLO_PHOTO:CITY_PAOLO_PHOTO,
   /* rayPause/rayResume's own state is plain module `let`, not on S (see their
      comment) — exposed as getters, same pattern as ROADS/ZONES/DODGE above,
      so a test can assert on it without it going stale as a captured value. */
